@@ -1,6 +1,6 @@
 import { type ReactNode } from "react";
 
-type YouthModalProps = {
+type AdminModalProps = {
   children: ReactNode;
   footer?: ReactNode;
   onClose: () => void;
@@ -8,13 +8,13 @@ type YouthModalProps = {
   title: string;
 };
 
-export default function YouthModal({
+export default function AdminModal({
   children,
   footer,
   onClose,
   open,
   title,
-}: YouthModalProps) {
+}: AdminModalProps) {
   if (!open) {
     return null;
   }

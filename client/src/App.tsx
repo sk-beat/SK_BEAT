@@ -8,14 +8,14 @@ import Financial from "./components/Admin/Financial/Financial";
 import SurveyBuilder from "./components/Admin/SurveyBuilder/SurveyBuilder";
 import SurveysAnnouncements from "./components/Admin/SurveysAnnouncements/SurveysAnnouncements";
 import YouthRecord from "./components/Admin/YouthRecord/YouthRecord";
-import LoginPage from "./pages/Admin/LoginPage";
+import LoginPage from "./pages/LoginPage";
 import UnauthorizedPage from "./pages/UnauthorizedPage";
-import LandingPage from "./pages/Youth/LandingPage";
-import YouthEventsPage from "./pages/Youth/YouthEventsPage";
-import YouthLayout from "./pages/Youth/YouthLayout";
-import YouthOfficialsPage from "./pages/Youth/YouthOfficialsPage";
-import YouthPortalPage from "./pages/Youth/YouthPortalPage";
-import YouthSurveysPage from "./pages/Youth/YouthSurveysPage";
+import LandingPage from "./pages/LandingPage";
+import AdminEventsPage from "./pages/Admin/AdminEventsPage";
+import AdminLayout from "./pages/Admin/AdminLayout";
+import AdminOfficialsPage from "./pages/Admin/AdminOfficialsPage";
+import AdminPortalPage from "./pages/Admin/AdminPortalPage";
+import AdminSurveysPage from "./pages/Admin/AdminSurveysPage";
 import { ProtectedRoute, PublicRoute } from "./routes/ProtectedRoute";
 
 const appTitle = "SK Kabataan Portal";
@@ -149,7 +149,7 @@ function App() {
               </ProtectedRoute>
             }
           />
-          <Route element={<YouthLayout />}>
+          <Route element={<AdminLayout />}>
             <Route
               path="/"
               element={
@@ -163,7 +163,7 @@ function App() {
               path="/youth-portal"
               element={
                 <PageTitle title="Youth Portal">
-                  <YouthPortalPage />
+                  <AdminPortalPage />
                 </PageTitle>
               }
             />
@@ -171,7 +171,7 @@ function App() {
               path="/youth-officials"
               element={
                 <PageTitle title="SK Officials">
-                  <YouthOfficialsPage />
+                  <AdminOfficialsPage />
                 </PageTitle>
               }
             />
@@ -179,7 +179,7 @@ function App() {
               path="/youth-events"
               element={
                 <PageTitle title="Events">
-                  <YouthEventsPage />
+                  <AdminEventsPage />
                 </PageTitle>
               }
             />
@@ -187,7 +187,7 @@ function App() {
               path="/youth-surveys"
               element={
                 <PageTitle title="Surveys">
-                  <YouthSurveysPage />
+                  <AdminSurveysPage />
                 </PageTitle>
               }
             />

@@ -1,6 +1,6 @@
-import { officials } from "./youthData";
+import { officials } from "../../utils/adminPortalData";
 
-export default function YouthOfficialsPage() {
+export default function AdminOfficialsPage() {
   return (
     <main className="mx-auto max-w-6xl px-6 py-14">
       <h1 className="text-3xl font-bold text-[#0b1f3b]">SK Officials</h1>

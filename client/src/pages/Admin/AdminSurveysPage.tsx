@@ -1,4 +1,4 @@
-export default function YouthSurveysPage() {
+export default function AdminSurveysPage() {
   return (
     <main className="mx-auto max-w-6xl px-6 py-14">
       <h1 className="text-3xl font-bold text-[#0b1f3b]">Surveys & Feedback</h1>

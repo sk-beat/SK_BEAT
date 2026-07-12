@@ -1,8 +1,8 @@
 import { useState } from "react";
-import { type YouthEvent, youthEvents } from "./youthData";
-import YouthModal from "./YouthModal";
+import { type YouthEvent, youthEvents } from "../../utils/adminPortalData";
+import AdminModal from "./AdminModal";
 
-export default function YouthEventsPage() {
+export default function AdminEventsPage() {
   const [selectedEvent, setSelectedEvent] = useState<YouthEvent | null>(null);
   const [registerEvent, setRegisterEvent] = useState<YouthEvent | null>(null);
 
@@ -57,7 +57,7 @@ export default function YouthEventsPage() {
         </div>
       </main>
 
-      <YouthModal
+      <AdminModal
         footer={
           <>
             <button
@@ -98,9 +98,9 @@ export default function YouthEventsPage() {
             </p>
           </div>
         ) : null}
-      </YouthModal>
+      </AdminModal>
 
-      <YouthModal
+      <AdminModal
         footer={
           <>
             <button
@@ -146,7 +146,7 @@ export default function YouthEventsPage() {
             <input className="w-full rounded-lg border border-slate-200 px-3 py-2.5 text-sm outline-none focus:border-[#1e3a5f]" />
           </label>
         </div>
-      </YouthModal>
+      </AdminModal>
     </>
   );
 }

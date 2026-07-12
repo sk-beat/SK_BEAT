@@ -1,7 +1,7 @@
-import basketballImage from "../../assets/basketball.jpg";
-import galasImage from "../../assets/galas.jpg";
-import scholarImage from "../../assets/scholar.jpg";
-import seminarImage from "../../assets/seminar.jpg";
+import basketballImage from "../assets/basketball.jpg";
+import galasImage from "../assets/galas.jpg";
+import scholarImage from "../assets/scholar.jpg";
+import seminarImage from "../assets/seminar.jpg";
 
 export const youthImages = {
   basketball: basketballImage,

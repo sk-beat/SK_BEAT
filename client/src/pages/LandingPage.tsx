@@ -1,6 +1,6 @@
 import { Link } from "react-router-dom";
-import skLogo from "../../assets/sklogo.png";
-import { youthEvents, youthImages } from "./youthData";
+import skLogo from "../assets/sklogo.png";
+import { youthEvents, youthImages } from "../utils/adminPortalData";
 
 export default function LandingPage() {
   return (

@@ -5,10 +5,10 @@ import {
   youthAnnouncements,
   youthEvents,
   youthImages,
-} from "./youthData";
-import YouthModal from "./YouthModal";
+} from "../../utils/adminPortalData";
+import AdminModal from "./AdminModal";
 
-export default function YouthPortalPage() {
+export default function AdminPortalPage() {
   const [selectedAnnouncement, setSelectedAnnouncement] =
     useState<YouthAnnouncement | null>(null);
 
@@ -99,7 +99,7 @@ export default function YouthPortalPage() {
         </section>
       </main>
 
-      <YouthModal
+      <AdminModal
         footer={
           <button
             className="rounded-lg bg-[#0b1f3b] px-4 py-2 text-sm font-semibold text-white"
@@ -128,7 +128,7 @@ export default function YouthPortalPage() {
             </p>
           </div>
         ) : null}
-      </YouthModal>
+      </AdminModal>
     </>
   );
 }

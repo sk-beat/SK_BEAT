@@ -1,8 +1,8 @@
 import { Link, NavLink, Outlet } from "react-router-dom";
 import skLogo from "../../assets/sklogo.png";
-import { youthNavItems } from "./youthData";
+import { youthNavItems } from "../../utils/adminPortalData";
 
-export default function YouthLayout() {
+export default function AdminLayout() {
   return (
     <div className="min-h-screen bg-slate-50 text-slate-900">
       <header className="sticky top-0 z-40 border-b border-white/20 bg-[#0b1f3b]/95 text-white backdrop-blur">

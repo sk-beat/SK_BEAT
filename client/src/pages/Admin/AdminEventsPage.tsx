@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { type YouthEvent, youthEvents } from "../../utils/adminPortalData";
-import AdminModal from "./AdminModal";
+import AdminModal from "../../utils/AdminModal";
 
 export default function AdminEventsPage() {
   const [selectedEvent, setSelectedEvent] = useState<YouthEvent | null>(null);

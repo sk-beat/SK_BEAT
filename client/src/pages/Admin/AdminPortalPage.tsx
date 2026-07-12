@@ -6,7 +6,7 @@ import {
   youthEvents,
   youthImages,
 } from "../../utils/adminPortalData";
-import AdminModal from "./AdminModal";
+import AdminModal from "../../utils/AdminModal";
 
 export default function AdminPortalPage() {
   const [selectedAnnouncement, setSelectedAnnouncement] =

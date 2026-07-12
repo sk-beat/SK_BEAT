@@ -11,7 +11,7 @@ export const youthImages = {
 };
 
 export const youthNavItems = [
-  { label: "Home", to: "/youth-portal" },
+  { label: "Home", to: "/" },
   { label: "SK Officials", to: "/youth-officials" },
   { label: "Events", to: "/youth-events" },
   { label: "Surveys", to: "/youth-surveys" },

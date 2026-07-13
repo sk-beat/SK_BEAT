@@ -43,7 +43,7 @@ function App() {
             path="/login"
             element={
               <PublicRoute>
-                <PageTitle title="Loginn">
+                <PageTitle title="Login">
                   <LoginPage />
                 </PageTitle>
               </PublicRoute>

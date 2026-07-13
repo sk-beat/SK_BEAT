@@ -1,4 +1,6 @@
 import AdminModal from "./AdminModal";
+import { supabase } from "../../../utils/supabase";
+import { useState } from "react";
 
 type AccountModalKind = "profile" | "add-admin" | null;
 
@@ -14,17 +16,27 @@ function Field({
   label,
   type = "text",
   value,
+  name,
+  onChange,
 }: {
   label: string;
   type?: string;
   value?: string;
+  name?: string;
+  onChange?: (e: React.ChangeEvent<HTMLInputElement>) => void;
 }) {
   return (
     <label className="block">
       <span className="mb-1.5 block text-sm font-medium text-slate-700">
         {label}
       </span>
-      <input className={inputClass} defaultValue={value} type={type} />
+      <input 
+        className={inputClass} 
+        value={value} 
+        name={name}
+        onChange={onChange}
+        type={type} 
+      />
     </label>
   );
 }
@@ -33,6 +45,65 @@ export default function AdminAccountModals({
   modal,
   onClose,
 }: AdminAccountModalsProps) {
+
+  const [AdminName, setAdminName] = useState<string>("");
+  const [position, setPosition] = useState<string>("");
+  const [email, setEmail] = useState<string>("");
+  const [password, setPassword] = useState<string>("");
+  const [isLoading, setIsLoading] = useState<boolean>(false);
+
+  const handleAddAdminSubmit = async () => {
+    console.log("Adding admin with details:", { AdminName, position, email, password });
+    if (!email || !email.includes("@") || !email.includes(".")) {
+      alert("Please enter a valid email address.");
+      return;
+    }
+    
+    if (password.length < 6) {
+      alert("Password must be at least 6 characters long.");
+      return;
+    }
+
+    if (!AdminName || !position) {
+      alert("Please fill out all fields.");
+      return;
+    }
+
+    setIsLoading(true);
+
+
+    const { data, error } = await supabase.auth.signUp({
+      email: email,
+      password: password,
+      options: {
+        data: {
+          full_name: AdminName,
+          position: position,
+        },
+      },
+    });
+
+    setIsLoading(false);
+
+    if (error) {
+    
+      if (error.message.includes("already registered")) {
+        alert("An account with this email already exists.");
+      } else {
+        alert("Error adding admin: " + error.message);
+      }
+      return;
+    }
+
+    alert("Admin successfully added! They will need to verify their email.");
+    
+    setAdminName("");
+    setPosition("");
+    setEmail("");
+    setPassword("");
+    onClose();
+  };
+
   return (
     <>
       <AdminModal
@@ -88,7 +159,7 @@ export default function AdminAccountModals({
             </button>
             <button
               className="rounded-lg bg-[#1e3a5f] px-4 py-2 text-sm font-medium text-white hover:bg-[#2a4a6f]"
-              onClick={onClose}
+              onClick={()=> handleAddAdminSubmit() }
               type="button"
             >
               Add Admin
@@ -100,10 +171,10 @@ export default function AdminAccountModals({
         title="Add New Admin"
       >
         <div className="grid gap-4 md:grid-cols-2">
-          <Field label="Full Name" />
-          <Field label="Position" />
-          <Field label="Email Address" type="email" />
-          <Field label="Temporary Password" type="password" />
+          <Field label="Full Name" onChange={(e) => setAdminName(e.target.value)} />
+          <Field label="Position" onChange={(e) => setPosition(e.target.value)} />
+          <Field label="Email Address" type="email" onChange={(e) => setEmail(e.target.value)} />
+          <Field label="Temporary Password" type="password" onChange={(e) => setPassword(e.target.value)} />
         </div>
       </AdminModal>
     </>

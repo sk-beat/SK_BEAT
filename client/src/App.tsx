@@ -1,4 +1,3 @@
-
 import { type ReactNode, useEffect } from "react";
 import { BrowserRouter, Navigate, Route, Routes } from "react-router-dom";
 import { AuthProvider } from "./auth/AuthProvider";
@@ -17,6 +16,13 @@ import AdminOfficialsPage from "./pages/Admin/AdminOfficialsPage";
 import AdminPortalPage from "./pages/Admin/AdminPortalPage";
 import AdminSurveysPage from "./pages/Admin/AdminSurveysPage";
 import { ProtectedRoute, PublicRoute } from "./routes/ProtectedRoute";
+import { supabase } from "./utils/supabase";
+import YouthLayout from "./pages/Youth/YouthLayout";
+import YouthHome from "./pages/Youth/YouthHome";
+import YouthSurveys from "./pages/Youth/YouthSurveys";
+import YouthEvents from "./pages/Youth/YouthEvents";
+import YouthProfile from "./pages/Youth/YouthProfile";
+import YouthFeedback from "./pages/Youth/YouthFeedback";
 
 const appTitle = "SK Kabataan Portal";
 
@@ -39,6 +45,49 @@ function App() {
     <AuthProvider>
       <BrowserRouter>
         <Routes>
+          {/* Youth Routes wrapped in YouthLayout */}
+        
+            {/* The index route ("") loads when the user visits /youth */}
+            <Route path="/youth" element={<YouthLayout />}>
+              <Route
+                index
+                element={
+                  <YouthHome />
+                }
+              />
+
+              <Route
+                path="surveys"
+                element={
+                  <YouthSurveys />
+                }
+              />
+
+              <Route
+                path="events"
+                element={
+                  <YouthEvents />
+                }
+              />
+
+              <Route
+                path="profile"
+                element={
+                  <YouthProfile />
+                }
+              />
+
+              <Route
+                path="feedback"
+                element={
+                  <YouthFeedback />
+                }
+              />
+            </Route>
+
+
+
+
           <Route
             path="/login"
             element={
@@ -192,6 +241,7 @@ function App() {
               }
             />
           </Route>
+
           <Route
             path="/unauthorized"
             element={

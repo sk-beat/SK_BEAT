@@ -1,86 +1,121 @@
-import { useCallback, useMemo, useState, type ReactNode } from "react";
-import {
-  AuthContext,
-  isAppRole,
-  roleStorageKey,
-  userStorageKey,
-} from "./AuthContext";
-import type { AppRole, AuthContextValue, LoginPayload } from "./types";
+import { useEffect, useState, type ReactNode } from "react";
 
-type ApiLoginResponse = {
-  ok: boolean;
-  message?: string;
-  role?: AppRole;
-  user?: {
-    email?: string;
-    fullname?: string;
-    user_id?: string | number;
-  };
-};
+import { supabase } from "../utils/supabase";
 
-function readInitialRole() {
-  const storedRole = sessionStorage.getItem(roleStorageKey);
-  return isAppRole(storedRole) ? storedRole : null;
-}
+import { AuthContext } from "./AuthContext";
 
-function readInitialUsername() {
-  return sessionStorage.getItem(userStorageKey);
-}
+import type {
+  AuthUser,
+  AppRole,
+  AuthContextValue,
+  LoginPayload,
+} from "./types";
 
 export function AuthProvider({ children }: { children: ReactNode }) {
-  const [role, setRole] = useState<AppRole | null>(readInitialRole);
-  const [username, setUsername] = useState<string | null>(readInitialUsername);
+  const [user, setUser] = useState<AuthUser | null>(null);
+  const [role, setRole] = useState<AppRole | null>(null);
+  const [loading, setLoading] = useState(true);
 
-  const login = useCallback(async ({ username, password }: LoginPayload) => {
-    if (username === "admin" && password === "admin") {
-      sessionStorage.setItem(roleStorageKey, "admin");
-      sessionStorage.setItem(userStorageKey, "admin");
-      setRole("admin");
-      setUsername("admin");
+  async function loadUser() {
+    const {
+      data: { user: authUser },
+    } = await supabase.auth.getUser();
+
+    if (!authUser) {
+      setUser(null);
+      setRole(null);
+      setLoading(false);
       return;
     }
 
-    const response = await fetch("/api/auth.php", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ username, password }),
+    // Admin Check
+    const { data: admin, error: err } = await supabase
+      .from("admins")
+      .select("fullname,email")
+      .eq("admin_id", authUser.id)
+      .eq("status", "active")
+      .maybeSingle();
+
+    if (err) {
+      console.error("Admin query error:", err);
+    }
+
+    if (admin) {
+      setUser({
+        id: authUser.id,
+        email: admin.email,
+        fullname: admin.fullname,
+      });
+
+      setRole("admin");
+      setLoading(false);
+      return;
+    }
+
+    // Kabataan Check
+    const { data: kabataan, error } = await supabase
+      .from("kabataan_profiles")
+      .select("fullname,email")
+      .eq("profile_id", authUser.id)
+      .maybeSingle();
+
+    if (error) {
+      console.error("Kabataan query error:", error);
+    }
+
+    if (kabataan) {
+      setUser({
+        id: authUser.id,
+        email: kabataan.email,
+        fullname: kabataan.fullname,
+      });
+
+      setRole("kabataan");
+    } else {
+      setUser(null);
+      setRole(null);
+    }
+
+    setLoading(false);
+  }
+
+  useEffect(() => {
+    loadUser();
+
+    const { data: listener } = supabase.auth.onAuthStateChange(() => {
+      loadUser();
     });
 
-    const data = (await response.json()) as ApiLoginResponse;
-
-    if (!response.ok || !data.ok) {
-      throw new Error(data.message || "Login failed.");
-    }
-
-    if (!isAppRole(data.role)) {
-      throw new Error("Your account does not have portal access.");
-    }
-
-    const displayName = data.user?.email || username;
-
-    sessionStorage.setItem(roleStorageKey, data.role);
-    sessionStorage.setItem(userStorageKey, displayName);
-    setRole(data.role);
-    setUsername(displayName);
+    return () => {
+      listener.subscription.unsubscribe();
+    };
   }, []);
 
-  const logout = useCallback(() => {
-    sessionStorage.removeItem(roleStorageKey);
-    sessionStorage.removeItem(userStorageKey);
+  async function login({ username, password }: LoginPayload) {
+    const { error } = await supabase.auth.signInWithPassword({
+      email: username,
+      password,
+    });
+
+    if (error) {
+      throw error;
+    }
+  }
+
+  async function logout() {
+    await supabase.auth.signOut();
+    setUser(null);
     setRole(null);
-    setUsername(null);
-  }, []);
+  }
 
-  const value = useMemo<AuthContextValue>(
-    () => ({
-      isAuthenticated: role !== null,
-      role,
-      username,
-      login,
-      logout,
-    }),
-    [login, logout, role, username],
-  );
+  const value: AuthContextValue = {
+    isAuthenticated: user !== null,
+    user,
+    role,
+    loading,
+    login,
+    logout,
+  };
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;
 }

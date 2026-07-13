@@ -15,14 +15,14 @@ import AdminLayout from "./pages/Admin/AdminLayout";
 import AdminOfficialsPage from "./pages/Admin/AdminOfficialsPage";
 import AdminPortalPage from "./pages/Admin/AdminPortalPage";
 import AdminSurveysPage from "./pages/Admin/AdminSurveysPage";
-import { ProtectedRoute, PublicRoute } from "./routes/ProtectedRoute";
-import { supabase } from "./utils/supabase";
+import { ProtectedRoute } from "./routes/ProtectedRoute";
 import YouthLayout from "./pages/Youth/YouthLayout";
 import YouthHome from "./pages/Youth/YouthHome";
 import YouthSurveys from "./pages/Youth/YouthSurveys";
 import YouthEvents from "./pages/Youth/YouthEvents";
 import YouthProfile from "./pages/Youth/YouthProfile";
 import YouthFeedback from "./pages/Youth/YouthFeedback";
+import { PublicRoute } from "./routes/PublicRoute";
 
 const appTitle = "SK Kabataan Portal";
 
@@ -46,47 +46,49 @@ function App() {
       <BrowserRouter>
         <Routes>
           {/* Youth Routes wrapped in YouthLayout */}
-        
-            {/* The index route ("") loads when the user visits /youth */}
-            <Route path="/youth" element={<YouthLayout />}>
-              <Route
-                index
-                element={
+          {/* The index route ("") loads when the user visits /youth */}
+          <Route path="/youth" element={<YouthLayout />}>
+            <Route
+              index
+              element={
+                <ProtectedRoute allowedRoles={["kabataan"]}>
                   <YouthHome />
-                }
-              />
-
-              <Route
-                path="surveys"
-                element={
+                </ProtectedRoute>
+              }
+            />
+            <Route
+              path="surveys"
+              element={
+                <ProtectedRoute allowedRoles={["kabataan"]}>
                   <YouthSurveys />
-                }
-              />
-
-              <Route
-                path="events"
-                element={
+                </ProtectedRoute>
+              }
+            />
+            <Route
+              path="events"
+              element={
+                <ProtectedRoute allowedRoles={["kabataan"]}>
                   <YouthEvents />
-                }
-              />
-
-              <Route
-                path="profile"
-                element={
+                </ProtectedRoute>
+              }
+            />
+            <Route
+              path="profile"
+              element={
+                <ProtectedRoute allowedRoles={["kabataan"]}>
                   <YouthProfile />
-                }
-              />
-
-              <Route
-                path="feedback"
-                element={
+                </ProtectedRoute>
+              }
+            />
+            <Route
+              path="feedback"
+              element={
+                <ProtectedRoute allowedRoles={["kabataan"]}>
                   <YouthFeedback />
-                }
-              />
-            </Route>
-
-
-
+                </ProtectedRoute>
+              }
+            />
+          </Route>
 
           <Route
             path="/login"
@@ -101,9 +103,7 @@ function App() {
           <Route
             path="/dashboard"
             element={
-              <ProtectedRoute
-                allowedRoles={["admin", "technician", "faculty"] as const}
-              >
+              <ProtectedRoute allowedRoles={["admin"] as const}>
                 <PageTitle title="Dashboard">
                   <Dashboard />
                 </PageTitle>
@@ -113,9 +113,7 @@ function App() {
           <Route
             path="/youth-records"
             element={
-              <ProtectedRoute
-                allowedRoles={["admin", "technician", "faculty"] as const}
-              >
+              <ProtectedRoute allowedRoles={["admin"] as const}>
                 <PageTitle title="Youth Records">
                   <YouthRecord />
                 </PageTitle>
@@ -125,9 +123,7 @@ function App() {
           <Route
             path="/activities"
             element={
-              <ProtectedRoute
-                allowedRoles={["admin", "technician", "faculty"] as const}
-              >
+              <ProtectedRoute allowedRoles={["admin"] as const}>
                 <PageTitle title="Activities">
                   <Activities />
                 </PageTitle>
@@ -137,9 +133,7 @@ function App() {
           <Route
             path="/financial"
             element={
-              <ProtectedRoute
-                allowedRoles={["admin", "technician", "faculty"] as const}
-              >
+              <ProtectedRoute allowedRoles={["admin"] as const}>
                 <PageTitle title="Financial">
                   <Financial />
                 </PageTitle>
@@ -153,9 +147,7 @@ function App() {
           <Route
             path="/kabataan-suggestions"
             element={
-              <ProtectedRoute
-                allowedRoles={["admin", "technician", "faculty"] as const}
-              >
+              <ProtectedRoute allowedRoles={["admin"] as const}>
                 <PageTitle title="Kabataan Suggestions">
                   <SurveysAnnouncements view="suggestions" />
                 </PageTitle>
@@ -165,9 +157,7 @@ function App() {
           <Route
             path="/survey-responses"
             element={
-              <ProtectedRoute
-                allowedRoles={["admin", "technician", "faculty"] as const}
-              >
+              <ProtectedRoute allowedRoles={["admin"] as const}>
                 <PageTitle title="Survey Responses">
                   <SurveysAnnouncements view="responses" />
                 </PageTitle>
@@ -177,9 +167,7 @@ function App() {
           <Route
             path="/announcements"
             element={
-              <ProtectedRoute
-                allowedRoles={["admin", "technician", "faculty"] as const}
-              >
+              <ProtectedRoute allowedRoles={["admin", "kabataan"] as const}>
                 <PageTitle title="Announcements">
                   <SurveysAnnouncements view="announcements" />
                 </PageTitle>
@@ -189,9 +177,7 @@ function App() {
           <Route
             path="/survey-builder"
             element={
-              <ProtectedRoute
-                allowedRoles={["admin", "technician", "faculty"] as const}
-              >
+              <ProtectedRoute allowedRoles={["admin"] as const}>
                 <PageTitle title="Survey Builder">
                   <SurveyBuilder />
                 </PageTitle>

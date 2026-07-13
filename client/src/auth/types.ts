@@ -1,15 +1,21 @@
-export type AppRole = "admin" | "technician" | "faculty";
+export type AppRole = "admin" | "kabataan";
+
+export type AuthUser = {
+  id: string;
+  email: string;
+  fullname?: string;
+};
 
 export type LoginPayload = {
   username: string;
   password: string;
-  remember: boolean;
 };
 
 export type AuthContextValue = {
   isAuthenticated: boolean;
+  user: AuthUser | null;
   role: AppRole | null;
-  username: string | null;
-  login: (payload: LoginPayload) => Promise<void>;
-  logout: () => void;
+  loading: boolean;
+  login(payload: LoginPayload): Promise<void>;
+  logout(): Promise<void>;
 };

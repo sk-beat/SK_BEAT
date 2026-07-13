@@ -1,7 +1,6 @@
 import { useRef, useState, type FormEvent } from "react";
 import { useNavigate } from "react-router-dom";
 import { useAuth } from "../../auth/useAuth";
-import { supabase } from "../../utils/supabase";
 import skLogo from "../../assets/sklogo.png";
 
 function SkLogo({ size = "large" }: { size?: "large" | "small" }) {
@@ -33,7 +32,6 @@ export default function LoginForm() {
   const [isExpanded, setIsExpanded] = useState(false);
   const [isLockedOpen, setIsLockedOpen] = useState(false);
   const [showPassword, setShowPassword] = useState(false);
-  const [remember, setRemember] = useState(true);
   const [error, setError] = useState("");
   const [isSubmitting, setIsSubmitting] = useState(false);
 
@@ -71,8 +69,9 @@ export default function LoginForm() {
     expand();
   };
 
-  const handleSubmit = async (event: FormEvent<HTMLFormElement>) => {
+  async function handleSubmit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
+
     setError("");
     setIsSubmitting(true);
 
@@ -81,14 +80,20 @@ export default function LoginForm() {
     const password = String(formData.get("password") || "");
 
     try {
-      await login({ username, password, remember });
-      navigate("/dashboard", { replace: true });
+      await login({
+        username,
+        password,
+      });
+
+      navigate("/dashboard", {
+        replace: true,
+      });
     } catch (err) {
       setError(err instanceof Error ? err.message : "Login failed.");
     } finally {
       setIsSubmitting(false);
     }
-  };
+  }
 
   return (
     <main className="min-h-screen bg-[#0b1f3b] font-sans text-slate-900">
@@ -223,14 +228,7 @@ export default function LoginForm() {
 
                     <div className="flex items-center justify-between gap-4">
                       <label className="flex cursor-pointer items-center gap-2 text-sm text-slate-700">
-                        <input
-                          className="peer sr-only"
-                          type="checkbox"
-                          checked={remember}
-                          onChange={(event) =>
-                            setRemember(event.currentTarget.checked)
-                          }
-                        />
+                        <input className="peer sr-only" type="checkbox" />
                         <span className="flex h-[18px] w-[18px] shrink-0 items-center justify-center rounded border-2 border-slate-300 peer-checked:border-[#0b1f3b] peer-checked:bg-[#0b1f3b] peer-checked:after:mb-0.5 peer-checked:after:h-2.5 peer-checked:after:w-1.5 peer-checked:after:rotate-45 peer-checked:after:border-b-2 peer-checked:after:border-r-2 peer-checked:after:border-white peer-checked:after:content-['']" />
                         Remember me
                       </label>

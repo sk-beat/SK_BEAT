@@ -1,7 +1,8 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { useAuth } from "../../../auth/useAuth";
 import { BellIcon, ChevronDownIcon } from "../Dashboard/icons";
 import AdminAccountModals from "./AdminAccountModals";
+import { supabase } from "../../../utils/supabase";
 
 type AccountModalKind = "profile" | "add-admin" | null;
 
@@ -11,14 +12,32 @@ type AdminHeaderProps = {
 };
 
 export default function AdminHeader({ subtitle, title }: AdminHeaderProps) {
-  const { logout } = useAuth();
+  const { logout, user } = useAuth();
   const [isUserMenuOpen, setIsUserMenuOpen] = useState(false);
   const [accountModal, setAccountModal] = useState<AccountModalKind>(null);
+
+  const [adminName, setAdminName] = useState("");
+  const [adminPosition, setAdminPostion] = useState("");
 
   function openAccountModal(modal: AccountModalKind) {
     setAccountModal(modal);
     setIsUserMenuOpen(false);
   }
+
+  async function fetchAdmin() {
+    const { data, error } = await supabase
+      .from("admins")
+      .select("*")
+      .eq("admin_id", user?.id)
+      .single();
+
+    setAdminName(data.fullname);
+    setAdminPostion(data.position);
+  }
+
+  useEffect(() => {
+    fetchAdmin();
+  }, []);
 
   return (
     <>
@@ -52,9 +71,9 @@ export default function AdminHeader({ subtitle, title }: AdminHeaderProps) {
               </span>
               <span className="flex flex-col text-left max-md:hidden">
                 <span className="text-sm font-medium text-slate-800">
-                  Juan Dela Cruz
+                  {adminName}
                 </span>
-                <span className="text-xs text-slate-500">SK Chairman</span>
+                <span className="text-xs text-slate-500">{adminPosition}</span>
               </span>
               <ChevronDownIcon className="h-[18px] w-[18px] text-slate-500" />
             </button>

@@ -1,6 +1,7 @@
-import AdminModal from "./AdminModal";
+import { useAuth } from "../../../auth/useAuth";
 import { supabase } from "../../../utils/supabase";
-import { useState } from "react";
+import AdminModal from "./AdminModal";
+import { useEffect, useState } from "react";
 
 type AccountModalKind = "profile" | "add-admin" | null;
 
@@ -30,12 +31,12 @@ function Field({
       <span className="mb-1.5 block text-sm font-medium text-slate-700">
         {label}
       </span>
-      <input 
-        className={inputClass} 
-        value={value} 
+      <input
+        className={inputClass}
+        value={value}
         name={name}
         onChange={onChange}
-        type={type} 
+        type={type}
       />
     </label>
   );
@@ -45,20 +46,48 @@ export default function AdminAccountModals({
   modal,
   onClose,
 }: AdminAccountModalsProps) {
+  const { user } = useAuth();
 
   const [AdminName, setAdminName] = useState<string>("");
   const [position, setPosition] = useState<string>("");
   const [email, setEmail] = useState<string>("");
+  const [contactNumber, setContactNumber] = useState<string>("");
+  const [barangay, setBarangay] = useState<string>("");
+
   const [password, setPassword] = useState<string>("");
   const [isLoading, setIsLoading] = useState<boolean>(false);
 
-  const handleAddAdminSubmit = async () => {
-    console.log("Adding admin with details:", { AdminName, position, email, password });
+  async function fetchAdmin() {
+    const { data, error } = await supabase
+      .from("admins")
+      .select("*")
+      .eq("admin_id", user?.id)
+      .single();
+
+    console.log(data.email);
+    setAdminName(data.fullname);
+    setPosition(data.position);
+    setEmail(data.email);
+    setContactNumber(data.contact_number);
+    setBarangay(data.barangay);
+  }
+
+  useEffect(() => {
+    fetchAdmin();
+  }, []);
+
+  async function handleAddAdminSubmit() {
+    console.log("Adding admin with details:", {
+      AdminName,
+      position,
+      email,
+      password,
+    });
     if (!email || !email.includes("@") || !email.includes(".")) {
       alert("Please enter a valid email address.");
       return;
     }
-    
+
     if (password.length < 6) {
       alert("Password must be at least 6 characters long.");
       return;
@@ -70,7 +99,6 @@ export default function AdminAccountModals({
     }
 
     setIsLoading(true);
-
 
     const { data, error } = await supabase.auth.signUp({
       email: email,
@@ -86,7 +114,6 @@ export default function AdminAccountModals({
     setIsLoading(false);
 
     if (error) {
-    
       if (error.message.includes("already registered")) {
         alert("An account with this email already exists.");
       } else {
@@ -96,16 +123,17 @@ export default function AdminAccountModals({
     }
 
     alert("Admin successfully added! They will need to verify their email.");
-    
+
     setAdminName("");
     setPosition("");
     setEmail("");
     setPassword("");
     onClose();
-  };
+  }
 
   return (
     <>
+      {/* For Editing Admin Profile*/}
       <AdminModal
         footer={
           <>
@@ -130,23 +158,20 @@ export default function AdminAccountModals({
         title="Edit Admin Profile"
       >
         <div className="grid gap-4 md:grid-cols-2">
-          <Field label="Full Name" value="Juan Dela Cruz" />
-          <Field label="Position" value="SK Chairman" />
-          <Field label="Email Address" type="email" value="admin@skbeat.gov" />
-          <Field label="Contact Number" value="0917-000-0000" />
+          <Field label="Full Name" value={AdminName} />
+          <Field label="Position" value={position} />
+          <Field label="Email Address" type="email" value={email} />
+          <Field label="Contact Number" value={contactNumber} />
           <label className="block md:col-span-2">
             <span className="mb-1.5 block text-sm font-medium text-slate-700">
               Barangay
             </span>
-            <input
-              className={inputClass}
-              defaultValue="Barangay Galas Maasim"
-              type="text"
-            />
+            <input className={inputClass} defaultValue={barangay} type="text" />
           </label>
         </div>
       </AdminModal>
 
+      {/* For Creating new Admin */}
       <AdminModal
         footer={
           <>
@@ -159,7 +184,7 @@ export default function AdminAccountModals({
             </button>
             <button
               className="rounded-lg bg-[#1e3a5f] px-4 py-2 text-sm font-medium text-white hover:bg-[#2a4a6f]"
-              onClick={()=> handleAddAdminSubmit() }
+              onClick={() => handleAddAdminSubmit()}
               type="button"
             >
               Add Admin
@@ -171,10 +196,24 @@ export default function AdminAccountModals({
         title="Add New Admin"
       >
         <div className="grid gap-4 md:grid-cols-2">
-          <Field label="Full Name" onChange={(e) => setAdminName(e.target.value)} />
-          <Field label="Position" onChange={(e) => setPosition(e.target.value)} />
-          <Field label="Email Address" type="email" onChange={(e) => setEmail(e.target.value)} />
-          <Field label="Temporary Password" type="password" onChange={(e) => setPassword(e.target.value)} />
+          <Field
+            label="Full Name"
+            onChange={(e) => setAdminName(e.target.value)}
+          />
+          <Field
+            label="Position"
+            onChange={(e) => setPosition(e.target.value)}
+          />
+          <Field
+            label="Email Address"
+            type="email"
+            onChange={(e) => setEmail(e.target.value)}
+          />
+          <Field
+            label="Temporary Password"
+            type="password"
+            onChange={(e) => setPassword(e.target.value)}
+          />
         </div>
       </AdminModal>
     </>

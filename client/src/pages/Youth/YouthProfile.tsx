@@ -1,6 +1,9 @@
 import { User, Mail, Phone } from "lucide-react";
+import { useAuth } from "../../auth/useAuth";
 
 const YouthProfile = () => {
+  const { logout } = useAuth();
+
   return (
     <main className="max-w-md mx-auto p-4 space-y-5">
       <div className="bg-white rounded-xl border border-slate-200 p-6 text-center">
@@ -31,7 +34,7 @@ const YouthProfile = () => {
         </div>
       </div>
 
-      <button className="w-full bg-red-500 text-white py-3 rounded-xl">
+      <button className="w-full bg-red-500 text-white py-3 rounded-xl" onClick={logout}>
         Logout
       </button>
     </main>

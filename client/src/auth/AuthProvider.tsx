@@ -97,9 +97,12 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       password,
     });
 
+    
     if (error) {
       throw error;
     }
+
+    loadUser();
   }
 
   async function logout() {

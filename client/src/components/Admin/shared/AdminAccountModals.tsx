@@ -54,11 +54,11 @@ export default function AdminAccountModals({
   const [contactNumber, setContactNumber] = useState<string>("");
   const [barangay, setBarangay] = useState<string>("");
 
-  const [password, setPassword] = useState<string>("");
+  const [password, setPassword] = useState<string>(" ");
   // const [isLoading, setIsLoading] = useState<boolean>(false);
 
   async function fetchAdmin() {
-    const { data, error } = await supabase
+    const { data } = await supabase
       .from("admins")
       .select("*")
       .eq("admin_id", user?.id)

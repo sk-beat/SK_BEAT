@@ -103,17 +103,17 @@ export default function YouthRecordTable({
         </thead>
         <tbody>
           {records.map((record) => (
-            <tr className="hover:bg-slate-50" key={record.id}>
-              <td className="border-t border-slate-200 px-5 py-4">
-                #{record.id}
+            <tr className="hover:bg-slate-50" key={record.profile_id}>
+              <td className="border-t px-5 py-4">
+                #{record.profile_id.slice(0,8)}
               </td>
               <td className="border-t border-slate-200 px-5 py-4">
                 <div className="flex items-center gap-3">
                   <span className="flex h-9 w-9 min-w-9 items-center justify-center rounded-full bg-[#1e3a5f] text-xs font-semibold text-white">
-                    {initials(record.name)}
+                    {initials(record.fullname)}
                   </span>
                   <span className="font-medium text-slate-800">
-                    {record.name}
+                    {record.fullname}
                   </span>
                 </div>
               </td>
@@ -121,19 +121,19 @@ export default function YouthRecordTable({
                 {record.gender === "Male" ? "M" : "F"}
               </td>
               <td className="border-t border-slate-200 px-5 py-4 text-center">
-                {record.scholar}
+                {record.scholar_status}
               </td>
               <td className="border-t border-slate-200 px-5 py-4 text-center">
                 <span
                   className={[
                     "inline-flex items-center gap-1 rounded-md px-3 py-1.5 text-xs font-semibold",
-                    record.status === "Active"
+                    record.educational_status === "Active"
                       ? "bg-emerald-500/10 text-emerald-500"
                       : "bg-slate-200 text-slate-500",
                   ].join(" ")}
                 >
-                  {record.status === "Active" ? "✓" : null}
-                  {record.status}
+                  {record.educational_status === "Active" ? "✓" : null}
+                  {record.educational_status}
                 </span>
               </td>
               <td className="border-t border-slate-200 px-5 py-4 text-center">

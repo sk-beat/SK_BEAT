@@ -12,6 +12,32 @@ export default function YouthRecord() {
   const { logout } = useAuth();
   const [records, setRecords] = useState<YouthRecordType[]>([]);
 
+  const [search, setSearch] = useState("");
+const [scholarFilter, setScholarFilter] = useState("");
+const [educationFilter, setEducationFilter] = useState("");
+
+const filteredRecords = records.filter((record) => {
+  const searchValue = search.toLowerCase();
+
+  const matchesSearch =
+    record.fullname.toLowerCase().includes(searchValue) ||
+    record.purok.toLowerCase().includes(searchValue);
+
+  const matchesScholar =
+    scholarFilter === ""
+      ? true
+      : record.scholar_status === scholarFilter;
+
+    
+
+  const matchesEducation =
+    educationFilter === ""
+      ? true
+      : record.educational_status === educationFilter;
+
+  return matchesSearch && matchesScholar && matchesEducation  ;
+});
+
   
   const [modalMode, setModalMode] = useState<YouthRecordModalMode>(null);
   const [selectedRecord, setSelectedRecord] = useState<YouthRecordType | null>(
@@ -90,15 +116,23 @@ async function removeYouth(profile_id: string) {
         <YouthRecordHeader />
         <div className="flex-1 px-8 py-6">
           <YouthRecordToolbar
-            onAdd={() => openModal("add")}
-          totalRecords={records.length}
-          />
-          <YouthRecordTable
-            onDelete={(record) => openModal("delete", record)}
-            onEdit={(record) => openModal("edit", record)}
-            onView={(record) => openModal("view", record)}
-            records={records}
-          />
+  onAdd={() => openModal("add")}
+  totalRecords={filteredRecords.length}
+  search={search}
+  setSearch={setSearch}
+  scholarFilter={scholarFilter}
+  setScholarFilter={setScholarFilter}
+  educationFilter={educationFilter}
+  setEducationFilter={setEducationFilter}
+/>
+  
+
+        <YouthRecordTable
+  onDelete={(record) => openModal("delete", record)}
+  onEdit={(record) => openModal("edit", record)}
+  onView={(record) => openModal("view", record)}
+  records={filteredRecords}
+/>
         </div>
       </main>
       <YouthRecordModals

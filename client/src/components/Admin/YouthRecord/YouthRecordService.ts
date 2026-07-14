@@ -1,5 +1,5 @@
 import { supabase } from "../../../utils/supabase";
-import type { YouthRecord } from "./youthRecordData";
+import type { YouthRecord, UpdateYouthRecord } from "./youthRecordData";
 
 
 export async function getYouthRecords() {
@@ -32,13 +32,48 @@ export async function addYouth(
     
 export async function updateYouth(
   profile_id: string,
-  data: Omit<YouthRecord, "profile_id" | "created_at">
+  data: UpdateYouthRecord
 ) {
-  return await supabase
-    .from("kabataan_profiles")
-    .update(data)
-    .eq("profile_id", profile_id)
+
+  const { data: existing, error: selectError } = await supabase
+  .from("kabataan_profiles")
+  .select("profile_id, fullname")
+  .eq("profile_id", profile_id);
+
+console.log("Existing:", existing);
+console.log("Select error:", selectError);
+
+  const { data: updatedData, error } = await supabase
+  .from("kabataan_profiles")
+  .update({
+    fullname: data.fullname,
+    age: data.age,
+    gender: data.gender,
+    address_line: data.address_line,
+    purok: data.purok,
+    contact_number: data.contact_number,
+    educational_status: data.educational_status,
+    scholar_status: data.scholar_status,
+    profile_image: data.profile_image,
+  })
+  .eq("profile_id", profile_id)
+  .select("*");
+
+console.log("Update payload:", {
+  profile_id,
+  data,
+});
+
+console.log("Updated:", updatedData);
+console.log("Error:", error);
+
+  if (error) throw error;
+
+  return { data: updatedData, error: null };
 }
+
+
+
 
 
 export async function deleteYouth(profile_id: string) {

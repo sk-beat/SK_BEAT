@@ -56,33 +56,57 @@ function PlusIcon({ className }: { className?: string }) {
 type YouthRecordToolbarProps = {
   onAdd: () => void;
   totalRecords: number;
+  search: string;
+  setSearch: (value: string) => void;
+  scholarFilter: string;
+  setScholarFilter: (value: string) => void;
+  educationFilter: string;
+  setEducationFilter: (value: string) => void;
 };
 
 export default function YouthRecordToolbar({
   onAdd,
   totalRecords,
-}: YouthRecordToolbarProps) {
+  search,
+  setSearch,
+  scholarFilter,
+  setScholarFilter,
+  educationFilter,        
+  setEducationFilter
+}: YouthRecordToolbarProps)  {
   return (
     <>
-      <div className="mb-4 flex gap-4 max-lg:flex-col">
+      <div className="mb-4 flex gap-4 max-lg:flex-col -">
         <label className="flex flex-1 items-center gap-3 rounded-lg border border-slate-200 bg-white px-4 py-3 shadow-sm">
           <SearchIcon className="h-[18px] w-[18px] text-slate-500" />
-          <input
-            className="flex-1 border-none bg-transparent text-sm outline-none placeholder:text-slate-500"
-            type="text"
-            placeholder="Search by name or address..."
-          />
+  <input
+  className="flex-1 border-none bg-transparent text-sm outline-none placeholder:text-slate-500"
+  type="text"
+  placeholder="Search by name or purok..."
+  value={search}
+  onChange={(e) => setSearch(e.target.value)}
+/>
         </label>
 
         <div className="flex gap-3 max-sm:flex-col">
-          <select className="cursor-pointer rounded-lg border border-slate-200 bg-white px-4 py-3 pr-8 text-sm font-medium text-slate-700 shadow-sm">
-            <option>By Scholar Status</option>
-          </select>
-          <select className="cursor-pointer rounded-lg border border-slate-200 bg-white px-4 py-3 pr-8 text-sm font-medium text-slate-700 shadow-sm">
-            <option>Select Scholar Status</option>
-            <option>Scholar</option>
-            <option>Non-Scholar</option>
-          </select>
+          <select
+  value={educationFilter}
+  onChange={(e) => setEducationFilter(e.target.value)}
+  className="cursor-pointer rounded-lg border border-slate-200 bg-white px-4 py-3 pr-8 text-sm font-medium text-slate-700 shadow-sm"
+>
+  <option value="">All Scholar Status</option>
+  <option value="Active">Active</option>
+  <option value="Inactive">Inactive</option>
+</select>
+         <select
+  value={scholarFilter}
+  onChange={(e) => setScholarFilter(e.target.value)}
+  className="cursor-pointer rounded-lg border border-slate-200 bg-white px-4 py-3 pr-8 text-sm font-medium text-slate-700 shadow-sm"
+>
+  <option value="">All Scholar Status</option>
+  <option value="Scholar">Scholar</option>
+  <option value="Non-Scholar">Non-Scholar</option>
+</select>
         </div>
       </div>
 

@@ -1,7 +1,6 @@
 // path/to/your/YouthRecordModals.tsx
 import { useEffect, useState } from "react";
 import AdminModal from "../shared/AdminModal";
-import ModernFileInput from "../shared/ModernFileInput";
 import type { CreateYouthRecord, YouthRecord } from "./youthRecordData";
 
 export type YouthRecordModalMode = "add" | "edit" | "view" | "delete" | null;
@@ -16,19 +15,21 @@ type YouthRecordModalsProps = {
 };
 
 const inputClass =
-  "w-full rounded-lg border border-slate-200 bg-white px-3 py-2.5 text-sm text-slate-800 outline-none focus:border-[#1e3a5f] focus:ring-2 focus:ring-[#1e3a5f]/15";
+  "w-full rounded-lg border border-slate-200 bg-white px-3 py-2.5 text-sm text-slate-800 outline-none focus:border-[#1e3a5f] focus:ring-2 focus:ring-[#1e3a5f]/15 disabled:cursor-not-allowed disabled:bg-slate-100 disabled:text-slate-500 disabled:opacity-70";
 
 function Field({
   label,
   placeholder,
   type = "text",
   value,
+  disabled,
   onChange,
 }: {
   label: string;
   placeholder?: string;
   type?: string;
   value: string | number;
+  disabled?: boolean;
   onChange: (event: React.ChangeEvent<HTMLInputElement>) => void;
 }) {
   return (
@@ -42,6 +43,7 @@ function Field({
         type={type}
         value={value}
         onChange={onChange}
+        disabled={disabled}
       />
     </label>
   );
@@ -52,12 +54,14 @@ function SelectField({
   options,
   placeholder,
   value,
+  disabled,
   onChange,
 }: {
   label: string;
   options: string[];
   placeholder?: string;
   value: string;
+  disabled?: boolean;
   onChange: (event: React.ChangeEvent<HTMLSelectElement>) => void;
 }) {
   return (
@@ -65,7 +69,7 @@ function SelectField({
       <span className="mb-1.5 block text-sm font-medium text-slate-700">
         {label}
       </span>
-      <select className={inputClass} value={value} onChange={onChange}>
+      <select className={inputClass} value={value} onChange={onChange} disabled={disabled }>
         {placeholder && (
           <option value="" disabled>
             {placeholder}
@@ -115,6 +119,7 @@ export default function YouthRecordModals({
   const [password, setPassword] = useState("");
   const [status, setStatus] = useState<"Active" | "Inactive" | "">("");
   const [scholar, setScholar] = useState<"Scholar" | "Non-Scholar" | "">("");
+  const [loading, setLoading] = useState<boolean>(false);
 
   useEffect(() => {
     if (record) {
@@ -127,7 +132,7 @@ export default function YouthRecordModals({
       setEmail(record.email ?? "");
       setStatus(record.educational_status ?? "");
       setScholar(record.scholar_status ?? "");
-      setPassword(record.password ?? "");
+      setPassword("");
     } else {
       setName("");
       setAge("");
@@ -143,6 +148,8 @@ export default function YouthRecordModals({
   }, [record, mode]);
 
   async function handleSubmit() {
+    if (loading) return;
+
     if (!gender || !status || !scholar || (!isEdit && !password)) {
       alert("Please complete all fields (including password)");
       return;
@@ -163,27 +170,35 @@ export default function YouthRecordModals({
     };
 
     try {
+      setLoading(true);
+
       if (isEdit && record) {
         await onUpdate(record.profile_id, youth);
       } else {
         await onCreate(youth);
       }
-      onClose();
+
+      onClose(); // closes only after success
     } catch (err: any) {
       alert(err.message || "An error occurred.");
+    } finally {
+      setLoading(false);
     }
   }
 
   async function handleDelete() {
-    if (!record) return;
+    if (!record || loading) return;
+
     try {
+      setLoading(true);
       await onDelete(record.profile_id);
       onClose();
     } catch (err: any) {
       alert(err.message || "Failed to delete.");
+    } finally {
+      setLoading(false);
     }
   }
-
   return (
     <>
       {/* Form / Edit Modal */}
@@ -191,18 +206,27 @@ export default function YouthRecordModals({
         footer={
           <>
             <button
-              className="rounded-lg border border-slate-200 px-4 py-2 text-sm font-medium text-slate-700 hover:bg-slate-50"
+              className="rounded-lg border border-slate-200 px-4 py-2 text-sm font-medium text-slate-700 hover:bg-slate-50 disabled:cursor-not-allowed disabled:opacity-50"
               onClick={onClose}
               type="button"
+              disabled={loading}
             >
               Cancel
             </button>
+
             <button
-              className="rounded-lg bg-[#1e3a5f] px-4 py-2 text-sm font-medium text-white hover:bg-[#2a4a6f]"
+              className="rounded-lg bg-[#1e3a5f] px-4 py-2 text-sm font-medium text-white hover:bg-[#2a4a6f] disabled:cursor-not-allowed disabled:opacity-50"
               onClick={handleSubmit}
               type="button"
+              disabled={loading}
             >
-              {isEdit ? "Save Changes" : "Add Youth"}
+              {loading
+                ? isEdit
+                  ? "Saving..."
+                  : "Adding..."
+                : isEdit
+                  ? "Save Changes"
+                  : "Add Youth"}
             </button>
           </>
         }
@@ -212,27 +236,38 @@ export default function YouthRecordModals({
       >
         <div className="grid gap-4 md:grid-cols-2">
           <div className="md:col-span-2">
-            <Field label="Full Name" placeholder="Enter full name" value={name} onChange={(e) => setName(e.target.value)} />
+          <Field label="Full Name"placeholder="Enter full name" value={name} disabled={loading} onChange={(e) => setName(e.target.value)}/>
           </div>
-          <Field label="Age" type="number" value={age} onChange={(e) => setAge(e.target.value === "" ? "" : Number(e.target.value))} />
-          <SelectField label="Gender" options={["Male", "Female"]} placeholder="Select" value={gender} onChange={(e) => setGender(e.target.value as "Male" | "Female")} />
-          <Field label="Contact Number" placeholder="Enter contact number" value={contact} onChange={(e) => setContact(e.target.value)} />
-          <Field label="Email Address" type="email" placeholder="Enter email" value={email} onChange={(e) => setEmail(e.target.value)} />
-          
+          <Field
+  label="Age"
+  type="number"
+  value={age}
+  disabled={loading}
+  onChange={(e) =>
+    setAge(e.target.value === "" ? "" : Number(e.target.value))
+  }
+/>
+         <SelectField
+  label="Gender"
+  options={["Male", "Female"]}
+  placeholder="Select"
+  value={gender}
+  disabled={loading}
+  onChange={(e) => setGender(e.target.value as "Male" | "Female")}
+/>
+          <Field label="Contact Number" placeholder="Enter contact number" value={contact} disabled={loading} onChange={(e) => setContact(e.target.value)} />
+          <Field label="Email Address" type="email" placeholder="Enter email" value={email} disabled={loading} onChange={(e) => setEmail(e.target.value)} />
           {!isEdit && (
             <div className="md:col-span-2">
-              <Field label="Account Password" type="password" placeholder="Assign user password" value={password} onChange={(e) => setPassword(e.target.value)} />
+              <Field label="Account Password" type="password" placeholder="Assign user password" value={password} disabled={loading} onChange={(e) => setPassword(e.target.value)} />
             </div>
           )}
-
-          <Field label="Address Line" placeholder="Street, village" value={address} onChange={(e) => setAddress(e.target.value)} />
-          <Field label="Purok" placeholder="Enter Purok" value={purok} onChange={(e) => setPurok(e.target.value)} />
-          <SelectField label="Educational Status" options={["Active", "Inactive"]} placeholder="Select Status" value={status} onChange={(e) => setStatus(e.target.value as "Active" | "Inactive")} />
-          <SelectField label="Scholar Status" options={["Scholar", "Non-Scholar"]} placeholder="Select Status" value={scholar} onChange={(e) => setScholar(e.target.value as "Scholar" | "Non-Scholar")} />
+          <Field label="Address Line" placeholder="Street, village" value={address} disabled={loading} onChange={(e) => setAddress(e.target.value)} />
+          <Field label="Purok" placeholder="Enter Purok" value={purok} disabled={loading} onChange={(e) => setPurok(e.target.value)} />
+          <SelectField label="Educational Status" options={["Active", "Inactive"]} disabled={loading} placeholder="Select Status" value={status}  onChange={(e) => setStatus(e.target.value as "Active" | "Inactive")} />
+          <SelectField label="Scholar Status" options={["Scholar", "Non-Scholar"]} disabled={loading} placeholder="Select Status" value={scholar}  onChange={(e) => setScholar(e.target.value as "Scholar" | "Non-Scholar")} />
         </div>
       </AdminModal>
-
-      {/* Read / View Info Modal */}
       <AdminModal
         footer={
           <button className="rounded-lg bg-slate-800 px-4 py-2 text-sm font-medium text-white hover:bg-slate-900" onClick={onClose} type="button">
@@ -255,17 +290,26 @@ export default function YouthRecordModals({
           <Detail label="Scholar Status" value={scholar} />
         </div>
       </AdminModal>
-
-      {/* Delete Confirmation Modal */}
       <AdminModal
         footer={
           <>
-            <button className="rounded-lg border border-slate-200 px-4 py-2 text-sm font-medium text-slate-600 hover:bg-slate-50" onClick={onClose} type="button">
-              Cancel
-            </button>
-            <button className="rounded-lg bg-red-600 px-4 py-2 text-sm font-medium text-white hover:bg-red-700" onClick={handleDelete} type="button">
-              Confirm Delete
-            </button>
+            <button
+            className="rounded-lg border border-slate-200 px-4 py-2 text-sm font-medium text-slate-600 hover:bg-slate-50 disabled:cursor-not-allowed disabled:opacity-50"
+            onClick={onClose}
+            type="button"
+            disabled={loading}
+          >
+            Cancel
+          </button>
+
+          <button
+            className="rounded-lg bg-red-600 px-4 py-2 text-sm font-medium text-white hover:bg-red-700 disabled:cursor-not-allowed disabled:opacity-50"
+            onClick={handleDelete}
+            type="button"
+            disabled={loading}
+          >
+            {loading ? "Deleting..." : "Confirm Delete"}
+          </button>
           </>
         }
         onClose={onClose}

@@ -1,6 +1,8 @@
+import { useState } from "react";
 import AdminModal from "../shared/AdminModal";
 import ModernFileInput from "../shared/ModernFileInput";
 import type { EventBudget } from "./financialData";
+import type { AnnualBudget } from "./types";
 
 export type FinancialModalMode =
   | "add-expense"
@@ -13,6 +15,9 @@ type FinancialModalsProps = {
   mode: FinancialModalMode;
   onClose: () => void;
   selectedEvent: EventBudget | null;
+
+  annualBudget: AnnualBudget | null;
+  onCreateAnnualBudget: (amount: number) => Promise<void>;
 };
 
 const inputClass =
@@ -23,11 +28,13 @@ function Field({
   placeholder,
   type = "text",
   value,
+  onChange,
 }: {
   label: string;
   placeholder?: string;
   type?: string;
-  value?: string;
+  value?: string | number;
+  onChange?: React.ChangeEventHandler<HTMLInputElement>;
 }) {
   return (
     <label className="block">
@@ -36,9 +43,10 @@ function Field({
       </span>
       <input
         className={inputClass}
-        defaultValue={value}
+        value={value}
         placeholder={placeholder}
         type={type}
+        onChange={onChange}
       />
     </label>
   );
@@ -63,7 +71,13 @@ function DownloadIcon({ className }: { className?: string }) {
   );
 }
 
-function BudgetFooter({ label, onClose }: { label: string; onClose: () => void }) {
+function BudgetFooter({
+  label,
+  onClose,
+}: {
+  label: string;
+  onClose: () => void;
+}) {
   return (
     <>
       <button
@@ -88,7 +102,11 @@ export default function FinancialModals({
   mode,
   onClose,
   selectedEvent,
+  annualBudget,
+  onCreateAnnualBudget,
 }: FinancialModalsProps) {
+  const [budgetInput, setBudgetInput] = useState<number | "">("");
+
   return (
     <>
       <AdminModal
@@ -125,8 +143,16 @@ export default function FinancialModals({
         footer={
           <>
             <button
+              disabled={annualBudget !== null}
               className="rounded-lg bg-[#1e3a5f] px-4 py-2 text-sm font-medium text-white hover:bg-[#2a4a6f]"
-              onClick={onClose}
+              onClick={async () => {
+                if (budgetInput === "") return;
+
+                await onCreateAnnualBudget(budgetInput);
+
+                setBudgetInput("");
+                onClose();
+              }}
               type="button"
             >
               Save
@@ -146,7 +172,23 @@ export default function FinancialModals({
         title="Set Annual Budget"
       >
         <div className="grid gap-4">
-          <Field label="Total Annual Budget (P)" type="number" value="460000" />
+          {annualBudget && (
+            <span className="bg-green-700/80 p-1 rounded-lg">
+              <p className="text-xs font-medium text-white text-center">
+                There is already an annual budget set for the current year
+              </p>
+            </span>
+          )}
+          <Field
+            label="Total Annual Budget (₱)"
+            type="number"
+            value={budgetInput.toString()}
+            onChange={(e) =>
+              setBudgetInput(
+                e.target.value === "" ? "" : Number(e.target.value)
+              )
+            }
+          />
           <p className="text-sm font-medium text-slate-400">
             This amount will be used as the total annual budget reference.
           </p>
@@ -243,8 +285,18 @@ export default function FinancialModals({
             </div>
             <div className="grid gap-3">
               {[
-                { amount: "P35,000", date: "2026-07-11", note: "sadas", title: "dasdas" },
-                { amount: "P10,000", date: "2026-07-09", note: "dsdas", title: "dsad" },
+                {
+                  amount: "P35,000",
+                  date: "2026-07-11",
+                  note: "sadas",
+                  title: "dasdas",
+                },
+                {
+                  amount: "P10,000",
+                  date: "2026-07-09",
+                  note: "dsdas",
+                  title: "dsad",
+                },
               ].map((expense) => (
                 <article
                   className="flex items-start justify-between gap-4 rounded-lg border border-slate-200 bg-slate-50 p-4"

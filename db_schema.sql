@@ -10,6 +10,9 @@ CREATE TABLE admins (
     fullname VARCHAR(100) NOT NULL,
     email VARCHAR(100) UNIQUE NOT NULL,
     status admin_status_type DEFAULT 'active',
+    contact_number TEXT NULL, 
+    position TEXT NULL, 
+    barangay TEXT NULL, 
     created_at TIMESTAMPTZ DEFAULT NOW()
 );
 

@@ -25,7 +25,7 @@ export default function AdminHeader({ subtitle, title }: AdminHeaderProps) {
   }
 
   async function fetchAdmin() {
-    const { data, error } = await supabase
+    const { data } = await supabase
       .from("admins")
       .select("*")
       .eq("admin_id", user?.id)
@@ -75,7 +75,7 @@ export default function AdminHeader({ subtitle, title }: AdminHeaderProps) {
                 </span>
                 <span className="text-xs text-slate-500">{adminPosition}</span>
               </span>
-              <ChevronDownIcon className="h-[18px] w-[18px] text-slate-500" />
+              <ChevronDownIcon className="h-4.5 w-4.5 text-slate-500" />
             </button>
 
             {isUserMenuOpen ? (

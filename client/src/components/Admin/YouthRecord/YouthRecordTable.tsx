@@ -80,7 +80,7 @@ export default function YouthRecordTable({
 }) {
   return (
     <div className="overflow-hidden overflow-x-auto rounded-[14px] border border-slate-200 bg-white shadow-sm">
-      <table className="w-full min-w-[860px] border-collapse text-sm">
+      <table className="w-full min-w-215 border-collapse text-sm">
         <thead>
           <tr>
             {[

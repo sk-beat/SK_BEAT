@@ -112,7 +112,7 @@ async function removeYouth(profile_id: string) {
   return (
     <div className="flex min-h-screen bg-slate-100 font-sans text-slate-900">
       <Sidebar onLogout={logout} />
-      <main className="ml-[88px] flex min-h-screen flex-1 flex-col transition-[margin-left] duration-300 ease-in-out peer-hover/sidebar:ml-[300px] max-md:ml-[72px] max-md:peer-hover/sidebar:ml-[72px]">
+      <main className="ml-22 flex min-h-screen flex-1 flex-col transition-[margin-left] duration-300 ease-in-out peer-hover/sidebar:ml-75 max-md:ml-18 max-md:peer-hover/sidebar:ml-18">
         <YouthRecordHeader />
         <div className="flex-1 px-8 py-6">
           <YouthRecordToolbar

@@ -78,7 +78,7 @@ export default function YouthRecordToolbar({
     <>
       <div className="mb-4 flex gap-4 max-lg:flex-col -">
         <label className="flex flex-1 items-center gap-3 rounded-lg border border-slate-200 bg-white px-4 py-3 shadow-sm">
-          <SearchIcon className="h-[18px] w-[18px] text-slate-500" />
+          <SearchIcon className="h-4.5 w-4.5 text-slate-500" />
   <input
   className="flex-1 border-none bg-transparent text-sm outline-none placeholder:text-slate-500"
   type="text"
@@ -127,7 +127,7 @@ export default function YouthRecordToolbar({
             onClick={onAdd}
             type="button"
           >
-            <PlusIcon className="h-[18px] w-[18px]" />
+            <PlusIcon className="h-4.5 w-4.5"  />
             Add New
           </button>
         </div>

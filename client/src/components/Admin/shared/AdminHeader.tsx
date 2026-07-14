@@ -67,7 +67,7 @@ export default function AdminHeader({ subtitle, title }: AdminHeaderProps) {
               type="button"
             >
               <span className="flex h-10 w-10 items-center justify-center rounded-full bg-[#1e3a5f] text-sm font-semibold text-white">
-                JD
+                AD
               </span>
               <span className="flex flex-col text-left max-md:hidden">
                 <span className="text-sm font-medium text-slate-800">

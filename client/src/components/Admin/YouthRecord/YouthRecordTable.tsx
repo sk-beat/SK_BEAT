@@ -163,7 +163,7 @@ export default function YouthRecordTable({
                     type="button"
                     title="Delete"
                   >
-                    <TrashIcon className="h-4 w-4" />
+                    <TrashIcon className="h-4 w-4 " />
                   </button>
                 </div>
               </td>

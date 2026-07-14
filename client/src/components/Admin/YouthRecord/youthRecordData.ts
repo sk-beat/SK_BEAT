@@ -8,7 +8,7 @@ export type YouthRecord = {
   purok: string ;
   address_line: string ;
   scholar_status: "Scholar" | "Non-Scholar" ;
-  educational_status: "Active" | "Inactive";
+  educational_status: "Active" | "Inactive" | "Student" | "Out of School Youth";
   profile_image: string | "";
   password: string | "";
   created_at: string | null;

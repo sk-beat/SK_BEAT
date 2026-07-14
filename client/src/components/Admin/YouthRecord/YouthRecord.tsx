@@ -38,6 +38,64 @@ const filteredRecords = records.filter((record) => {
   return matchesSearch && matchesScholar && matchesEducation  ;
 });
 
+function escapeCsvCell(value: string | number | null | undefined) {
+  const stringValue = String(value ?? "");
+  return `"${stringValue.split('"').join('""')}"`;
+}
+
+function exportYouthRecords() {
+  if (filteredRecords.length === 0) {
+    window.alert("No youth records to export.");
+    return;
+  }
+
+  const headers = [
+    "Profile ID",
+    "Full Name",
+    "Email",
+    "Age",
+    "Gender",
+    "Purok",
+    "Address",
+    "Educational Status",
+    "Scholar Status",
+    "Contact Number",
+    "Created At",
+  ];
+
+  const rows = filteredRecords.map((record) => [
+    record.profile_id,
+    record.fullname,
+    record.email,
+    record.age,
+    record.gender,
+    record.purok,
+    record.address_line,
+    record.educational_status,
+    record.scholar_status,
+    record.contact_number,
+    record.created_at,
+  ]);
+
+  const csv = [headers, ...rows]
+    .map((row) => row.map(escapeCsvCell).join(","))
+    .join("\n");
+  const csvWithBom = `\uFEFF${csv}`;
+  const url = `data:text/csv;charset=utf-8,${encodeURIComponent(csvWithBom)}`;
+  const link = document.createElement("a");
+
+  link.setAttribute("href", url);
+  link.setAttribute(
+    "download",
+    `youth-records-${new Date().toISOString().slice(0, 10)}.csv`,
+  );
+  link.download = `youth-records-${new Date().toISOString().slice(0, 10)}.csv`;
+  link.style.display = "none";
+  document.body.appendChild(link);
+  link.click();
+  document.body.removeChild(link);
+}
+
   
   const [modalMode, setModalMode] = useState<YouthRecordModalMode>(null);
   const [selectedRecord, setSelectedRecord] = useState<YouthRecordType | null>(
@@ -117,7 +175,9 @@ async function removeYouth(profile_id: string) {
         <div className="flex-1 px-8 py-6">
           <YouthRecordToolbar
   onAdd={() => openModal("add")}
-  totalRecords={filteredRecords.length}
+  onExport={exportYouthRecords}
+  totalRecords={records.length}
+  visibleRecords={filteredRecords.length}
   search={search}
   setSearch={setSearch}
   scholarFilter={scholarFilter}

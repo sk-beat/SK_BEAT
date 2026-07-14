@@ -55,7 +55,9 @@ function PlusIcon({ className }: { className?: string }) {
 
 type YouthRecordToolbarProps = {
   onAdd: () => void;
+  onExport: () => void;
   totalRecords: number;
+  visibleRecords: number;
   search: string;
   setSearch: (value: string) => void;
   scholarFilter: string;
@@ -66,7 +68,9 @@ type YouthRecordToolbarProps = {
 
 export default function YouthRecordToolbar({
   onAdd,
+  onExport,
   totalRecords,
+  visibleRecords,
   search,
   setSearch,
   scholarFilter,
@@ -112,16 +116,17 @@ export default function YouthRecordToolbar({
 
       <div className="mb-4 flex flex-wrap items-center justify-between gap-4">
         <span className="text-sm text-slate-500">
-          Showing {totalRecords} of {totalRecords} records
+          Showing {visibleRecords} of {totalRecords} records
         </span>
         <div className="inline-flex flex-wrap items-center gap-3">
-          <a
+          <button
             className="inline-flex items-center gap-2 text-sm text-[#1e3a5f] hover:underline"
-            href="#export"
+            onClick={onExport}
+            type="button"
           >
             <DownloadIcon className="h-4 w-4" />
             Export Data
-          </a>
+          </button>
           <button
             className="inline-flex items-center gap-2 rounded-lg bg-[#1e3a5f] px-5 py-2.5 text-sm font-medium text-white hover:bg-[#2a4a6f]"
             onClick={onAdd}

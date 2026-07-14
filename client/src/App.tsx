@@ -16,12 +16,13 @@ import AdminOfficialsPage from "./pages/Admin/AdminOfficialsPage";
 import AdminPortalPage from "./pages/Admin/AdminPortalPage";
 import AdminSurveysPage from "./pages/Admin/AdminSurveysPage";
 import { ProtectedRoute } from "./routes/ProtectedRoute";
-import YouthLayout from "./pages/Youth/YouthLayout";
-import YouthHome from "./pages/Youth/YouthHome";
-import YouthSurveys from "./pages/Youth/YouthSurveys";
-import YouthEvents from "./pages/Youth/YouthEvents";
-import YouthProfile from "./pages/Youth/YouthProfile";
-import YouthFeedback from "./pages/Youth/YouthFeedback";
+import YouthEventsPage from "./pages/Youth/YouthEventsPage";
+import YouthFeedbackPage from "./pages/Youth/YouthFeedbackPage";
+import YouthHomePage from "./pages/Youth/YouthHomePage";
+import YouthLayoutPage from "./pages/Youth/YouthLayoutPage";
+import YouthProfilePage from "./pages/Youth/YouthProfilePage";
+import YouthSurveyDetailsPage from "./pages/Youth/YouthSurveyDetailsPage";
+import YouthSurveysPage from "./pages/Youth/YouthSurveysPage";
 import { PublicRoute } from "./routes/PublicRoute";
 
 const appTitle = "SK Kabataan Portal";
@@ -45,14 +46,14 @@ function App() {
     <AuthProvider>
       <BrowserRouter>
         <Routes>
-          {/* Youth Routes wrapped in YouthLayout */}
+          {/* Youth Routes wrapped in YouthLayoutPage */}
           {/* The index route ("") loads when the user visits /youth */}
-          <Route path="/youth" element={<YouthLayout />}>
+          <Route path="/youth" element={<YouthLayoutPage />}>
             <Route
               index
               element={
                 <ProtectedRoute allowedRoles={["kabataan"]}>
-                  <YouthHome />
+                  <YouthHomePage />
                 </ProtectedRoute>
               }
             />
@@ -60,7 +61,15 @@ function App() {
               path="surveys"
               element={
                 <ProtectedRoute allowedRoles={["kabataan"]}>
-                  <YouthSurveys />
+                  <YouthSurveysPage />
+                </ProtectedRoute>
+              }
+            />
+            <Route
+              path="surveys/:surveyId"
+              element={
+                <ProtectedRoute allowedRoles={["kabataan"]}>
+                  <YouthSurveyDetailsPage />
                 </ProtectedRoute>
               }
             />
@@ -68,7 +77,7 @@ function App() {
               path="events"
               element={
                 <ProtectedRoute allowedRoles={["kabataan"]}>
-                  <YouthEvents />
+                  <YouthEventsPage />
                 </ProtectedRoute>
               }
             />
@@ -76,7 +85,7 @@ function App() {
               path="profile"
               element={
                 <ProtectedRoute allowedRoles={["kabataan"]}>
-                  <YouthProfile />
+                  <YouthProfilePage />
                 </ProtectedRoute>
               }
             />
@@ -84,7 +93,7 @@ function App() {
               path="feedback"
               element={
                 <ProtectedRoute allowedRoles={["kabataan"]}>
-                  <YouthFeedback />
+                  <YouthFeedbackPage />
                 </ProtectedRoute>
               }
             />

@@ -1,5 +1,71 @@
+import { useEffect, useState } from "react";
 import { Link } from "react-router-dom";
-import { announcements, suggestions, surveyResponses } from "./surveysAnnouncementsData";
+import { announcements, surveyResponses } from "./surveysAnnouncementsData";
+import {
+  getKabataanSuggestions,
+  type KabataanSuggestion,
+} from "./SurveysAnnouncementsService";
+
+const activityTypeColors = ["#1a529b", "#38b6ff", "#ff9f68", "#22c55e"];
+
+function getActivityTypeBreakdown() {
+  const counts = surveyResponses.reduce<Record<string, number>>((acc, item) => {
+    acc[item.type] = (acc[item.type] ?? 0) + 1;
+    return acc;
+  }, {});
+
+  const total = surveyResponses.length || 1;
+
+  return Object.entries(counts).map(([label, value], index) => ({
+    color: activityTypeColors[index % activityTypeColors.length],
+    label,
+    percentage: Math.round((value / total) * 100),
+    value,
+  }));
+}
+
+function PreferredActivityPieChart() {
+  const breakdown = getActivityTypeBreakdown();
+  let currentPercentage = 0;
+  const gradientStops = breakdown.map((item) => {
+    const start = currentPercentage;
+    currentPercentage += item.percentage;
+    return `${item.color} ${start}% ${currentPercentage}%`;
+  });
+
+  return (
+    <div className="mt-5 grid min-h-52 items-center gap-6 sm:grid-cols-[220px_1fr]">
+      <div className="mx-auto flex aspect-square w-full max-w-55 items-center justify-center rounded-full bg-slate-100 p-3">
+        <div
+          aria-label="Preferred activity types pie chart"
+          className="h-full w-full rounded-full shadow-sm ring-1 ring-slate-200"
+          role="img"
+          style={{
+            background: `conic-gradient(${gradientStops.join(", ")})`,
+          }}
+        />
+      </div>
+
+      <div className="space-y-3">
+        {breakdown.map((item) => (
+          <div
+            className="grid grid-cols-[auto_1fr_auto] items-center gap-3 text-sm"
+            key={item.label}
+          >
+            <span
+              className="h-3 w-3 rounded-full"
+              style={{ backgroundColor: item.color }}
+            />
+            <span className="font-medium text-slate-700">{item.label}</span>
+            <span className="text-slate-500">
+              {item.value} ({item.percentage}%)
+            </span>
+          </div>
+        ))}
+      </div>
+    </div>
+  );
+}
 
 function DataTable({
   headers,
@@ -34,7 +100,51 @@ function DataTable({
   );
 }
 
+function formatDate(value: string | null) {
+  if (!value) {
+    return "-";
+  }
+
+  return new Intl.DateTimeFormat("en", {
+    month: "short",
+    day: "2-digit",
+    year: "numeric",
+  }).format(new Date(value));
+}
+
 export function KabataanSuggestionsSection() {
+  const [suggestions, setSuggestions] = useState<KabataanSuggestion[]>([]);
+  const [isLoading, setIsLoading] = useState(true);
+  const [errorMessage, setErrorMessage] = useState<string | null>(null);
+
+  useEffect(() => {
+    let isMounted = true;
+
+    async function loadSuggestions() {
+      setIsLoading(true);
+      setErrorMessage(null);
+
+      const { data, error } = await getKabataanSuggestions();
+
+      if (!isMounted) {
+        return;
+      }
+
+      if (error) {
+        setErrorMessage(error.message);
+      }
+
+      setSuggestions(data);
+      setIsLoading(false);
+    }
+
+    loadSuggestions();
+
+    return () => {
+      isMounted = false;
+    };
+  }, []);
+
   return (
     <div className="flex-1 p-8">
       <section className="rounded-xl border border-slate-200 bg-white p-6 shadow-sm">
@@ -45,14 +155,29 @@ export function KabataanSuggestionsSection() {
           Free-form feedback submitted by Kabataan
         </p>
         <div className="mt-4">
-          <DataTable
-            headers={["#", "Date", "Feedback"]}
-            rows={suggestions.map((item) => [
-              item.id,
-              item.date,
-              item.feedback,
-            ])}
-          />
+          {errorMessage ? (
+            <div className="rounded-lg border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-800">
+              {errorMessage}
+            </div>
+          ) : isLoading ? (
+            <div className="rounded-[14px] border border-slate-200 bg-white p-6 text-sm text-slate-500 shadow-sm">
+              Loading suggestions...
+            </div>
+          ) : suggestions.length > 0 ? (
+            <DataTable
+              headers={["#", "Date", "Submitted By", "Feedback"]}
+              rows={suggestions.map((item) => [
+                item.suggestion_id,
+                formatDate(item.submitted_at),
+                item.submitted_by,
+                item.message,
+              ])}
+            />
+          ) : (
+            <div className="rounded-[14px] border border-slate-200 bg-white p-6 text-sm text-slate-500 shadow-sm">
+              No suggestions submitted yet.
+            </div>
+          )}
         </div>
       </section>
     </div>
@@ -84,7 +209,7 @@ export function SurveyResponsesSection() {
             <h3 className="text-sm font-semibold uppercase tracking-[0.1em] text-slate-500">
               Preferred activity types
             </h3>
-            <div className="mt-4 h-36 rounded-lg bg-[conic-gradient(#1a529b_0_45%,#38b6ff_45%_70%,#ff9f68_70%_100%)]" />
+            <PreferredActivityPieChart />
           </div>
           <div className="rounded-xl border border-slate-200 bg-slate-50 p-5">
             <h3 className="text-sm font-semibold uppercase tracking-[0.1em] text-slate-500">

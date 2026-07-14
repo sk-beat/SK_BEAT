@@ -217,3 +217,23 @@ TO authenticated
 WITH CHECK (
   auth.uid() = user_id
 );
+
+
+-------------------------------------------------------------------------------
+-- KABATAAN SUGGESTIONS
+-------------------------------------------------------------------------------
+
+CREATE POLICY "Authenticated users can view suggestions"
+ON kabataan_suggestions
+FOR SELECT
+TO authenticated
+USING (true);
+
+
+CREATE POLICY "Users can submit own suggestions"
+ON kabataan_suggestions
+FOR INSERT
+TO authenticated
+WITH CHECK (
+  auth.uid() = user_id
+);

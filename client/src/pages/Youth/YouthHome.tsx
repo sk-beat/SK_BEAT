@@ -1,5 +1,5 @@
 import React from 'react';
-import { ClipboardList, Calendar, MessageSquare, PenSquare, Eye, Home, User } from 'lucide-react';
+import { ClipboardList, Calendar, MessageSquare, PenSquare, Eye } from 'lucide-react';
 import { statsData, surveysData, eventsData } from '../../components/Youth/data';
 import { Header, StatCard, SectionWrapper } from '../../components/Youth/Shared';
 import { SurveyItem, InteractiveEventCard } from '../../components/Youth/Features';

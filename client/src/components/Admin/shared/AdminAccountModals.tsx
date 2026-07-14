@@ -55,7 +55,7 @@ export default function AdminAccountModals({
   const [barangay, setBarangay] = useState<string>("");
 
   const [password, setPassword] = useState<string>("");
-  const [isLoading, setIsLoading] = useState<boolean>(false);
+  // const [isLoading, setIsLoading] = useState<boolean>(false);
 
   async function fetchAdmin() {
     const { data, error } = await supabase
@@ -98,9 +98,9 @@ export default function AdminAccountModals({
       return;
     }
 
-    setIsLoading(true);
+    // setIsLoading(true);
 
-    const { data, error } = await supabase.auth.signUp({
+    const {  error } = await supabase.auth.signUp({
       email: email,
       password: password,
       options: {
@@ -111,7 +111,7 @@ export default function AdminAccountModals({
       },
     });
 
-    setIsLoading(false);
+    // setIsLoading(false);
 
     if (error) {
       if (error.message.includes("already registered")) {

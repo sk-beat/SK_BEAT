@@ -1,17 +1,13 @@
-import {
-  type ActivityCatalogItem,
-  activityCatalog,
-  calendarDays,
-  pastEvents,
-  scheduledEvents,
-  topSurveyPicks,
-} from "./activitiesData";
+import { useState } from "react";
 import {
   AlertIcon,
   ArrowRightIcon,
   CalendarIcon,
   ChevronDownIcon,
 } from "../Dashboard/icons";
+import type { ActivityEvent, ActivityEventStatus } from "./ActivitiesService";
+
+const pageSize = 6;
 
 function PlusIcon({ className }: { className?: string }) {
   return (
@@ -88,25 +84,162 @@ function UsersIcon({ className }: { className?: string }) {
 
 type ActivitiesSectionActions = {
   onAddCatalogEvent: () => void;
-  onEditCatalogEvent: (activity: ActivityCatalogItem) => void;
+  onDeleteCatalogEvent: (eventId: number) => void;
+  onEditCatalogEvent: (activity: ActivityEvent) => void;
   onOpenPastFeedbackQr: (eventTitle: string) => void;
-  onScheduleEvent: () => void;
+  onSelectDate: (date: string) => void;
+  onScheduleEvent: (date?: string) => void;
 };
 
-function CalendarPanel({ onScheduleEvent }: Pick<ActivitiesSectionActions, "onScheduleEvent">) {
+type ActivitiesSectionsProps = ActivitiesSectionActions & {
+  errorMessage: string | null;
+  events: ActivityEvent[];
+  isLoading: boolean;
+  selectedDate: string;
+};
+
+function formatPeso(amount: number) {
+  return `P${amount.toLocaleString("en-PH")}`;
+}
+
+function getStatusClass(status: ActivityEventStatus) {
+  switch (status) {
+    case "draft":
+      return "bg-slate-100 text-slate-700 ring-slate-200";
+    case "scheduled":
+      return "bg-sky-100 text-sky-700 ring-sky-200";
+    case "ongoing":
+      return "bg-emerald-100 text-emerald-700 ring-emerald-200";
+    case "completed":
+      return "bg-violet-100 text-violet-700 ring-violet-200";
+    case "cancelled":
+      return "bg-red-100 text-red-700 ring-red-200";
+  }
+}
+
+function StatusBadge({ status }: { status: ActivityEventStatus }) {
+  return (
+    <span
+      className={[
+        "inline-flex rounded-full px-3 py-1 text-xs font-semibold capitalize ring-1",
+        getStatusClass(status),
+      ].join(" ")}
+    >
+      {status}
+    </span>
+  );
+}
+
+function formatTime(time: string | null): string {
+  if (!time) {
+    return "No time set";
+  }
+
+  if (time.includes("-")) {
+    return time
+      .split("-")
+      .map((timePart) => formatTime(timePart.trim()))
+      .join(" - ");
+  }
+
+  const [hours, minutes] = time.split(":");
+  const date = new Date();
+  date.setHours(Number(hours), Number(minutes), 0, 0);
+
+  return date.toLocaleTimeString("en-PH", {
+    hour: "numeric",
+    minute: "2-digit",
+  });
+}
+
+function toDateInputValue(date: Date) {
+  return [
+    date.getFullYear(),
+    String(date.getMonth() + 1).padStart(2, "0"),
+    String(date.getDate()).padStart(2, "0"),
+  ].join("-");
+}
+
+function parseDateInputValue(value: string) {
+  const [year, month, day] = value.split("-").map(Number);
+  return new Date(year, month - 1, day);
+}
+
+function formatDateHeading(value: string) {
+  return parseDateInputValue(value).toLocaleDateString("en-PH", {
+    day: "numeric",
+    month: "long",
+    year: "numeric",
+  });
+}
+
+function getMonthCalendarDays(events: ActivityEvent[], monthDate: Date) {
+  const year = monthDate.getFullYear();
+  const month = monthDate.getMonth();
+  const firstDay = new Date(year, month, 1);
+  const daysInMonth = new Date(year, month + 1, 0).getDate();
+  const totalCells = Math.ceil((firstDay.getDay() + daysInMonth) / 7) * 7;
+
+  return Array.from({ length: totalCells }, (_, index) => {
+    const day = index - firstDay.getDay() + 1;
+    const date = new Date(year, month, day);
+    const dateValue = toDateInputValue(date);
+    const isInMonth = day > 0 && day <= daysInMonth;
+
+    return {
+      dateValue,
+      isInMonth,
+      label: isInMonth ? String(day) : "",
+      hasEvent:
+        isInMonth &&
+        events.some(
+          (event) =>
+            event.event_date === dateValue &&
+            event.status !== "draft" &&
+            event.status !== "cancelled",
+        ),
+    };
+  });
+}
+
+function CalendarPanel({
+  events,
+  selectedDate,
+  onSelectDate,
+}: Pick<
+  ActivitiesSectionsProps,
+  "events" | "selectedDate" | "onSelectDate"
+>) {
+  const [visibleMonth, setVisibleMonth] = useState(() => {
+    const selected = parseDateInputValue(selectedDate);
+    return new Date(selected.getFullYear(), selected.getMonth(), 1);
+  });
+  const calendarDays = getMonthCalendarDays(events, visibleMonth);
+  const monthLabel = visibleMonth.toLocaleDateString("en-PH", {
+    month: "long",
+    year: "numeric",
+  });
+
+  function moveMonth(direction: -1 | 1) {
+    setVisibleMonth(
+      (current) =>
+        new Date(current.getFullYear(), current.getMonth() + direction, 1),
+    );
+  }
+
   return (
     <section className="rounded-xl border border-slate-200 bg-white p-6 shadow-sm">
       <div className="mb-5 flex items-center justify-between">
-        <button className="flex h-9 w-9 items-center justify-center rounded-lg border border-slate-200 bg-white text-slate-500 hover:bg-slate-50" type="button">
+        <button className="flex h-9 w-9 items-center justify-center rounded-lg border border-slate-200 bg-white text-slate-500 hover:bg-slate-50" onClick={() => moveMonth(-1)} type="button">
           <ChevronDownIcon className="h-5 w-5 rotate-90" />
         </button>
-        <h2 className="text-lg font-semibold text-slate-800">May 2024</h2>
-        <button className="flex h-9 w-9 items-center justify-center rounded-lg border border-slate-200 bg-white text-slate-500 hover:bg-slate-50" type="button">
+        <h2 className="text-lg font-semibold text-slate-800">{monthLabel}</h2>
+        <button className="flex h-9 w-9 items-center justify-center rounded-lg border border-slate-200 bg-white text-slate-500 hover:bg-slate-50" onClick={() => moveMonth(1)} type="button">
           <ChevronDownIcon className="h-5 w-5 -rotate-90" />
         </button>
       </div>
       <p className="mb-3 text-sm text-slate-500">
-        I-click ang petsa para mag-schedule ng activity.
+        I-click ang petsa para makita ang scheduled activities.
       </p>
       <div className="grid grid-cols-7 gap-1 text-center text-xs font-semibold text-slate-500">
         {["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"].map((day) => (
@@ -120,13 +253,13 @@ function CalendarPanel({ onScheduleEvent }: Pick<ActivitiesSectionActions, "onSc
           <button
             className={[
               "flex aspect-square min-h-12 flex-col items-center justify-center rounded-lg border p-1 text-sm",
-              day.label ? "cursor-pointer hover:bg-slate-50" : "cursor-default text-slate-300",
-              day.isSelected
+              day.isInMonth ? "cursor-pointer hover:bg-slate-50" : "cursor-default text-slate-300",
+              day.dateValue === selectedDate
                 ? "border-[#1e3a5f] bg-[#1e3a5f]/10"
                 : "border-transparent",
             ].join(" ")}
-            key={`${day.label}-${index}`}
-            onClick={day.label ? onScheduleEvent : undefined}
+            key={`${day.dateValue}-${index}`}
+            onClick={day.isInMonth ? () => onSelectDate(day.dateValue) : undefined}
             type="button"
           >
             {day.label}
@@ -142,46 +275,65 @@ function CalendarPanel({ onScheduleEvent }: Pick<ActivitiesSectionActions, "onSc
   );
 }
 
-function DayEventsPanel({ onScheduleEvent }: Pick<ActivitiesSectionActions, "onScheduleEvent">) {
+function DayEventsPanel({
+  events,
+  selectedDate,
+  onScheduleEvent,
+}: Pick<ActivitiesSectionsProps, "events" | "selectedDate" | "onScheduleEvent">) {
+  const visibleEvents = events
+    .filter(
+      (event) =>
+        event.event_date === selectedDate &&
+        event.status !== "draft" &&
+        event.status !== "cancelled",
+    )
+    .slice(0, 3);
+  const scheduleButtonLabel =
+    visibleEvents.length > 0 ? "Add Event" : "Schedule Event";
+
   return (
     <section className="rounded-xl border border-slate-200 bg-white p-6 shadow-sm">
       <div className="mb-4 flex items-center justify-between gap-3">
         <h2 className="text-base font-semibold text-slate-800">
-          Events on May 10
+          Events on {formatDateHeading(selectedDate)}
         </h2>
-        <button className="inline-flex min-h-9 items-center gap-2 rounded-[10px] bg-[#1e3a5f] px-3 py-2 text-sm font-medium text-white hover:bg-[#2a4a6f]" onClick={onScheduleEvent} type="button">
+        <button className="inline-grid min-h-12 w-36 grid-cols-[18px_minmax(0,1fr)] items-center gap-2 rounded-[10px] bg-[#1e3a5f] px-3 py-2 text-sm font-semibold leading-tight text-white hover:bg-[#2a4a6f]" onClick={() => onScheduleEvent(selectedDate)} type="button">
           <CalendarIcon className="h-4 w-4" />
-          Schedule Event
+          <span className="text-center">{scheduleButtonLabel}</span>
         </button>
       </div>
       <div className="flex flex-col gap-4">
-        {scheduledEvents.map((event) => (
+        {visibleEvents.length === 0 ? (
+          <div className="rounded-lg border border-dashed border-slate-300 bg-slate-50 p-4 text-sm text-slate-500">
+            No scheduled events yet.
+          </div>
+        ) : null}
+        {visibleEvents.map((event) => (
           <article
             className="rounded-lg border border-slate-200 bg-slate-50 p-4"
-            key={event.id}
+            key={event.event_id}
           >
             <div className="mb-3 flex items-center justify-between gap-2">
               <div>
                 <h3 className="text-sm font-semibold text-slate-800">
-                  {event.title}
+                  {event.event_name}
                 </h3>
                 <p className="text-xs font-medium text-slate-500">
                   {event.category}
                 </p>
               </div>
-              <span className="rounded bg-[#1e3a5f]/15 px-2 py-1 text-[0.6875rem] font-medium text-[#1e3a5f]">
-                {event.status}
-              </span>
+              <StatusBadge status={event.status} />
             </div>
             <div className="flex flex-col gap-1.5 text-[0.8125rem] text-slate-500">
               <span className="flex items-center gap-2">
-                <ClockIcon className="h-3.5 w-3.5" /> {event.time}
+                <ClockIcon className="h-3.5 w-3.5" /> {formatTime(event.event_time)}
               </span>
               <span className="flex items-center gap-2">
-                <MapPinIcon className="h-3.5 w-3.5" /> {event.location}
+                <MapPinIcon className="h-3.5 w-3.5" /> {event.location || "No location set"}
               </span>
               <span className="flex items-center gap-2">
-                <UsersIcon className="h-3.5 w-3.5" /> {event.attendees}
+                <UsersIcon className="h-3.5 w-3.5" />{" "}
+                {event.expected_attendees ?? 0} expected attendees
               </span>
             </div>
           </article>
@@ -191,7 +343,11 @@ function DayEventsPanel({ onScheduleEvent }: Pick<ActivitiesSectionActions, "onS
   );
 }
 
-function EventInsightsPanel() {
+function EventInsightsPanel({ events }: Pick<ActivitiesSectionsProps, "events">) {
+  const topEvent = [...events].sort(
+    (first, second) => second.allocated_budget - first.allocated_budget,
+  )[0];
+
   return (
     <section className="rounded-xl border border-slate-200 bg-white p-5 shadow-sm">
       <div className="mb-3">
@@ -208,10 +364,12 @@ function EventInsightsPanel() {
         </div>
         <div>
           <h3 className="text-sm font-semibold text-slate-800">
-            Sports activities lead demand
+            {topEvent ? `${topEvent.event_name} has the highest budget` : "No event data yet"}
           </h3>
           <p className="mt-1 text-xs leading-relaxed text-slate-500">
-            Basketball and volleyball are repeatedly selected in survey picks.
+            {topEvent
+              ? `${formatPeso(topEvent.allocated_budget)} allocated under ${topEvent.category}.`
+              : "Create an event with budget rows to show activity insights."}
           </p>
           <span className="mt-2 inline-flex items-center gap-1 text-xs font-semibold text-[#1e3a5f]">
             Use for next event plan <ArrowRightIcon className="h-3.5 w-3.5" />
@@ -223,13 +381,35 @@ function EventInsightsPanel() {
 }
 
 function ActivitiesListPanel({
+  errorMessage,
+  events,
+  isLoading,
   onAddCatalogEvent,
+  onDeleteCatalogEvent,
   onEditCatalogEvent,
   onOpenPastFeedbackQr,
 }: Pick<
-  ActivitiesSectionActions,
-  "onAddCatalogEvent" | "onEditCatalogEvent" | "onOpenPastFeedbackQr"
+  ActivitiesSectionsProps,
+  | "errorMessage"
+  | "events"
+  | "isLoading"
+  | "onAddCatalogEvent"
+  | "onDeleteCatalogEvent"
+  | "onEditCatalogEvent"
+  | "onOpenPastFeedbackQr"
 >) {
+  const [currentPage, setCurrentPage] = useState(1);
+  const topEvents = [...events]
+    .sort((first, second) => second.allocated_budget - first.allocated_budget)
+    .slice(0, 3);
+  const pastEvents = events.filter((event) => event.status === "completed");
+  const totalPages = Math.max(1, Math.ceil(events.length / pageSize));
+  const safeCurrentPage = Math.min(currentPage, totalPages);
+  const paginatedEvents = events.slice(
+    (safeCurrentPage - 1) * pageSize,
+    safeCurrentPage * pageSize,
+  );
+
   return (
     <section className="mt-6 rounded-xl border border-slate-200 bg-white p-6 shadow-sm">
       <div className="mb-5 flex items-center justify-between gap-4 max-md:flex-col max-md:items-start">
@@ -238,8 +418,7 @@ function ActivitiesListPanel({
             Possible Activities
           </h2>
           <p className="mt-1 text-sm text-slate-500">
-            Ito ang lalabas sa Kabataan survey. May allocated budget bawat
-            activity.
+            Events are loaded from Supabase. May allocated budget bawat activity.
           </p>
         </div>
         <button className="inline-flex items-center gap-2 rounded-lg bg-[#1e3a5f] px-5 py-2.5 text-sm font-medium text-white hover:bg-[#2a4a6f]" onClick={onAddCatalogEvent} type="button">
@@ -249,60 +428,116 @@ function ActivitiesListPanel({
       </div>
 
       <div className="mb-5 rounded-xl border border-slate-200 bg-slate-50 p-4">
-        <h3 className="mb-3 text-sm font-semibold text-slate-800">
-          Top 3 Survey Picks
-        </h3>
+        <h3 className="mb-3 text-sm font-semibold text-slate-800">Top Events</h3>
         <div className="grid gap-3 md:grid-cols-3">
-          {topSurveyPicks.map((pick) => (
+          {topEvents.length === 0 ? (
+            <div className="rounded-lg border border-dashed border-slate-300 bg-white p-4 text-sm text-slate-500 md:col-span-3">
+              No events yet.
+            </div>
+          ) : null}
+          {topEvents.map((event, index) => (
             <article
               className="rounded-lg border border-slate-200 bg-white p-4"
-              key={pick.rank}
+              key={event.event_id}
             >
               <span className="text-xs font-bold text-[#1e3a5f]">
-                #{pick.rank}
+                #{index + 1}
               </span>
               <h4 className="mt-1 text-sm font-semibold text-slate-800">
-                {pick.title}
+                {event.event_name}
               </h4>
               <p className="mt-1 text-xs text-slate-500">
-                {pick.votes} vote(s)
+                {event.category}
               </p>
               <p className="mt-2 text-xs text-slate-500">
                 Allocated Budget:{" "}
-                <strong className="text-slate-800">{pick.budget}</strong>
+                <strong className="text-slate-800">
+                  {formatPeso(event.allocated_budget)}
+                </strong>
               </p>
             </article>
           ))}
         </div>
       </div>
 
+      {errorMessage ? (
+        <div className="mb-4 rounded-lg border border-red-200 bg-red-50 px-4 py-3 text-sm font-medium text-red-700">
+          {errorMessage}
+        </div>
+      ) : null}
+
       <ul className="flex list-none flex-col gap-3 p-0">
-        {activityCatalog.map((item) => (
+        {isLoading ? (
+          <li className="rounded-xl border border-slate-200 bg-white p-4 text-sm text-slate-500">
+            Loading events...
+          </li>
+        ) : null}
+        {!isLoading && events.length === 0 ? (
+          <li className="rounded-xl border border-dashed border-slate-300 bg-white p-4 text-sm text-slate-500">
+            No activities yet. Add a new event to get started.
+          </li>
+        ) : null}
+        {paginatedEvents.map((item) => (
           <li
             className="flex items-center justify-between gap-4 rounded-xl border border-slate-200 bg-white p-4 max-md:flex-col max-md:items-start"
-            key={item.id}
+            key={item.event_id}
           >
             <div>
-              <h3 className="font-semibold text-slate-800">{item.title}</h3>
+              <h3 className="font-semibold text-slate-800">{item.event_name}</h3>
               <p className="mt-1 text-sm text-slate-500">
                 {item.category} - Allocated:{" "}
-                <strong className="text-slate-800">{item.budget}</strong>
+                <strong className="text-slate-800">
+                  {formatPeso(item.allocated_budget)}
+                </strong>
               </p>
-              <span className="mt-2 inline-flex rounded-full bg-[#1e3a5f]/10 px-3 py-1 text-xs font-medium text-[#1e3a5f]">
-                {item.status}
+              <span className="mt-2 inline-flex">
+                <StatusBadge status={item.status} />
               </span>
             </div>
             <div className="flex gap-2">
               <button className="rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm text-slate-800 hover:bg-slate-50" onClick={() => onEditCatalogEvent(item)} type="button">
                 Edit
               </button>
-              <button className="rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm text-red-600 hover:bg-red-50" type="button">
+              <button className="rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm text-red-600 hover:bg-red-50" onClick={() => onDeleteCatalogEvent(item.event_id)} type="button">
                 Delete
               </button>
             </div>
           </li>
         ))}
       </ul>
+
+      {events.length > pageSize ? (
+        <div className="mt-4 flex flex-wrap items-center justify-between gap-3 border-t border-slate-200 pt-4">
+          <p className="text-sm text-slate-500">
+            Showing {(safeCurrentPage - 1) * pageSize + 1}-
+            {Math.min(safeCurrentPage * pageSize, events.length)} of{" "}
+            {events.length} activities
+          </p>
+          <div className="flex items-center gap-2">
+            <button
+              className="rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm font-medium text-slate-700 hover:bg-slate-50 disabled:cursor-not-allowed disabled:opacity-50"
+              disabled={safeCurrentPage === 1}
+              onClick={() => setCurrentPage((page) => Math.max(1, page - 1))}
+              type="button"
+            >
+              Previous
+            </button>
+            <span className="rounded-lg bg-slate-100 px-3 py-2 text-sm font-semibold text-slate-700">
+              {safeCurrentPage} / {totalPages}
+            </span>
+            <button
+              className="rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm font-medium text-slate-700 hover:bg-slate-50 disabled:cursor-not-allowed disabled:opacity-50"
+              disabled={safeCurrentPage === totalPages}
+              onClick={() =>
+                setCurrentPage((page) => Math.min(totalPages, page + 1))
+              }
+              type="button"
+            >
+              Next
+            </button>
+          </div>
+        </div>
+      ) : null}
 
       <div className="mt-6 rounded-xl border border-slate-200 bg-slate-50 p-4">
         <h3 className="text-sm font-semibold text-slate-800">Past Events</h3>
@@ -314,16 +549,23 @@ function ActivitiesListPanel({
             {pastEvents.map((event) => (
               <button
                 className="rounded-lg border border-slate-200 bg-white p-3 text-left hover:border-[#1e3a5f]"
-                key={event.title}
-                onClick={() => onOpenPastFeedbackQr(event.title)}
+                key={event.event_id}
+                onClick={() => onOpenPastFeedbackQr(event.event_name)}
                 type="button"
               >
                 <span className="block text-sm font-semibold text-slate-800">
-                  {event.title}
+                  {event.event_name}
                 </span>
-                <span className="text-xs text-slate-500">{event.meta}</span>
+                <span className="text-xs text-slate-500">
+                  {event.event_date || "No date"} - {formatPeso(event.allocated_budget)}
+                </span>
               </button>
             ))}
+            {pastEvents.length === 0 ? (
+              <span className="rounded-lg border border-dashed border-slate-300 bg-white p-3 text-sm text-slate-500">
+                No completed events yet.
+              </span>
+            ) : null}
           </div>
           <div className="flex min-h-32 items-center justify-center rounded-lg border border-dashed border-slate-300 bg-white p-4 text-center text-sm text-slate-500">
             Select a past event to view info and generate QR.
@@ -335,23 +577,41 @@ function ActivitiesListPanel({
 }
 
 export default function ActivitiesSections({
+  errorMessage,
+  events,
+  isLoading,
+  selectedDate,
   onAddCatalogEvent,
+  onDeleteCatalogEvent,
   onEditCatalogEvent,
   onOpenPastFeedbackQr,
+  onSelectDate,
   onScheduleEvent,
-}: ActivitiesSectionActions) {
+}: ActivitiesSectionsProps) {
   return (
     <div className="flex-1 px-8 py-6">
       <div className="grid grid-cols-[minmax(0,1fr)_380px] gap-5 max-xl:grid-cols-1">
-        <CalendarPanel onScheduleEvent={onScheduleEvent} />
+        <CalendarPanel
+          events={events}
+          onSelectDate={onSelectDate}
+          selectedDate={selectedDate}
+        />
         <div className="flex flex-col gap-5">
-          <DayEventsPanel onScheduleEvent={onScheduleEvent} />
-          <EventInsightsPanel />
+          <DayEventsPanel
+            events={events}
+            onScheduleEvent={onScheduleEvent}
+            selectedDate={selectedDate}
+          />
+          <EventInsightsPanel events={events} />
         </div>
       </div>
 
       <ActivitiesListPanel
+        errorMessage={errorMessage}
+        events={events}
+        isLoading={isLoading}
         onAddCatalogEvent={onAddCatalogEvent}
+        onDeleteCatalogEvent={onDeleteCatalogEvent}
         onEditCatalogEvent={onEditCatalogEvent}
         onOpenPastFeedbackQr={onOpenPastFeedbackQr}
       />

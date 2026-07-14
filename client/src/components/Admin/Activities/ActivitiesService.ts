@@ -7,13 +7,20 @@ export type ActivityEventStatus =
   | "completed"
   | "cancelled";
 
+export type ActivityCalculationType = "fixed" | "per_attendee";
+
 export type ActivityExpense = {
   expense_id?: number;
   event_id?: number;
   expense_type: string;
+  calculation_type: ActivityCalculationType;
+  unit_cost: number;
+  quantity: number;
   amount: number;
   description?: string | null;
 };
+
+export type ActivityBudgetItem = Omit<ActivityExpense, "expense_id" | "event_id">;
 
 export type ActivityEvent = {
   event_id: number;
@@ -21,6 +28,7 @@ export type ActivityEvent = {
   event_name: string;
   category: string;
   allocated_budget: number;
+  budget_items: ActivityBudgetItem[];
   status: ActivityEventStatus;
   event_date: string | null;
   event_time: string | null;
@@ -55,7 +63,7 @@ export async function getActivityEvents() {
   const { data, error } = await supabase
     .from("events")
     .select(
-      "event_id,budget_year_id,event_name,category,allocated_budget,status,event_date,event_time,location,expected_attendees,cover_image,description,created_by,created_at,event_expenses(expense_id,event_id,expense_type,amount,description)",
+      "event_id,budget_year_id,event_name,category,allocated_budget,budget_items,status,event_date,event_time,location,expected_attendees,cover_image,description,created_by,created_at,event_expenses(expense_id,event_id,expense_type,calculation_type,unit_cost,quantity,amount,description)",
     )
     .order("created_at", { ascending: false });
 
@@ -83,9 +91,11 @@ export async function saveActivityEvent(payload: SaveActivityEventPayload) {
     p_event_time: payload.event_time,
     p_expected_attendees: payload.expected_attendees,
     p_expenses: payload.expenses.map((expense) => ({
-      amount: expense.amount,
+      calculation_type: expense.calculation_type,
       description: expense.description ?? null,
       expense_type: expense.expense_type,
+      quantity: expense.quantity,
+      unit_cost: expense.unit_cost,
     })),
     p_location: payload.location,
     p_status: payload.status,

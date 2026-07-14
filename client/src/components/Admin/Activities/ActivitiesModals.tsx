@@ -1,6 +1,7 @@
 import { useMemo, useState } from "react";
 import AdminModal from "../shared/AdminModal";
 import type {
+  ActivityCalculationType,
   ActivityEvent,
   ActivityEventStatus,
   ActivityExpense,
@@ -24,8 +25,17 @@ type ActivitiesModalsProps = {
 type BudgetRow = {
   id: number;
   expense_type: string;
-  amount: string;
+  calculation_type: ActivityCalculationType;
+  unit_cost: string;
+  quantity: string;
   description: string;
+};
+
+type SuggestedBudgetItem = {
+  expense_type: string;
+  calculation_type: ActivityCalculationType;
+  unit_cost: number;
+  description?: string;
 };
 
 type EventFormState = {
@@ -44,10 +54,51 @@ const inputClass =
   "w-full rounded-lg border border-slate-200 bg-white px-3 py-2.5 text-sm text-slate-800 outline-none focus:border-[#1e3a5f] focus:ring-2 focus:ring-[#1e3a5f]/15";
 
 const emptyBudgetRow = {
-  amount: "",
+  calculation_type: "fixed" as ActivityCalculationType,
   description: "",
   expense_type: "",
   id: 1,
+  quantity: "1",
+  unit_cost: "",
+};
+
+const suggestedBudgetItems: Record<string, SuggestedBudgetItem[]> = {
+  basketball: [
+    { expense_type: "Ball", calculation_type: "fixed", unit_cost: 1800 },
+    { expense_type: "Net", calculation_type: "fixed", unit_cost: 1200 },
+    { expense_type: "Referee Fee", calculation_type: "fixed", unit_cost: 5000 },
+    { expense_type: "Jersey", calculation_type: "per_attendee", unit_cost: 350 },
+    { expense_type: "Food", calculation_type: "per_attendee", unit_cost: 120 },
+    { expense_type: "Water", calculation_type: "per_attendee", unit_cost: 35 },
+  ],
+  sports: [
+    { expense_type: "Referee Fee", calculation_type: "fixed", unit_cost: 4500 },
+    { expense_type: "Sports Equipment", calculation_type: "fixed", unit_cost: 3500 },
+    { expense_type: "Awards", calculation_type: "fixed", unit_cost: 3000 },
+    { expense_type: "Food", calculation_type: "per_attendee", unit_cost: 120 },
+    { expense_type: "Water", calculation_type: "per_attendee", unit_cost: 35 },
+  ],
+  training: [
+    { expense_type: "Speaker Honorarium", calculation_type: "fixed", unit_cost: 7000 },
+    { expense_type: "Training Materials", calculation_type: "per_attendee", unit_cost: 95 },
+    { expense_type: "Food", calculation_type: "per_attendee", unit_cost: 150 },
+  ],
+  "health & wellness": [
+    { expense_type: "Facilitator Honorarium", calculation_type: "fixed", unit_cost: 8000 },
+    { expense_type: "IEC Materials", calculation_type: "per_attendee", unit_cost: 60 },
+    { expense_type: "Food", calculation_type: "per_attendee", unit_cost: 130 },
+  ],
+  "community service": [
+    { expense_type: "Gloves and Sacks", calculation_type: "fixed", unit_cost: 3000 },
+    { expense_type: "Transport Support", calculation_type: "fixed", unit_cost: 2500 },
+    { expense_type: "Food", calculation_type: "per_attendee", unit_cost: 100 },
+    { expense_type: "Water", calculation_type: "per_attendee", unit_cost: 30 },
+  ],
+  cultural: [
+    { expense_type: "Costume Rental", calculation_type: "fixed", unit_cost: 5000 },
+    { expense_type: "Stage Materials", calculation_type: "fixed", unit_cost: 4200 },
+    { expense_type: "Food", calculation_type: "per_attendee", unit_cost: 120 },
+  ],
 };
 
 function PlusIcon({ className }: { className?: string }) {
@@ -91,6 +142,43 @@ function TrashIcon({ className }: { className?: string }) {
 
 function formatPeso(amount: number) {
   return `P${amount.toLocaleString("en-PH")}`;
+}
+
+function parseMoney(value: string | number) {
+  const numericValue =
+    typeof value === "number" ? value : Number(value.replace(/[^\d.]/g, ""));
+
+  return Number.isFinite(numericValue) ? numericValue : 0;
+}
+
+function getExpectedAttendees(value: string) {
+  return Math.max(0, Number(value) || 0);
+}
+
+function getBudgetRowQuantity(row: BudgetRow, expectedAttendees: number) {
+  if (row.calculation_type === "per_attendee") {
+    return expectedAttendees;
+  }
+
+  if (row.quantity.trim() === "") {
+    return 0;
+  }
+
+  return parseMoney(row.quantity);
+}
+
+function getBudgetRowTotal(row: BudgetRow, expectedAttendees: number) {
+  return parseMoney(row.unit_cost) * getBudgetRowQuantity(row, expectedAttendees);
+}
+
+function getSuggestedItems(eventName: string, category: string) {
+  const eventKey = eventName.toLowerCase();
+
+  if (eventKey.includes("basketball")) {
+    return suggestedBudgetItems.basketball;
+  }
+
+  return suggestedBudgetItems[category.toLowerCase()] ?? [];
 }
 
 function timeToMinutes(time: string) {
@@ -170,10 +258,12 @@ function eventToBudgetRows(event: ActivityEvent | null): BudgetRow[] {
   }
 
   return event.event_expenses.map((expense, index) => ({
-    amount: String(expense.amount),
+    calculation_type: expense.calculation_type ?? "fixed",
     description: expense.description ?? "",
     expense_type: expense.expense_type,
     id: expense.expense_id ?? index + 1,
+    quantity: String(expense.quantity ?? 1),
+    unit_cost: String(expense.unit_cost ?? expense.amount),
   }));
 }
 
@@ -231,14 +321,16 @@ function CatalogEventModal({
   const [budgetRows, setBudgetRows] = useState<BudgetRow[]>(
     eventToBudgetRows(selectedActivity),
   );
+  const expectedAttendees = getExpectedAttendees(form.expected_attendees);
+  const suggestedItems = getSuggestedItems(form.event_name, form.category);
 
   const allocatedBudget = useMemo(
     () =>
-      budgetRows.reduce((total, row) => {
-        const numericCost = Number(row.amount.replace(/[^\d.]/g, ""));
-        return total + (Number.isFinite(numericCost) ? numericCost : 0);
-      }, 0),
-    [budgetRows],
+      budgetRows.reduce(
+        (total, row) => total + getBudgetRowTotal(row, expectedAttendees),
+        0,
+      ),
+    [budgetRows, expectedAttendees],
   );
 
   function updateForm(field: keyof EventFormState, value: string) {
@@ -257,9 +349,12 @@ function CatalogEventModal({
     const expenses: ActivityExpense[] = budgetRows
       .filter((row) => row.expense_type.trim() !== "")
       .map((row) => ({
-        amount: Number(row.amount) || 0,
+        amount: getBudgetRowTotal(row, expectedAttendees),
+        calculation_type: row.calculation_type,
         description: row.description.trim() || null,
         expense_type: row.expense_type.trim(),
+        quantity: getBudgetRowQuantity(row, expectedAttendees),
+        unit_cost: parseMoney(row.unit_cost),
       }));
 
     await onSave({
@@ -300,6 +395,7 @@ function CatalogEventModal({
       }
       onClose={onClose}
       open
+      maxWidthClass="max-w-6xl"
       title={selectedActivity ? "Edit Event" : "Add New Event"}
     >
       <div className="grid gap-4 md:grid-cols-2">
@@ -424,63 +520,206 @@ function CatalogEventModal({
           </div>
 
           <div className="space-y-2">
-            {budgetRows.map((row, index) => (
-              <div
-                className="grid gap-2 rounded-lg border border-slate-200 bg-white p-3 sm:grid-cols-[minmax(0,1fr)_140px_40px]"
-                key={row.id}
-              >
-                <label className="block">
-                  <span className="mb-1 block text-xs font-semibold text-slate-500">
-                    Item
-                  </span>
-                  <input
-                    className={inputClass}
-                    onChange={(event) => {
-                      const nextRows = [...budgetRows];
-                      nextRows[index] = {
-                        ...nextRows[index],
-                        expense_type: event.target.value,
-                      };
-                      setBudgetRows(nextRows);
-                    }}
-                    placeholder="e.g. Referee"
-                    value={row.expense_type}
-                  />
-                </label>
-                <label className="block">
-                  <span className="mb-1 block text-xs font-semibold text-slate-500">
-                    Cost (P)
-                  </span>
-                  <input
-                    className={inputClass}
-                    inputMode="numeric"
-                    onChange={(event) => {
-                      const nextRows = [...budgetRows];
-                      nextRows[index] = {
-                        ...nextRows[index],
-                        amount: event.target.value,
-                      };
-                      setBudgetRows(nextRows);
-                    }}
-                    placeholder="0"
-                    value={row.amount}
-                  />
-                </label>
-                <button
-                  aria-label="Remove budget row"
-                  className="mt-5 flex h-10 w-10 items-center justify-center rounded-lg border border-slate-200 text-slate-500 hover:bg-red-50 hover:text-red-600 disabled:cursor-not-allowed disabled:opacity-40"
-                  disabled={budgetRows.length === 1}
-                  onClick={() =>
-                    setBudgetRows((rows) =>
-                      rows.filter((budgetRow) => budgetRow.id !== row.id),
-                    )
-                  }
-                  type="button"
+            {budgetRows.map((row, index) => {
+              const rowQuantity = getBudgetRowQuantity(row, expectedAttendees);
+              const rowTotal = getBudgetRowTotal(row, expectedAttendees);
+
+              return (
+                <div
+                  className="rounded-lg border border-slate-200 bg-white p-4"
+                  key={row.id}
                 >
-                  <TrashIcon className="h-4 w-4" />
-                </button>
-              </div>
-            ))}
+                  <div className="grid gap-3 xl:grid-cols-[minmax(190px,1.4fr)_150px_130px_120px_150px_40px]">
+                    <label className="block">
+                      <span className="mb-1 block text-xs font-semibold text-slate-500">
+                        Suggested Item
+                      </span>
+                      <select
+                        className={inputClass}
+                        onChange={(event) => {
+                          const suggestedItem = suggestedItems.find(
+                            (item) => item.expense_type === event.target.value,
+                          );
+
+                          if (!suggestedItem) {
+                            return;
+                          }
+
+                          const nextRows = [...budgetRows];
+                          nextRows[index] = {
+                            ...nextRows[index],
+                            calculation_type: suggestedItem.calculation_type,
+                            description: suggestedItem.description ?? "",
+                            expense_type: suggestedItem.expense_type,
+                            quantity:
+                              suggestedItem.calculation_type === "fixed"
+                                ? "1"
+                                : String(expectedAttendees),
+                            unit_cost: String(suggestedItem.unit_cost),
+                          };
+                          setBudgetRows(nextRows);
+                        }}
+                        value={
+                          suggestedItems.some(
+                            (item) => item.expense_type === row.expense_type,
+                          )
+                            ? row.expense_type
+                            : ""
+                        }
+                      >
+                        <option value="">Manual row</option>
+                        {suggestedItems.map((item) => (
+                          <option key={item.expense_type} value={item.expense_type}>
+                            {item.expense_type}
+                          </option>
+                        ))}
+                      </select>
+                    </label>
+                    <label className="block min-w-0">
+                      <span className="mb-1 block text-xs font-semibold text-slate-500">
+                        Item Name
+                      </span>
+                      <input
+                        className={inputClass}
+                        onChange={(event) => {
+                          const nextRows = [...budgetRows];
+                          nextRows[index] = {
+                            ...nextRows[index],
+                            expense_type: event.target.value,
+                          };
+                          setBudgetRows(nextRows);
+                        }}
+                        placeholder="e.g. Referee"
+                        value={row.expense_type}
+                      />
+                    </label>
+                    <label className="block">
+                      <span className="mb-1 block text-xs font-semibold text-slate-500">
+                        Type
+                      </span>
+                      <select
+                        className={inputClass}
+                        onChange={(event) => {
+                          const calculationType = event.target
+                            .value as ActivityCalculationType;
+                          const nextRows = [...budgetRows];
+                          nextRows[index] = {
+                            ...nextRows[index],
+                            calculation_type: calculationType,
+                            quantity:
+                              calculationType === "per_attendee"
+                                ? String(expectedAttendees)
+                                : row.quantity || "1",
+                          };
+                          setBudgetRows(nextRows);
+                        }}
+                        value={row.calculation_type}
+                      >
+                        <option value="fixed">Fixed</option>
+                        <option value="per_attendee">Per Attendee</option>
+                      </select>
+                    </label>
+                    <label className="block">
+                      <span className="mb-1 block text-xs font-semibold text-slate-500">
+                        Unit Cost
+                      </span>
+                      <input
+                        className={inputClass}
+                        inputMode="numeric"
+                        onChange={(event) => {
+                          const nextRows = [...budgetRows];
+                          nextRows[index] = {
+                            ...nextRows[index],
+                            unit_cost: event.target.value,
+                          };
+                          setBudgetRows(nextRows);
+                        }}
+                        placeholder="0"
+                        value={row.unit_cost}
+                      />
+                    </label>
+                    <label className="block">
+                      <span className="mb-1 block text-xs font-semibold text-slate-500">
+                        Quantity
+                      </span>
+                      <input
+                        className={inputClass}
+                        disabled={row.calculation_type === "per_attendee"}
+                        inputMode="numeric"
+                        onBlur={() => {
+                          if (
+                            row.calculation_type === "fixed" &&
+                            row.quantity.trim() === ""
+                          ) {
+                            const nextRows = [...budgetRows];
+                            nextRows[index] = {
+                              ...nextRows[index],
+                              quantity: "1",
+                            };
+                            setBudgetRows(nextRows);
+                          }
+                        }}
+                        onChange={(event) => {
+                          const nextRows = [...budgetRows];
+                          nextRows[index] = {
+                            ...nextRows[index],
+                            quantity: event.target.value,
+                          };
+                          setBudgetRows(nextRows);
+                        }}
+                        value={
+                          row.calculation_type === "per_attendee"
+                            ? String(rowQuantity)
+                            : row.quantity
+                        }
+                      />
+                    </label>
+                    <button
+                      aria-label="Remove budget row"
+                      className="mt-5 flex h-10 w-10 items-center justify-center rounded-lg border border-slate-200 text-slate-500 hover:bg-red-50 hover:text-red-600 disabled:cursor-not-allowed disabled:opacity-40"
+                      disabled={budgetRows.length === 1}
+                      onClick={() =>
+                        setBudgetRows((rows) =>
+                          rows.filter((budgetRow) => budgetRow.id !== row.id),
+                        )
+                      }
+                      type="button"
+                    >
+                      <TrashIcon className="h-4 w-4" />
+                    </button>
+                  </div>
+                  <div className="mt-3 grid gap-3 xl:grid-cols-[minmax(0,1fr)_280px]">
+                    <label className="block">
+                      <span className="mb-1 block text-xs font-semibold text-slate-500">
+                        Description
+                      </span>
+                      <input
+                        className={inputClass}
+                        onChange={(event) => {
+                          const nextRows = [...budgetRows];
+                          nextRows[index] = {
+                            ...nextRows[index],
+                            description: event.target.value,
+                          };
+                          setBudgetRows(nextRows);
+                        }}
+                        placeholder="Optional note"
+                        value={row.description}
+                      />
+                    </label>
+                    <div className="min-w-0 rounded-lg border border-[#1e3a5f]/10 bg-[#1e3a5f]/5 px-3 py-2">
+                      <span className="block text-xs font-semibold text-slate-500">
+                        Computed Total
+                      </span>
+                      <strong className="block break-words text-sm text-[#1e3a5f]">
+                        {row.expense_type || "Item"} - {formatPeso(parseMoney(row.unit_cost))} x{" "}
+                        {rowQuantity} = {formatPeso(rowTotal)}
+                      </strong>
+                    </div>
+                  </div>
+                </div>
+              );
+            })}
           </div>
 
           <button
@@ -489,10 +728,12 @@ function CatalogEventModal({
               setBudgetRows((rows) => [
                 ...rows,
                 {
-                  amount: "",
+                  calculation_type: "fixed",
                   description: "",
                   expense_type: "",
                   id: Date.now(),
+                  quantity: "1",
+                  unit_cost: "",
                 },
               ])
             }

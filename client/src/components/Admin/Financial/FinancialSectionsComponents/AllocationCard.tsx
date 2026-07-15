@@ -1,11 +1,54 @@
-import { budgetAllocation } from "../financialData";
-import type { AnnualBudget } from "../types";
+import type { AnnualBudget, FinancialEventBudget } from "../FinancialService";
 
 type AllocationCardProps = {
-  annualBudget: AnnualBudget | null;
+  eventBudgets: FinancialEventBudget[];
+  selectedBudget: AnnualBudget | null;
 };
 
-function AllocationCard({ annualBudget }: AllocationCardProps) {
+const colors = ["#1a529b", "#0d9488", "#ff9f68", "#7c3aed", "#26ba9a", "#dc2626"];
+
+function formatPeso(value: number) {
+  return new Intl.NumberFormat("en-PH", {
+    currency: "PHP",
+    maximumFractionDigits: 0,
+    style: "currency",
+  }).format(value);
+}
+
+function AllocationCard({ eventBudgets, selectedBudget }: AllocationCardProps) {
+  const totalBudget = selectedBudget?.total_allocation ?? 0;
+  const categoryTotals = eventBudgets
+    .filter((event) => event.status !== "cancelled")
+    .reduce<Record<string, number>>((totals, event) => {
+      totals[event.category] = (totals[event.category] ?? 0) + event.allocated_budget;
+      return totals;
+    }, {});
+
+  const rows = Object.entries(categoryTotals)
+    .map(([name, amount], index) => ({
+      amount,
+      color: colors[index % colors.length],
+      name,
+      percent: totalBudget === 0 ? 0 : (amount / totalBudget) * 100,
+    }))
+    .sort((first, second) => second.amount - first.amount);
+
+  const gradient =
+    rows.length === 0
+      ? "#e2e8f0 0 100%"
+      : rows
+          .reduce<{ cursor: number; parts: string[] }>(
+            (state, row) => {
+              const start = state.cursor;
+              const end = state.cursor + row.percent;
+              state.parts.push(`${row.color} ${start}% ${end}%`);
+              state.cursor = end;
+              return state;
+            },
+            { cursor: 0, parts: [] },
+          )
+          .parts.join(",");
+
   return (
     <section className="rounded-[14px] border border-slate-200 bg-white p-6 shadow-sm">
       <div className="mb-4 flex items-center justify-between">
@@ -15,43 +58,54 @@ function AllocationCard({ annualBudget }: AllocationCardProps) {
           </h2>
 
           <p className="mt-1 text-xs text-slate-400">
-            Distribution across departments
+            Non-cancelled event allocations by category
           </p>
         </div>
 
         <span className="rounded-full bg-emerald-100 px-3 py-1 text-xs font-medium text-emerald-700">
-          Total: ₱{annualBudget?.total_allocation.toLocaleString() ?? "0"}
+          Total: {formatPeso(totalBudget)}
         </span>
       </div>
 
       <div className="flex flex-wrap items-center gap-6">
-        <div className="relative h-[200px] w-[200px] shrink-0 rounded-full bg-[conic-gradient(#1a529b_0_27%,#0d9488_27%_49%,#ff9f68_49%_67%,#312e81_67%_83%,#26ba9a_83%_100%)]">
+        <div
+          className="relative h-[200px] w-[200px] shrink-0 rounded-full"
+          style={{ background: `conic-gradient(${gradient})` }}
+        >
           <div className="absolute inset-[26px] rounded-full bg-white" />
 
           <div className="absolute inset-0 flex flex-col items-center justify-center">
-            <span className="text-2xl font-bold">100%</span>
-            <span className="text-xs text-slate-500">Total Budget</span>
+            <span className="text-2xl font-bold">
+              {rows.length === 0 ? "0%" : "100%"}
+            </span>
+            <span className="text-xs text-slate-500">Allocated mix</span>
           </div>
         </div>
 
         <div className="flex min-w-64 flex-1 flex-col gap-2 text-sm">
-          {budgetAllocation.map((item) => (
-            <div
-              className="grid grid-cols-[auto_1fr_auto_auto] items-center gap-2"
-              key={item.name}
-            >
-              <span
-                className="h-2.5 w-2.5 rounded-full"
-                style={{ backgroundColor: item.color }}
-              />
+          {rows.length === 0 ? (
+            <p className="text-sm text-slate-400">No allocated event budget yet.</p>
+          ) : (
+            rows.map((item) => (
+              <div
+                className="grid grid-cols-[auto_1fr_auto_auto] items-center gap-2"
+                key={item.name}
+              >
+                <span
+                  className="h-2.5 w-2.5 rounded-full"
+                  style={{ backgroundColor: item.color }}
+                />
 
-              <span className="text-slate-800">{item.name}</span>
+                <span className="text-slate-800">{item.name}</span>
 
-              <span className="text-slate-500">{item.amount}</span>
+                <span className="text-slate-500">{formatPeso(item.amount)}</span>
 
-              <span className="text-slate-500">({item.percent})</span>
-            </div>
-          ))}
+                <span className="text-slate-500">
+                  ({item.percent.toFixed(1)}%)
+                </span>
+              </div>
+            ))
+          )}
         </div>
       </div>
     </section>

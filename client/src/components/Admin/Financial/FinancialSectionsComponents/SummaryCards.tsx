@@ -1,53 +1,59 @@
-import { Calendar, PieChart, Receipt, Banknote } from "lucide-react";
-import type { AnnualBudget } from "../types";
+import { Banknote, Calendar, PieChart, Receipt } from "lucide-react";
+import type { FinancialSummary } from "../FinancialService";
 
 type SummaryCardsProps = {
-  annualBudget: AnnualBudget | null;
+  isLoading: boolean;
+  summary: FinancialSummary | null;
 };
 
-export default function SummaryCards({ annualBudget }: SummaryCardsProps) {
-  const totalBudget = annualBudget?.total_allocation ?? 0;
-  const remaining = annualBudget?.remaining_balance ?? 0;
-  const used = totalBudget - remaining;
+function formatPeso(value: number) {
+  return new Intl.NumberFormat("en-PH", {
+    currency: "PHP",
+    maximumFractionDigits: 0,
+    style: "currency",
+  }).format(value);
+}
 
-  const summary = [
+export default function SummaryCards({ isLoading, summary }: SummaryCardsProps) {
+  const remaining = summary?.available_to_spend ?? 0;
+  const summaryItems = [
     {
-      title: "Total Annual Budget",
-      value: totalBudget,
-      note: "Current fiscal year",
-      icon: Calendar,
       color: "bg-slate-100 text-[#1e3a5f]",
+      icon: Calendar,
+      note: summary ? `Budget Year ${summary.fiscal_year}` : "Current year",
       text: "text-[#1e3a5f]",
+      title: "Total Annual Budget",
+      value: summary?.total_annual_budget ?? 0,
     },
     {
-      title: "Allocated",
-      value: totalBudget,
-      note: "",
-      icon: PieChart,
       color: "bg-orange-100 text-orange-700",
+      icon: PieChart,
+      note: "Event allocations",
       text: "text-[#1e3a5f]",
+      title: "Allocated",
+      value: summary?.total_allocated_budget ?? 0,
     },
     {
-      title: "Used",
-      value: used,
-      note: "",
-      icon: Receipt,
       color: "bg-red-50 text-red-600",
+      icon: Receipt,
+      note: "Completed transactions only",
       text: "text-red-600",
+      title: "Used",
+      value: summary?.total_completed_spending ?? 0,
     },
     {
+      color: "bg-emerald-100 text-emerald-700",
+      icon: Banknote,
+      note: "Total budget minus used amount",
+      text: remaining < 0 ? "text-red-600" : "text-emerald-600",
       title: "Remaining",
       value: remaining,
-      note: "",
-      icon: Banknote,
-      color: "bg-emerald-100 text-emerald-700",
-      text: "text-emerald-600",
     },
   ];
 
   return (
     <section className="mb-6 grid grid-cols-4 gap-6 max-xl:grid-cols-2 max-md:grid-cols-1">
-      {summary.map((item) => {
+      {summaryItems.map((item) => {
         const Icon = item.icon;
 
         return (
@@ -63,14 +69,12 @@ export default function SummaryCards({ annualBudget }: SummaryCardsProps) {
               <p
                 className={`mt-1 text-3xl font-bold tracking-tight ${item.text}`}
               >
-                ₱{item.value.toLocaleString()}
+                {isLoading ? "..." : formatPeso(item.value)}
               </p>
 
-              {item.note && (
-                <p className="mt-1 text-xs font-medium text-slate-400">
-                  {item.note}
-                </p>
-              )}
+              <p className="mt-1 text-xs font-medium text-slate-400">
+                {item.note}
+              </p>
             </div>
 
             <span

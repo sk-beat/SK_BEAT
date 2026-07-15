@@ -1,20 +1,22 @@
 import { useEffect, useState } from "react";
 import { Link } from "react-router-dom";
-import { announcements, surveyResponses } from "./surveysAnnouncementsData";
+import { announcements } from "./surveysAnnouncementsData";
 import {
   getKabataanSuggestions,
+  getSurveyResponseReports,
   type KabataanSuggestion,
+  type SurveyResponseReport,
 } from "./SurveysAnnouncementsService";
 
 const activityTypeColors = ["#1a529b", "#38b6ff", "#ff9f68", "#22c55e"];
 
-function getActivityTypeBreakdown() {
-  const counts = surveyResponses.reduce<Record<string, number>>((acc, item) => {
+function getActivityTypeBreakdown(rows: Array<{ type: string }>) {
+  const counts = rows.reduce<Record<string, number>>((acc, item) => {
     acc[item.type] = (acc[item.type] ?? 0) + 1;
     return acc;
   }, {});
 
-  const total = surveyResponses.length || 1;
+  const total = rows.length || 1;
 
   return Object.entries(counts).map(([label, value], index) => ({
     color: activityTypeColors[index % activityTypeColors.length],
@@ -24,13 +26,14 @@ function getActivityTypeBreakdown() {
   }));
 }
 
-function PreferredActivityPieChart() {
-  const breakdown = getActivityTypeBreakdown();
-  let currentPercentage = 0;
-  const gradientStops = breakdown.map((item) => {
-    const start = currentPercentage;
-    currentPercentage += item.percentage;
-    return `${item.color} ${start}% ${currentPercentage}%`;
+function PreferredActivityPieChart({ rows }: { rows: Array<{ type: string }> }) {
+  const breakdown = getActivityTypeBreakdown(rows);
+  const gradientStops = breakdown.map((item, index) => {
+    const start = breakdown
+      .slice(0, index)
+      .reduce((total, current) => total + current.percentage, 0);
+    const end = start + item.percentage;
+    return `${item.color} ${start}% ${end}%`;
   });
 
   return (
@@ -47,7 +50,7 @@ function PreferredActivityPieChart() {
       </div>
 
       <div className="space-y-3">
-        {breakdown.map((item) => (
+        {breakdown.length > 0 ? breakdown.map((item) => (
           <div
             className="grid grid-cols-[auto_1fr_auto] items-center gap-3 text-sm"
             key={item.label}
@@ -61,7 +64,7 @@ function PreferredActivityPieChart() {
               {item.value} ({item.percentage}%)
             </span>
           </div>
-        ))}
+        )) : <p className="text-sm text-slate-500">No response data yet.</p>}
       </div>
     </div>
   );
@@ -185,6 +188,47 @@ export function KabataanSuggestionsSection() {
 }
 
 export function SurveyResponsesSection() {
+  const [responses, setResponses] = useState<SurveyResponseReport[]>([]);
+  const [isLoading, setIsLoading] = useState(true);
+  const [errorMessage, setErrorMessage] = useState<string | null>(null);
+
+  useEffect(() => {
+    let isMounted = true;
+
+    async function loadResponses() {
+      setIsLoading(true);
+      setErrorMessage(null);
+      const { data, error } = await getSurveyResponseReports();
+
+      if (!isMounted) return;
+      if (error) setErrorMessage(error.message);
+      setResponses(data);
+      setIsLoading(false);
+    }
+
+    loadResponses();
+
+    return () => {
+      isMounted = false;
+    };
+  }, []);
+
+  const activityRows = responses.flatMap((response) =>
+    response.survey_answers.map((answer) => {
+      const optionText = answer.survey_answer_options
+        .map((item) => item.survey_options?.option_text)
+        .filter(Boolean)
+        .join(", ");
+
+      return {
+        id: response.response_id,
+        date: formatDate(response.submitted_at),
+        type: answer.survey_questions?.question_text ?? response.surveys?.title ?? "Survey",
+        event: optionText || answer.answer_text || "-",
+      };
+    }),
+  );
+
   return (
     <div className="flex-1 p-8">
       <section className="rounded-xl border border-slate-200 bg-white p-6 shadow-sm">
@@ -209,7 +253,7 @@ export function SurveyResponsesSection() {
             <h3 className="text-sm font-semibold uppercase tracking-[0.1em] text-slate-500">
               Preferred activity types
             </h3>
-            <PreferredActivityPieChart />
+            <PreferredActivityPieChart rows={activityRows} />
           </div>
           <div className="rounded-xl border border-slate-200 bg-slate-50 p-5">
             <h3 className="text-sm font-semibold uppercase tracking-[0.1em] text-slate-500">
@@ -227,15 +271,23 @@ export function SurveyResponsesSection() {
           </div>
         </div>
         <div className="mt-4">
-          <DataTable
-            headers={["#", "Date", "Activity Type", "Suggested Event"]}
-            rows={surveyResponses.map((item) => [
-              item.id,
-              item.date,
-              item.type,
-              item.event,
-            ])}
-          />
+          {errorMessage ? (
+            <div className="rounded-lg border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-800">{errorMessage}</div>
+          ) : isLoading ? (
+            <div className="rounded-[14px] border border-slate-200 bg-white p-6 text-sm text-slate-500 shadow-sm">Loading responses...</div>
+          ) : activityRows.length > 0 ? (
+            <DataTable
+              headers={["#", "Date", "Question", "Answer"]}
+              rows={activityRows.map((item, index) => [
+                index + 1,
+                item.date,
+                item.type,
+                item.event,
+              ])}
+            />
+          ) : (
+            <div className="rounded-[14px] border border-slate-200 bg-white p-6 text-sm text-slate-500 shadow-sm">No survey responses submitted yet.</div>
+          )}
         </div>
       </section>
     </div>

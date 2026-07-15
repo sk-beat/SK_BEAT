@@ -1,87 +1,168 @@
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import { useAuth } from "../../../auth/useAuth";
 import Sidebar from "../../Sidebar/Sidebar";
 import FinancialHeader from "./FinancialHeader";
 import FinancialModals, { type FinancialModalMode } from "./FinancialModals";
+import {
+  createAnnualBudget,
+  getAnnualBudgets,
+  getFinancialEventBudgets,
+  getFinancialSummary,
+  getFinancialTransactionsForCharts,
+  saveFinancialTransaction,
+  type AnnualBudget,
+  type FinancialEventBudget,
+  type FinancialSummary,
+  type FinancialTransaction,
+  type FinancialTransactionPayload,
+} from "./FinancialService";
 import FinancialSections from "./FinancialSections";
-import type { EventBudget } from "./financialData";
-import { supabase } from "../../../utils/supabase";
-import type { AnnualBudget } from "./types";
 
 export default function Financial() {
   const { logout } = useAuth();
+  const [annualBudgets, setAnnualBudgets] = useState<AnnualBudget[]>([]);
+  const [budgetYearId, setBudgetYearId] = useState<number | null>(null);
+  const [errorMessage, setErrorMessage] = useState("");
+  const [eventBudgets, setEventBudgets] = useState<FinancialEventBudget[]>([]);
+  const [isLoading, setIsLoading] = useState(true);
+  const [isSaving, setIsSaving] = useState(false);
   const [modalMode, setModalMode] = useState<FinancialModalMode>(null);
-  const [selectedEvent, setSelectedEvent] = useState<EventBudget | null>(null);
+  const [selectedEvent, setSelectedEvent] =
+    useState<FinancialEventBudget | null>(null);
+  const [successMessage, setSuccessMessage] = useState("");
+  const [summary, setSummary] = useState<FinancialSummary | null>(null);
+  const [transactions, setTransactions] = useState<FinancialTransaction[]>([]);
 
-  const [annualBudget, setAnnualBudget] = useState<AnnualBudget | null>(null);
+  const selectedBudget = useMemo(
+    () =>
+      annualBudgets.find((budget) => budget.budget_year_id === budgetYearId) ??
+      null,
+    [annualBudgets, budgetYearId],
+  );
 
-  function openEventModal(
-    mode: "event-budget" | "event-expense",
-    event: EventBudget
-  ) {
-    setSelectedEvent(event);
-    setModalMode(mode);
-  }
+  const loadFinancialData = useCallback(
+    async (nextBudgetYearId = budgetYearId) => {
+      setErrorMessage("");
+      setIsLoading(true);
+
+      try {
+        const { data: budgets, error: budgetsError } = await getAnnualBudgets();
+
+        if (budgetsError) {
+          throw budgetsError;
+        }
+
+        setAnnualBudgets(budgets);
+
+        const activeBudgetId =
+          nextBudgetYearId ??
+          budgets.find((budget) => budget.fiscal_year === new Date().getFullYear())
+            ?.budget_year_id ??
+          budgets[0]?.budget_year_id ??
+          null;
+
+        setBudgetYearId(activeBudgetId);
+
+        if (!activeBudgetId) {
+          setEventBudgets([]);
+          setSummary(null);
+          setTransactions([]);
+          return;
+        }
+
+        const [
+          { data: summaryData, error: summaryError },
+          { data: eventData, error: eventError },
+          { data: transactionData, error: transactionError },
+        ] = await Promise.all([
+          getFinancialSummary(activeBudgetId),
+          getFinancialEventBudgets(activeBudgetId),
+          getFinancialTransactionsForCharts(activeBudgetId),
+        ]);
+
+        if (summaryError) {
+          throw summaryError;
+        }
+
+        if (eventError) {
+          throw eventError;
+        }
+
+        if (transactionError) {
+          throw transactionError;
+        }
+
+        setEventBudgets(eventData ?? []);
+        setSummary(summaryData);
+        setTransactions(transactionData ?? []);
+      } catch (error) {
+        setErrorMessage(
+          error instanceof Error
+            ? error.message
+            : "Unable to load financial data.",
+        );
+      } finally {
+        setIsLoading(false);
+      }
+    },
+    [budgetYearId],
+  );
+
+  useEffect(() => {
+    void Promise.resolve().then(() => loadFinancialData());
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   function closeModal() {
     setModalMode(null);
     setSelectedEvent(null);
   }
 
-  //CRUD
-  async function getCurrentAnnualBudget() {
-    const currentYear = new Date().getFullYear();
-
-    const { data, error } = await supabase
-      .from("annual_budgets")
-      .select("*")
-      .eq("fiscal_year", currentYear)
-      .maybeSingle();
-
-    if (error) {
-      console.error(error);
-      return;
-    }
-
-    setAnnualBudget(data); // data is either an object or null
-  }
-
   async function handleCreateAnnualBudget(amount: number) {
-    if (annualBudget) {
-      console.log("Budget already exists.");
-      return;
-    }
+    setIsSaving(true);
+    setErrorMessage("");
 
     try {
-      const { data, error } = await supabase
-        .from("annual_budgets")
-        .insert([
-          {
-            fiscal_year: new Date().getFullYear(),
-            total_allocation: amount,
-            remaining_balance: amount,
-          },
-        ])
-        .select()
-        .single();
+      const { error } = await createAnnualBudget(amount);
 
       if (error) {
-        console.error("Error inserting annual budget:", error.message);
-        return;
+        throw error;
       }
 
-      console.log("Budget created successfully:", data);
-      setAnnualBudget(data);
-
-      return;
-    } catch (err) {
-      console.error("Unexpected error:", err);
+      setSuccessMessage("Annual budget created.");
+      closeModal();
+      await loadFinancialData(null);
+    } catch (error) {
+      setErrorMessage(
+        error instanceof Error ? error.message : "Unable to create annual budget.",
+      );
+    } finally {
+      setIsSaving(false);
     }
   }
 
-  useEffect(() => {
-    getCurrentAnnualBudget();
-  }, []);
+  async function handleSaveTransaction(payload: FinancialTransactionPayload) {
+    setIsSaving(true);
+    setErrorMessage("");
+
+    try {
+      const { error } = await saveFinancialTransaction(payload);
+
+      if (error) {
+        throw error;
+      }
+
+      setSuccessMessage("Expense saved.");
+      closeModal();
+      await loadFinancialData(payload.budget_year_id);
+    } catch (error) {
+      setErrorMessage(
+        error instanceof Error ? error.message : "Unable to save expense.",
+      );
+    } finally {
+      setIsSaving(false);
+    }
+  }
 
   return (
     <div className="flex min-h-screen bg-slate-100 font-sans text-slate-900">
@@ -90,19 +171,40 @@ export default function Financial() {
         <FinancialHeader />
 
         <FinancialSections
-          annualBudget={annualBudget}
-          onEditEventBudget={(event) => openEventModal("event-budget", event)}
-          onOpenEventExpense={(event) => openEventModal("event-expense", event)}
-          onAddExpense={() => setModalMode("add-expense")}
+          annualBudgets={annualBudgets}
+          budgetYearId={budgetYearId}
+          errorMessage={errorMessage}
+          eventBudgets={eventBudgets}
+          isLoading={isLoading}
+          onAddExpense={() => {
+            setSelectedEvent(null);
+            setModalMode("add-expense");
+          }}
+          onBudgetYearChange={(nextBudgetYearId) => {
+            setBudgetYearId(nextBudgetYearId);
+            void loadFinancialData(nextBudgetYearId);
+          }}
           onOpenAnnualBudget={() => setModalMode("annual-budget")}
+          onOpenEventExpense={(event) => {
+            setSelectedEvent(event);
+            setModalMode("event-expense");
+          }}
+          selectedBudget={selectedBudget}
+          successMessage={successMessage}
+          summary={summary}
         />
       </main>
       <FinancialModals
+        annualBudget={selectedBudget}
+        budgetYearId={budgetYearId}
+        eventBudgets={eventBudgets}
+        isSaving={isSaving}
         mode={modalMode}
         onClose={closeModal}
-        selectedEvent={selectedEvent}
-        annualBudget={annualBudget}
         onCreateAnnualBudget={handleCreateAnnualBudget}
+        onSaveTransaction={handleSaveTransaction}
+        selectedEvent={selectedEvent}
+        transactions={transactions}
       />
     </div>
   );

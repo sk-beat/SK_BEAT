@@ -1,5 +1,11 @@
 import { supabase } from "../../../utils/supabase";
 
+export type ChangeYouthPasswordPayload = {
+  profileId: string;
+  currentPassword: string;
+  newPassword: string;
+};
+
 export type YouthProfileRecord = {
   profile_id: string;
   fullname: string;
@@ -43,6 +49,116 @@ export async function updateYouthProfile(
     .from("kabataan_profiles")
     .update(payload)
     .eq("profile_id", profileId);
+}
+
+function getFriendlyAuthErrorMessage(message: string) {
+  const normalizedMessage = message.toLowerCase();
+
+  if (
+    normalizedMessage.includes("invalid login credentials") ||
+    normalizedMessage.includes("invalid credentials")
+  ) {
+    return "Current password is incorrect.";
+  }
+
+  if (
+    normalizedMessage.includes("weak password") ||
+    normalizedMessage.includes("password should be")
+  ) {
+    return "New password is too weak. Please choose a stronger password.";
+  }
+
+  if (
+    normalizedMessage.includes("rate limit") ||
+    normalizedMessage.includes("too many")
+  ) {
+    return "Too many attempts. Please wait a moment and try again.";
+  }
+
+  if (
+    normalizedMessage.includes("jwt") ||
+    normalizedMessage.includes("session") ||
+    normalizedMessage.includes("not authenticated")
+  ) {
+    return "Your session expired. Please sign in again.";
+  }
+
+  if (normalizedMessage.includes("network")) {
+    return "Network error. Please check your connection and try again.";
+  }
+
+  return message || "Unable to change password. Please try again.";
+}
+
+export async function changeYouthPassword({
+  profileId,
+  currentPassword,
+  newPassword,
+}: ChangeYouthPasswordPayload) {
+  const {
+    data: { user },
+    error: userError,
+  } = await supabase.auth.getUser();
+
+  if (userError) {
+    return {
+      error: getFriendlyAuthErrorMessage(userError.message),
+      sessionValid: false,
+    };
+  }
+
+  if (!user) {
+    return {
+      error: "Your session expired. Please sign in again.",
+      sessionValid: false,
+    };
+  }
+
+  if (user.id !== profileId) {
+    return {
+      error: "Unable to change password for this profile.",
+      sessionValid: true,
+    };
+  }
+
+  if (!user.email) {
+    return {
+      error: "Your account does not have an email address for verification.",
+      sessionValid: true,
+    };
+  }
+
+  const { error: reauthError } = await supabase.auth.signInWithPassword({
+    email: user.email,
+    password: currentPassword,
+  });
+
+  if (reauthError) {
+    return {
+      error: "Current password is incorrect.",
+      sessionValid: true,
+    };
+  }
+
+  const { error: updateError } = await supabase.auth.updateUser({
+    password: newPassword,
+  });
+
+  if (updateError) {
+    return {
+      error: getFriendlyAuthErrorMessage(updateError.message),
+      sessionValid: true,
+    };
+  }
+
+  const {
+    data: { session },
+  } = await supabase.auth.getSession();
+
+  return {
+    error: null,
+    sessionValid: Boolean(session),
+  };
 }
 
 export async function getYouthProfileStats(profileId: string) {

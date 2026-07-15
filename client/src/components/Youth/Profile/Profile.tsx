@@ -1,9 +1,13 @@
 import { useEffect, useState } from "react";
+import { useNavigate } from "react-router-dom";
 import { useAuth } from "../../../auth/useAuth";
 import ProfileHeader from "./ProfileHeader";
 import ProfileModals, { type ProfileModalMode } from "./ProfileModals";
-import ProfileSections from "./ProfileSections";
+import ProfileSections, {
+  type ChangePasswordFormValues,
+} from "./ProfileSections";
 import {
+  changeYouthPassword,
   getYouthProfile,
   getYouthProfileStats,
   updateYouthProfile,
@@ -13,12 +17,20 @@ import {
 
 export default function Profile() {
   const { logout, user } = useAuth();
+  const navigate = useNavigate();
   const [profile, setProfile] = useState<YouthProfileRecord | null>(null);
   const [eventsCount, setEventsCount] = useState(0);
   const [surveysCount, setSurveysCount] = useState(0);
   const [isLoading, setIsLoading] = useState(true);
   const [isSaving, setIsSaving] = useState(false);
+  const [isChangingPassword, setIsChangingPassword] = useState(false);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
+  const [changePasswordError, setChangePasswordError] = useState<string | null>(
+    null,
+  );
+  const [changePasswordSuccess, setChangePasswordSuccess] = useState<
+    string | null
+  >(null);
   const [modalMode, setModalMode] = useState<ProfileModalMode>(null);
 
   async function loadProfile() {
@@ -68,6 +80,94 @@ export default function Profile() {
     await loadProfile();
   }
 
+  function validatePasswordForm({
+    currentPassword,
+    newPassword,
+    confirmPassword,
+  }: ChangePasswordFormValues) {
+    if (!currentPassword) {
+      return "Current password is required.";
+    }
+
+    if (!newPassword) {
+      return "New password is required.";
+    }
+
+    if (!confirmPassword) {
+      return "Please confirm your new password.";
+    }
+
+    if (
+      currentPassword.trim() !== currentPassword ||
+      newPassword.trim() !== newPassword ||
+      confirmPassword.trim() !== confirmPassword
+    ) {
+      return "Passwords cannot start or end with spaces.";
+    }
+
+    if (newPassword.length < 8) {
+      return "New password must be at least 8 characters.";
+    }
+
+    if (newPassword !== confirmPassword) {
+      return "New password and confirmation do not match.";
+    }
+
+    if (newPassword === currentPassword) {
+      return "New password must be different from your current password.";
+    }
+
+    return null;
+  }
+
+  async function handleChangePassword(values: ChangePasswordFormValues) {
+    if (!user?.id || isChangingPassword) {
+      setChangePasswordError("You need to be signed in to change password.");
+      setChangePasswordSuccess(null);
+      return false;
+    }
+
+    const validationMessage = validatePasswordForm(values);
+
+    if (validationMessage) {
+      setChangePasswordError(validationMessage);
+      setChangePasswordSuccess(null);
+      return false;
+    }
+
+    setIsChangingPassword(true);
+    setChangePasswordError(null);
+    setChangePasswordSuccess(null);
+
+    const result = await changeYouthPassword({
+      profileId: user.id,
+      currentPassword: values.currentPassword,
+      newPassword: values.newPassword,
+    });
+
+    setIsChangingPassword(false);
+
+    if (result.error) {
+      setChangePasswordError(result.error);
+      return false;
+    }
+
+    if (!result.sessionValid) {
+      setChangePasswordSuccess(
+        "Password updated. Please sign in again to continue.",
+      );
+      await new Promise((resolve) => {
+        window.setTimeout(resolve, 1800);
+      });
+      await logout();
+      navigate("/login", { replace: true });
+      return true;
+    }
+
+    setChangePasswordSuccess("Password updated successfully.");
+    return true;
+  }
+
   useEffect(() => {
     let isMounted = true;
 
@@ -114,9 +214,13 @@ export default function Profile() {
     <div className="min-h-screen bg-slate-100 font-sans text-slate-900">
       <ProfileHeader />
       <ProfileSections
+        changePasswordError={changePasswordError}
+        changePasswordSuccess={changePasswordSuccess}
         errorMessage={errorMessage}
         eventsCount={eventsCount}
+        isChangingPassword={isChangingPassword}
         isLoading={isLoading}
+        onChangePassword={handleChangePassword}
         onEditProfile={() => setModalMode("edit")}
         onLogout={logout}
         profile={profile}

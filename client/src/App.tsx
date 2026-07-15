@@ -4,6 +4,7 @@ import { AuthProvider } from "./auth/AuthProvider";
 import Activities from "./components/Admin/Activities/Activities";
 import Dashboard from "./components/Admin/Dashboard/Dashboard";
 import Financial from "./components/Admin/Financial/Financial";
+import SKOfficials from "./components/Admin/SKOfficials/SKOfficials";
 import SurveyBuilder from "./components/Admin/SurveyBuilder/SurveyBuilder";
 import SurveysAnnouncements from "./components/Admin/SurveysAnnouncements/SurveysAnnouncements";
 import YouthRecord from "./components/Admin/YouthRecord/YouthRecord";
@@ -17,6 +18,7 @@ import AdminPortalPage from "./pages/Admin/AdminPortalPage";
 import AdminSurveysPage from "./pages/Admin/AdminSurveysPage";
 import { ProtectedRoute } from "./routes/ProtectedRoute";
 import YouthEventsPage from "./pages/Youth/YouthEventsPage";
+import YouthAnnouncementsPage from "./pages/Youth/YouthAnnouncementsPage";
 import YouthFeedbackPage from "./pages/Youth/YouthFeedbackPage";
 import YouthHomePage from "./pages/Youth/YouthHomePage";
 import YouthLayoutPage from "./pages/Youth/YouthLayoutPage";
@@ -78,6 +80,14 @@ function App() {
               element={
                 <ProtectedRoute allowedRoles={["kabataan"]}>
                   <YouthEventsPage />
+                </ProtectedRoute>
+              }
+            />
+            <Route
+              path="announcements"
+              element={
+                <ProtectedRoute allowedRoles={["kabataan"]}>
+                  <YouthAnnouncementsPage />
                 </ProtectedRoute>
               }
             />
@@ -150,6 +160,16 @@ function App() {
             }
           />
           <Route
+            path="/sk-officials"
+            element={
+              <ProtectedRoute allowedRoles={["admin"] as const}>
+                <PageTitle title="SK Officials">
+                  <SKOfficials />
+                </PageTitle>
+              </ProtectedRoute>
+            }
+          />
+          <Route
             path="/surveys-announcements"
             element={<Navigate to="/kabataan-suggestions" replace />}
           />
@@ -176,7 +196,7 @@ function App() {
           <Route
             path="/announcements"
             element={
-              <ProtectedRoute allowedRoles={["admin", "kabataan"] as const}>
+              <ProtectedRoute allowedRoles={["admin"] as const}>
                 <PageTitle title="Announcements">
                   <SurveysAnnouncements view="announcements" />
                 </PageTitle>

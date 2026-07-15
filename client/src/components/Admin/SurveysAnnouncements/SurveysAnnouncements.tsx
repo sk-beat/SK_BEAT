@@ -1,6 +1,11 @@
 import { useState } from "react";
 import { useAuth } from "../../../auth/useAuth";
 import Sidebar from "../../Sidebar/Sidebar";
+import {
+  saveAnnouncement,
+  type Announcement,
+  type AnnouncementPayload,
+} from "./AnnouncementsService";
 import SurveysAnnouncementsHeader from "./SurveysAnnouncementsHeader";
 import SurveysAnnouncementsModals from "./SurveysAnnouncementsModals";
 import {
@@ -18,13 +23,44 @@ export default function SurveysAnnouncements({
 }: SurveysAnnouncementsProps) {
   const { logout } = useAuth();
   const [isAnnouncementModalOpen, setIsAnnouncementModalOpen] = useState(false);
+  const [selectedAnnouncement, setSelectedAnnouncement] =
+    useState<Announcement | null>(null);
+  const [isSavingAnnouncement, setIsSavingAnnouncement] = useState(false);
+  const [announcementRefreshKey, setAnnouncementRefreshKey] = useState(0);
+
+  function closeAnnouncementModal() {
+    setIsAnnouncementModalOpen(false);
+    setSelectedAnnouncement(null);
+  }
+
+  async function handleSaveAnnouncement(payload: AnnouncementPayload) {
+    setIsSavingAnnouncement(true);
+    const { error } = await saveAnnouncement(payload);
+    setIsSavingAnnouncement(false);
+
+    if (error) {
+      window.alert(error.message);
+      return;
+    }
+
+    closeAnnouncementModal();
+    setAnnouncementRefreshKey((key) => key + 1);
+  }
 
   const viewContent = {
     suggestions: <KabataanSuggestionsSection />,
     responses: <SurveyResponsesSection />,
     announcements: (
       <AnnouncementsSection
-        onCreateAnnouncement={() => setIsAnnouncementModalOpen(true)}
+        key={announcementRefreshKey}
+        onCreateAnnouncement={() => {
+          setSelectedAnnouncement(null);
+          setIsAnnouncementModalOpen(true);
+        }}
+        onEditAnnouncement={(announcement) => {
+          setSelectedAnnouncement(announcement);
+          setIsAnnouncementModalOpen(true);
+        }}
       />
     ),
   };
@@ -37,7 +73,10 @@ export default function SurveysAnnouncements({
         {viewContent[view]}
       </main>
       <SurveysAnnouncementsModals
-        onClose={() => setIsAnnouncementModalOpen(false)}
+        announcement={selectedAnnouncement}
+        isSaving={isSavingAnnouncement}
+        onClose={closeAnnouncementModal}
+        onSaveAnnouncement={handleSaveAnnouncement}
         openCreateAnnouncement={isAnnouncementModalOpen}
       />
     </div>

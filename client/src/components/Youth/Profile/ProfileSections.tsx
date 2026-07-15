@@ -1,8 +1,12 @@
+import { useState, type FormEvent } from "react";
 import {
   CalendarDays,
   CheckCircle2,
   Edit3,
+  Eye,
+  EyeOff,
   GraduationCap,
+  Lock,
   LogOut,
   Mail,
   MapPin,
@@ -10,10 +14,20 @@ import {
 } from "lucide-react";
 import type { YouthProfileRecord } from "./ProfileService";
 
+export type ChangePasswordFormValues = {
+  currentPassword: string;
+  newPassword: string;
+  confirmPassword: string;
+};
+
 type ProfileSectionsProps = {
+  changePasswordError: string | null;
+  changePasswordSuccess: string | null;
   errorMessage: string | null;
   eventsCount: number;
+  isChangingPassword: boolean;
   isLoading: boolean;
+  onChangePassword: (values: ChangePasswordFormValues) => Promise<boolean>;
   onEditProfile: () => void;
   onLogout: () => void;
   profile: YouthProfileRecord | null;
@@ -45,15 +59,74 @@ function formatJoinedDate(value?: string | null) {
   }).format(new Date(value));
 }
 
+function PasswordField({
+  disabled,
+  isVisible,
+  label,
+  onChange,
+  onToggleVisibility,
+  value,
+}: {
+  disabled: boolean;
+  isVisible: boolean;
+  label: string;
+  onChange: (value: string) => void;
+  onToggleVisibility: () => void;
+  value: string;
+}) {
+  const Icon = isVisible ? EyeOff : Eye;
+  const autoComplete =
+    label === "Current password" ? "current-password" : "new-password";
+
+  return (
+    <label className="block">
+      <span className="mb-1.5 block text-sm font-medium text-slate-700">
+        {label}
+      </span>
+      <span className="relative block">
+        <input
+          autoComplete={autoComplete}
+          className="w-full rounded-lg border border-slate-200 bg-white px-3 py-2.5 pr-12 text-sm text-slate-800 outline-none focus:border-[#1e3a5f] focus:ring-2 focus:ring-[#1e3a5f]/15 disabled:cursor-not-allowed disabled:bg-slate-100 disabled:text-slate-500 disabled:opacity-70"
+          disabled={disabled}
+          onChange={(event) => onChange(event.target.value)}
+          type={isVisible ? "text" : "password"}
+          value={value}
+        />
+        <button
+          aria-label={isVisible ? `Hide ${label}` : `Show ${label}`}
+          className="absolute right-3 top-1/2 flex -translate-y-1/2 text-slate-500 transition-colors hover:text-[#1e3a5f] disabled:cursor-not-allowed disabled:opacity-50"
+          disabled={disabled}
+          onClick={onToggleVisibility}
+          type="button"
+        >
+          <Icon className="h-4 w-4" />
+        </button>
+      </span>
+    </label>
+  );
+}
+
 export default function ProfileSections({
+  changePasswordError,
+  changePasswordSuccess,
   errorMessage,
   eventsCount,
+  isChangingPassword,
   isLoading,
+  onChangePassword,
   onEditProfile,
   onLogout,
   profile,
   surveysCount,
 }: ProfileSectionsProps) {
+  const [currentPassword, setCurrentPassword] = useState("");
+  const [newPassword, setNewPassword] = useState("");
+  const [confirmPassword, setConfirmPassword] = useState("");
+  const [visibleFields, setVisibleFields] = useState({
+    current: false,
+    new: false,
+    confirm: false,
+  });
   const fullName = profile?.fullname ?? "Youth Member";
   const profileDetails = [
     {
@@ -87,6 +160,27 @@ export default function ProfileSections({
       icon: CalendarDays,
     },
   ];
+
+  async function handlePasswordSubmit(event: FormEvent<HTMLFormElement>) {
+    event.preventDefault();
+
+    const wasChanged = await onChangePassword({
+      currentPassword,
+      newPassword,
+      confirmPassword,
+    });
+
+    if (wasChanged) {
+      setCurrentPassword("");
+      setNewPassword("");
+      setConfirmPassword("");
+      setVisibleFields({
+        current: false,
+        new: false,
+        confirm: false,
+      });
+    }
+  }
 
   if (isLoading) {
     return (
@@ -174,6 +268,7 @@ export default function ProfileSections({
         </div>
       </section>
 
+      <div className="space-y-6">
       <section className="rounded-[14px] border border-slate-200 bg-white p-5 shadow-sm sm:p-6">
         {errorMessage ? (
           <div className="mb-5 rounded-lg border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-800">
@@ -224,6 +319,86 @@ export default function ProfileSections({
           Logout
         </button>
       </section>
+      <section className="rounded-[14px] border border-slate-200 bg-white p-5 shadow-sm sm:p-6">
+        <div className="mb-5 flex items-start gap-3">
+          <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg bg-[#1e3a5f]/10 text-[#1e3a5f]">
+            <Lock className="h-5 w-5" />
+          </div>
+          <div>
+            <h2 className="text-base font-semibold text-slate-900">
+              Change Password
+            </h2>
+            <p className="mt-1 text-sm text-slate-500">
+              Update the password for your signed-in Youth account.
+            </p>
+          </div>
+        </div>
+
+        {changePasswordError ? (
+          <div className="mb-4 rounded-lg border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700">
+            {changePasswordError}
+          </div>
+        ) : null}
+
+        {changePasswordSuccess ? (
+          <div className="mb-4 rounded-lg border border-emerald-200 bg-emerald-50 px-4 py-3 text-sm text-emerald-700">
+            {changePasswordSuccess}
+          </div>
+        ) : null}
+
+        <form className="grid gap-4" onSubmit={handlePasswordSubmit}>
+          <PasswordField
+            disabled={isChangingPassword}
+            isVisible={visibleFields.current}
+            label="Current password"
+            onChange={setCurrentPassword}
+            onToggleVisibility={() =>
+              setVisibleFields((current) => ({
+                ...current,
+                current: !current.current,
+              }))
+            }
+            value={currentPassword}
+          />
+          <div className="grid gap-4 sm:grid-cols-2">
+            <PasswordField
+              disabled={isChangingPassword}
+              isVisible={visibleFields.new}
+              label="New password"
+              onChange={setNewPassword}
+              onToggleVisibility={() =>
+                setVisibleFields((current) => ({
+                  ...current,
+                  new: !current.new,
+                }))
+              }
+              value={newPassword}
+            />
+            <PasswordField
+              disabled={isChangingPassword}
+              isVisible={visibleFields.confirm}
+              label="Confirm new password"
+              onChange={setConfirmPassword}
+              onToggleVisibility={() =>
+                setVisibleFields((current) => ({
+                  ...current,
+                  confirm: !current.confirm,
+                }))
+              }
+              value={confirmPassword}
+            />
+          </div>
+          <button
+            className="inline-flex w-full items-center justify-center gap-2 rounded-lg bg-[#1e3a5f] px-4 py-3 text-sm font-medium text-white transition-colors hover:bg-[#173256] disabled:cursor-not-allowed disabled:opacity-60 sm:w-auto"
+            disabled={isChangingPassword}
+            type="submit"
+          >
+            <Lock className="h-4 w-4" />
+            {isChangingPassword ? "Updating..." : "Update Password"}
+          </button>
+        </form>
+      </section>
+      </div>
     </div>
   );
 }

@@ -1,8 +1,12 @@
+import { useEffect, useState } from "react";
 import AdminModal from "../shared/AdminModal";
-import ModernFileInput from "../shared/ModernFileInput";
+import type { Announcement, AnnouncementPayload } from "./AnnouncementsService";
 
 type SurveysAnnouncementsModalsProps = {
+  announcement: Announcement | null;
+  isSaving: boolean;
   onClose: () => void;
+  onSaveAnnouncement: (payload: AnnouncementPayload) => Promise<void>;
   openCreateAnnouncement: boolean;
 };
 
@@ -10,9 +14,58 @@ const inputClass =
   "w-full rounded-lg border border-slate-200 bg-white px-3 py-2.5 text-sm text-slate-800 outline-none focus:border-[#1e3a5f] focus:ring-2 focus:ring-[#1e3a5f]/15";
 
 export default function SurveysAnnouncementsModals({
+  announcement,
+  isSaving,
   onClose,
+  onSaveAnnouncement,
   openCreateAnnouncement,
 }: SurveysAnnouncementsModalsProps) {
+  const [form, setForm] = useState({
+    category: "",
+    content: "",
+    expires_at: "",
+    image_path: "",
+    is_published: false,
+    priority: "0",
+    publish_at: "",
+    title: "",
+  });
+
+  useEffect(() => {
+    if (!openCreateAnnouncement) return;
+
+    setForm({
+      category: announcement?.category ?? "",
+      content: announcement?.content ?? "",
+      expires_at: announcement?.expires_at ? announcement.expires_at.slice(0, 16) : "",
+      image_path: announcement?.image_path ?? "",
+      is_published: announcement?.is_published ?? false,
+      priority: String(announcement?.priority ?? 0),
+      publish_at: announcement?.publish_at
+        ? announcement.publish_at.slice(0, 16)
+        : new Date().toISOString().slice(0, 16),
+      title: announcement?.title ?? "",
+    });
+  }, [announcement, openCreateAnnouncement]);
+
+  function updateField(field: keyof typeof form, value: string | boolean) {
+    setForm((current) => ({ ...current, [field]: value }));
+  }
+
+  async function handleSave() {
+    await onSaveAnnouncement({
+      announcement_id: announcement?.announcement_id,
+      category: form.category.trim() || null,
+      content: form.content.trim(),
+      expires_at: form.expires_at ? new Date(form.expires_at).toISOString() : null,
+      image_path: form.image_path.trim() || null,
+      is_published: form.is_published,
+      priority: Number(form.priority) || 0,
+      publish_at: new Date(form.publish_at).toISOString(),
+      title: form.title.trim(),
+    });
+  }
+
   return (
     <AdminModal
       footer={
@@ -25,17 +78,18 @@ export default function SurveysAnnouncementsModals({
             Cancel
           </button>
           <button
-            className="rounded-lg bg-[#1e3a5f] px-4 py-2 text-sm font-medium text-white hover:bg-[#2a4a6f]"
-            onClick={onClose}
+            className="rounded-lg bg-[#1e3a5f] px-4 py-2 text-sm font-medium text-white hover:bg-[#2a4a6f] disabled:cursor-not-allowed disabled:opacity-60"
+            disabled={isSaving || !form.title.trim() || !form.content.trim() || !form.publish_at}
+            onClick={handleSave}
             type="button"
           >
-            Save Announcement
+            {isSaving ? "Saving..." : "Save Announcement"}
           </button>
         </>
       }
       onClose={onClose}
       open={openCreateAnnouncement}
-      title="Create Announcement"
+      title={announcement ? "Edit Announcement" : "Create Announcement"}
     >
       <div className="grid gap-4">
         <label className="block">
@@ -44,15 +98,73 @@ export default function SurveysAnnouncementsModals({
           </span>
           <input
             className={inputClass}
+            onChange={(event) => updateField("title", event.target.value)}
             placeholder="e.g. Call for Youth Volunteers"
             type="text"
+            value={form.title}
           />
         </label>
+        <div className="grid gap-4 sm:grid-cols-2">
+          <label className="block">
+            <span className="mb-1.5 block text-sm font-medium text-slate-700">
+              Category
+            </span>
+            <input
+              className={inputClass}
+              onChange={(event) => updateField("category", event.target.value)}
+              placeholder="General"
+              type="text"
+              value={form.category}
+            />
+          </label>
+          <label className="block">
+            <span className="mb-1.5 block text-sm font-medium text-slate-700">
+              Priority
+            </span>
+            <input
+              className={inputClass}
+              min="0"
+              onChange={(event) => updateField("priority", event.target.value)}
+              type="number"
+              value={form.priority}
+            />
+          </label>
+        </div>
+        <div className="grid gap-4 sm:grid-cols-2">
+          <label className="block">
+            <span className="mb-1.5 block text-sm font-medium text-slate-700">
+              Publish Date
+            </span>
+            <input
+              className={inputClass}
+              onChange={(event) => updateField("publish_at", event.target.value)}
+              type="datetime-local"
+              value={form.publish_at}
+            />
+          </label>
+          <label className="block">
+            <span className="mb-1.5 block text-sm font-medium text-slate-700">
+              Expiration Date
+            </span>
+            <input
+              className={inputClass}
+              onChange={(event) => updateField("expires_at", event.target.value)}
+              type="datetime-local"
+              value={form.expires_at}
+            />
+          </label>
+        </div>
         <label className="block">
           <span className="mb-1.5 block text-sm font-medium text-slate-700">
-            Images (optional)
+            Image URL or path
           </span>
-          <ModernFileInput accept="image/*" label="Choose announcement images" multiple />
+          <input
+            className={inputClass}
+            onChange={(event) => updateField("image_path", event.target.value)}
+            placeholder="Optional image path"
+            type="text"
+            value={form.image_path}
+          />
         </label>
         <label className="block">
           <span className="mb-1.5 block text-sm font-medium text-slate-700">
@@ -60,8 +172,19 @@ export default function SurveysAnnouncementsModals({
           </span>
           <textarea
             className={`${inputClass} min-h-36 resize-none`}
+            onChange={(event) => updateField("content", event.target.value)}
             placeholder="Announcement details..."
+            value={form.content}
           />
+        </label>
+        <label className="inline-flex items-center gap-2 text-sm font-medium text-slate-700">
+          <input
+            checked={form.is_published}
+            className="h-4 w-4 rounded border-slate-300 text-[#1e3a5f]"
+            onChange={(event) => updateField("is_published", event.target.checked)}
+            type="checkbox"
+          />
+          Published
         </label>
       </div>
     </AdminModal>

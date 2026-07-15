@@ -6,9 +6,11 @@ import ActivitiesModals, { type ActivitiesModalMode } from "./ActivitiesModals";
 import ActivitiesSections from "./ActivitiesSections";
 import {
   deleteActivityEvent,
+  getActivityDecisionData,
   getActivityEvents,
   getCurrentBudgetYearId,
   saveActivityEvent,
+  type ActivityRecommendation,
   type ActivityEvent,
   type SaveActivityEventPayload,
 } from "./ActivitiesService";
@@ -29,6 +31,7 @@ export default function Activities() {
   );
   const [selectedPastEvent, setSelectedPastEvent] = useState<string | null>(null);
   const [events, setEvents] = useState<ActivityEvent[]>([]);
+  const [recommendations, setRecommendations] = useState<ActivityRecommendation[]>([]);
   const [budgetYearId, setBudgetYearId] = useState<number | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [isSaving, setIsSaving] = useState(false);
@@ -41,16 +44,23 @@ export default function Activities() {
     setIsLoading(true);
     setErrorMessage(null);
 
-    const [{ data: activityData, error }, { data: budgetData }] =
-      await Promise.all([getActivityEvents(), getCurrentBudgetYearId()]);
+    const [{ data: activityData, error }, { data: budgetData }, decisionData] =
+      await Promise.all([
+        getActivityEvents(),
+        getCurrentBudgetYearId(),
+        getActivityDecisionData(),
+      ]);
 
-    if (error) {
-      setErrorMessage(error.message);
+    const loadError = error || decisionData.error;
+
+    if (loadError) {
+      setErrorMessage(loadError.message);
       setIsLoading(false);
       return;
     }
 
     setEvents(activityData);
+    setRecommendations(decisionData.data.topSuggestedEvents);
     setBudgetYearId(budgetData?.budget_year_id ?? null);
     setIsLoading(false);
   }
@@ -113,8 +123,33 @@ export default function Activities() {
           errorMessage={errorMessage}
           events={events}
           isLoading={isLoading}
+          recommendations={recommendations}
           selectedDate={selectedScheduleDate}
           onAddCatalogEvent={() => setModalMode("catalog")}
+          onCreateFromRecommendation={(recommendation) => {
+            setSelectedActivity({
+              allocated_budget: 0,
+              budget_items: [],
+              budget_year_id: budgetYearId,
+              category:
+                recommendation.category === "Uncategorized"
+                  ? "Sports"
+                  : recommendation.category,
+              cover_image: null,
+              created_at: null,
+              created_by: null,
+              description: `Survey-based recommendation supported by ${recommendation.respondent_count} Youth respondent(s).`,
+              event_date: null,
+              event_expenses: [],
+              event_id: 0,
+              event_name: recommendation.suggested_event_name,
+              event_time: null,
+              expected_attendees: recommendation.respondent_count,
+              location: null,
+              status: "draft",
+            });
+            setModalMode("catalog");
+          }}
           onEditCatalogEvent={(activity) => {
             setSelectedActivity(activity);
             setModalMode("catalog");

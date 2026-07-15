@@ -1,4 +1,10 @@
 import { supabase } from "../../../utils/supabase";
+import {
+  getPreferredActivityTypes,
+  getTopSuggestedEvents,
+  type PreferredActivityType,
+  type TopSuggestedEvent,
+} from "../SurveysAnnouncements/SurveyInsightsService";
 
 export type ActivityEventStatus =
   | "draft"
@@ -39,6 +45,7 @@ export type ActivityEvent = {
   created_by: string | null;
   created_at: string | null;
   event_expenses: ActivityExpense[];
+  event_registrations?: { registration_id: number }[];
 };
 
 export type SaveActivityEventPayload = {
@@ -63,12 +70,29 @@ export async function getActivityEvents() {
   const { data, error } = await supabase
     .from("events")
     .select(
-      "event_id,budget_year_id,event_name,category,allocated_budget,budget_items,status,event_date,event_time,location,expected_attendees,cover_image,description,created_by,created_at,event_expenses(expense_id,event_id,expense_type,calculation_type,unit_cost,quantity,amount,description)",
+      "event_id,budget_year_id,event_name,category,allocated_budget,budget_items,status,event_date,event_time,location,expected_attendees,cover_image,description,created_by,created_at,event_expenses(expense_id,event_id,expense_type,calculation_type,unit_cost,quantity,amount,description),event_registrations(registration_id)",
     )
     .order("created_at", { ascending: false });
 
   return { data: (data ?? []) as ActivityEvent[], error };
 }
+
+export async function getActivityDecisionData() {
+  const [preferred, suggested] = await Promise.all([
+    getPreferredActivityTypes(),
+    getTopSuggestedEvents(),
+  ]);
+
+  return {
+    data: {
+      preferredActivityTypes: preferred.data as PreferredActivityType[],
+      topSuggestedEvents: suggested.data as TopSuggestedEvent[],
+    },
+    error: preferred.error || suggested.error,
+  };
+}
+
+export type ActivityRecommendation = TopSuggestedEvent;
 
 export async function getCurrentBudgetYearId() {
   const { data, error } = await supabase

@@ -243,7 +243,7 @@ function eventToForm(event: ActivityEvent | null): EventFormState {
     category: event?.category ?? "Sports",
     description: event?.description ?? "",
     event_date: event?.event_date ?? "",
-    event_id: event?.event_id ?? null,
+    event_id: event?.event_id || null,
     event_name: event?.event_name ?? "",
     event_time: event?.event_time ?? "09:00",
     expected_attendees: String(event?.expected_attendees ?? ""),
@@ -312,7 +312,7 @@ function CatalogEventModal({
   "budgetYearId" | "events" | "isSaving" | "onClose" | "onSave" | "selectedActivity"
 >) {
   const [eventChoice, setEventChoice] = useState<"new" | "existing">(
-    selectedActivity ? "existing" : "new",
+    selectedActivity?.event_id ? "existing" : "new",
   );
   const [selectedExistingId, setSelectedExistingId] = useState(
     selectedActivity?.event_id ? String(selectedActivity.event_id) : "",
@@ -396,7 +396,7 @@ function CatalogEventModal({
       onClose={onClose}
       open
       maxWidthClass="max-w-6xl"
-      title={selectedActivity ? "Edit Event" : "Add New Event"}
+      title={selectedActivity?.event_id ? "Edit Event" : "Add New Event"}
     >
       <div className="grid gap-4 md:grid-cols-2">
         <div className="md:col-span-2">

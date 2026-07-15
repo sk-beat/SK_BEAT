@@ -5,7 +5,11 @@ import {
   CalendarIcon,
   ChevronDownIcon,
 } from "../Dashboard/icons";
-import type { ActivityEvent, ActivityEventStatus } from "./ActivitiesService";
+import type {
+  ActivityEvent,
+  ActivityEventStatus,
+  ActivityRecommendation,
+} from "./ActivitiesService";
 
 const pageSize = 6;
 
@@ -86,6 +90,7 @@ type ActivitiesSectionActions = {
   onAddCatalogEvent: () => void;
   onDeleteCatalogEvent: (eventId: number) => void;
   onEditCatalogEvent: (activity: ActivityEvent) => void;
+  onCreateFromRecommendation: (recommendation: ActivityRecommendation) => void;
   onOpenPastFeedbackQr: (eventTitle: string) => void;
   onSelectDate: (date: string) => void;
   onScheduleEvent: (date?: string) => void;
@@ -95,6 +100,7 @@ type ActivitiesSectionsProps = ActivitiesSectionActions & {
   errorMessage: string | null;
   events: ActivityEvent[];
   isLoading: boolean;
+  recommendations: ActivityRecommendation[];
   selectedDate: string;
 };
 
@@ -343,10 +349,18 @@ function DayEventsPanel({
   );
 }
 
-function EventInsightsPanel({ events }: Pick<ActivitiesSectionsProps, "events">) {
-  const topEvent = [...events].sort(
-    (first, second) => second.allocated_budget - first.allocated_budget,
-  )[0];
+function EventInsightsPanel({
+  events,
+  recommendations,
+}: Pick<ActivitiesSectionsProps, "events" | "recommendations">) {
+  const topRecommendation = recommendations[0];
+  const lowRegistrationEvent = events
+    .filter((event) => event.status === "scheduled")
+    .sort(
+      (first, second) =>
+        (first.event_registrations?.length ?? 0) -
+        (second.event_registrations?.length ?? 0),
+    )[0];
 
   return (
     <section className="rounded-xl border border-slate-200 bg-white p-5 shadow-sm">
@@ -355,7 +369,7 @@ function EventInsightsPanel({ events }: Pick<ActivitiesSectionsProps, "events">)
           Decision Support Insights
         </h2>
         <p className="mt-1 text-xs text-slate-500">
-          AI-powered recommendations based on overall event performance
+          Survey-based signals from Youth responses and live event registrations
         </p>
       </div>
       <article className="flex gap-3 rounded-xl border border-slate-200 bg-amber-100/40 p-4 shadow-sm">
@@ -364,12 +378,16 @@ function EventInsightsPanel({ events }: Pick<ActivitiesSectionsProps, "events">)
         </div>
         <div>
           <h3 className="text-sm font-semibold text-slate-800">
-            {topEvent ? `${topEvent.event_name} has the highest budget` : "No event data yet"}
+            {topRecommendation
+              ? `${topRecommendation.suggested_event_name} has the strongest Youth support`
+              : "No survey recommendation data yet"}
           </h3>
           <p className="mt-1 text-xs leading-relaxed text-slate-500">
-            {topEvent
-              ? `${formatPeso(topEvent.allocated_budget)} allocated under ${topEvent.category}.`
-              : "Create an event with budget rows to show activity insights."}
+            {topRecommendation
+              ? `${topRecommendation.respondent_count} Youth respondent(s) supported this suggestion across ${topRecommendation.source_surveys.join(", ")}.`
+              : lowRegistrationEvent
+                ? `${lowRegistrationEvent.event_name} currently has ${lowRegistrationEvent.event_registrations?.length ?? 0} registration(s).`
+                : "Publish surveys or collect event registrations to show decision-support insights."}
           </p>
           <span className="mt-2 inline-flex items-center gap-1 text-xs font-semibold text-[#1e3a5f]">
             Use for next event plan <ArrowRightIcon className="h-3.5 w-3.5" />
@@ -388,6 +406,8 @@ function ActivitiesListPanel({
   onDeleteCatalogEvent,
   onEditCatalogEvent,
   onOpenPastFeedbackQr,
+  onCreateFromRecommendation,
+  recommendations,
 }: Pick<
   ActivitiesSectionsProps,
   | "errorMessage"
@@ -397,11 +417,14 @@ function ActivitiesListPanel({
   | "onDeleteCatalogEvent"
   | "onEditCatalogEvent"
   | "onOpenPastFeedbackQr"
+  | "onCreateFromRecommendation"
+  | "recommendations"
 >) {
   const [currentPage, setCurrentPage] = useState(1);
-  const topEvents = [...events]
-    .sort((first, second) => second.allocated_budget - first.allocated_budget)
-    .slice(0, 3);
+  const topRecommendations = [
+    ...recommendations.filter((item) => !item.is_already_planned),
+    ...recommendations.filter((item) => item.is_already_planned),
+  ].slice(0, 3);
   const pastEvents = events.filter((event) => event.status === "completed");
   const totalPages = Math.max(1, Math.ceil(events.length / pageSize));
   const safeCurrentPage = Math.min(currentPage, totalPages);
@@ -418,7 +441,7 @@ function ActivitiesListPanel({
             Possible Activities
           </h2>
           <p className="mt-1 text-sm text-slate-500">
-            Events are loaded from Supabase. May allocated budget bawat activity.
+            Top 3 recommendations ranked by distinct Youth survey support.
           </p>
         </div>
         <button className="inline-flex items-center gap-2 rounded-lg bg-[#1e3a5f] px-5 py-2.5 text-sm font-medium text-white hover:bg-[#2a4a6f]" onClick={onAddCatalogEvent} type="button">
@@ -428,33 +451,49 @@ function ActivitiesListPanel({
       </div>
 
       <div className="mb-5 rounded-xl border border-slate-200 bg-slate-50 p-4">
-        <h3 className="mb-3 text-sm font-semibold text-slate-800">Top Events</h3>
+        <h3 className="mb-3 text-sm font-semibold text-slate-800">
+          Top Survey-Based Recommendations
+        </h3>
         <div className="grid gap-3 md:grid-cols-3">
-          {topEvents.length === 0 ? (
+          {topRecommendations.length === 0 ? (
             <div className="rounded-lg border border-dashed border-slate-300 bg-white p-4 text-sm text-slate-500 md:col-span-3">
-              No events yet.
+              No survey-based recommendations yet.
             </div>
           ) : null}
-          {topEvents.map((event, index) => (
+          {topRecommendations.map((event, index) => (
             <article
               className="rounded-lg border border-slate-200 bg-white p-4"
-              key={event.event_id}
+              key={event.suggested_event_name}
             >
               <span className="text-xs font-bold text-[#1e3a5f]">
                 #{index + 1}
               </span>
               <h4 className="mt-1 text-sm font-semibold text-slate-800">
-                {event.event_name}
+                {event.suggested_event_name}
               </h4>
               <p className="mt-1 text-xs text-slate-500">
                 {event.category}
               </p>
               <p className="mt-2 text-xs text-slate-500">
-                Allocated Budget:{" "}
-                <strong className="text-slate-800">
-                  {formatPeso(event.allocated_budget)}
-                </strong>
+                {event.respondent_count} Youth support -{" "}
+                {event.respondent_support_percentage}%
               </p>
+              <p className="mt-1 text-xs text-slate-400">
+                {event.source_surveys.join(", ")}
+              </p>
+              {event.is_already_planned ? (
+                <span className="mt-3 inline-flex rounded-full bg-emerald-50 px-2.5 py-1 text-xs font-semibold text-emerald-700">
+                  Already planned
+                </span>
+              ) : (
+                <button
+                  className="mt-3 rounded-lg bg-[#1e3a5f] px-3 py-2 text-xs font-semibold text-white hover:bg-[#2a4a6f]"
+                  onClick={() => onCreateFromRecommendation(event)}
+                  type="button"
+                >
+                  Create Event
+                </button>
+              )}
             </article>
           ))}
         </div>
@@ -584,9 +623,11 @@ export default function ActivitiesSections({
   onAddCatalogEvent,
   onDeleteCatalogEvent,
   onEditCatalogEvent,
+  onCreateFromRecommendation,
   onOpenPastFeedbackQr,
   onSelectDate,
   onScheduleEvent,
+  recommendations,
 }: ActivitiesSectionsProps) {
   return (
     <div className="flex-1 px-8 py-6">
@@ -602,7 +643,7 @@ export default function ActivitiesSections({
             onScheduleEvent={onScheduleEvent}
             selectedDate={selectedDate}
           />
-          <EventInsightsPanel events={events} />
+          <EventInsightsPanel events={events} recommendations={recommendations} />
         </div>
       </div>
 
@@ -613,7 +654,9 @@ export default function ActivitiesSections({
         onAddCatalogEvent={onAddCatalogEvent}
         onDeleteCatalogEvent={onDeleteCatalogEvent}
         onEditCatalogEvent={onEditCatalogEvent}
+        onCreateFromRecommendation={onCreateFromRecommendation}
         onOpenPastFeedbackQr={onOpenPastFeedbackQr}
+        recommendations={recommendations}
       />
     </div>
   );

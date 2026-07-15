@@ -51,7 +51,7 @@ export default function Events() {
     setRegisteringEventId(eventId);
     setErrorMessage(null);
 
-    const { error } = await registerYouthEvent(eventId, user.id);
+    const { error } = await registerYouthEvent(eventId);
 
     setRegisteringEventId(null);
 

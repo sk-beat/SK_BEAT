@@ -1,13 +1,11 @@
+import { useEffect, useState } from "react";
 import {
-  categories,
   iconToneClasses,
-  insights,
   insightToneClasses,
-  summaryCards,
-  upcomingEvents,
   type SummaryCard,
 } from "./dashboardData";
-import { ArrowRightIcon, TrendingIcon, UserRoundIcon } from "./icons";
+import { AlertIcon, ArrowRightIcon, BanknoteIcon, CalendarIcon, ClipboardIcon, DollarIcon, LineChartIcon, TrendingIcon, UserRoundIcon, UsersIcon } from "./icons";
+import { getDashboardData, type DashboardData } from "./DashboardService";
 
 function SummaryCardItem({ card }: { card: SummaryCard }) {
   const Icon = card.icon;
@@ -45,7 +43,11 @@ function SummaryCardItem({ card }: { card: SummaryCard }) {
   );
 }
 
-function PopulationCard() {
+function formatPeso(amount: number) {
+  return `P${amount.toLocaleString("en-PH")}`;
+}
+
+function PopulationCard({ data }: { data: DashboardData }) {
   return (
     <section className="flex h-full flex-col gap-5 rounded-[14px] border border-slate-200 bg-white p-6 shadow-sm">
       <div className="flex items-center justify-between gap-4">
@@ -79,20 +81,20 @@ function PopulationCard() {
           <div className="relative h-[200px] w-[200px] shrink-0 rounded-full bg-[conic-gradient(#1a529b_0_52%,#38b6ff_52%_100%)]">
             <div className="absolute inset-[24px] rounded-full bg-white" />
             <div className="absolute inset-0 flex items-center justify-center text-2xl font-bold text-slate-900">
-              15
+              {data.totalYouth}
             </div>
           </div>
 
           <div className="flex min-w-0 flex-1 flex-col gap-2 text-sm">
             <div className="grid grid-cols-[auto_1fr_auto] items-center gap-2">
               <span className="h-2.5 w-2.5 rounded-full bg-[#1a529b]" />
-              <span className="text-slate-800">Male</span>
-              <span className="text-slate-500">8</span>
+              <span className="text-slate-800">Approved Youth</span>
+              <span className="text-slate-500">{data.activeYouth}</span>
             </div>
             <div className="grid grid-cols-[auto_1fr_auto] items-center gap-2">
               <span className="h-2.5 w-2.5 rounded-full bg-[#38b6ff]" />
-              <span className="text-slate-800">Female</span>
-              <span className="text-slate-500">7</span>
+              <span className="text-slate-800">Pending or inactive</span>
+              <span className="text-slate-500">{data.totalYouth - data.activeYouth}</span>
             </div>
           </div>
         </div>
@@ -101,7 +103,9 @@ function PopulationCard() {
   );
 }
 
-function CategoryCard() {
+function CategoryCard({ data }: { data: DashboardData }) {
+  const maxValue = Math.max(...data.preferredActivityTypes.map((item) => item.respondent_count), 1);
+
   return (
     <section className="rounded-[14px] border border-[#1e3a5f]/20 bg-white p-6 shadow-sm">
       <div className="mb-4 flex items-center justify-between gap-4">
@@ -120,30 +124,57 @@ function CategoryCard() {
       </div>
 
       <div className="flex h-[180px] items-end gap-4 border-b border-slate-200 pt-6">
-        {categories.map((category) => (
+        {data.preferredActivityTypes.slice(0, 5).map((category) => (
           <div
             className="flex flex-1 flex-col items-center justify-end gap-2"
-            key={category.label}
+            key={category.activity_type}
           >
             <div
               className="w-full max-w-12 rounded-t-md bg-[#1e3a5f]"
-              style={{ height: `${category.value}%` }}
+              style={{ height: `${Math.max(8, (category.respondent_count / maxValue) * 100)}%` }}
             />
             <span className="text-[0.7rem] font-medium text-slate-500">
-              {category.label}
+              {category.activity_type}
             </span>
           </div>
         ))}
       </div>
       <p className="mt-3 text-xs text-slate-400">
-        Sports currently leads participant demand across submitted youth
-        responses.
+        Based on distinct Youth survey respondents.
       </p>
     </section>
   );
 }
 
-function InsightsPanel() {
+function InsightsPanel({ data }: { data: DashboardData }) {
+  const insights = [
+    data.preferredActivityTypes[0]
+      ? {
+          action: "Review Activity Plan",
+          description: `${data.preferredActivityTypes[0].respondent_count} of ${data.preferredActivityTypes[0].total_respondents} respondents selected ${data.preferredActivityTypes[0].activity_type}.`,
+          icon: LineChartIcon,
+          title: `${data.preferredActivityTypes[0].activity_type} is the leading preference`,
+          tone: "success" as const,
+        }
+      : null,
+    data.topSuggestedEvents[0]
+      ? {
+          action: "Open Activities",
+          description: `${data.topSuggestedEvents[0].suggested_event_name} is supported by ${data.topSuggestedEvents[0].respondent_count} distinct Youth respondent(s).`,
+          icon: AlertIcon,
+          title: "Top suggested event",
+          tone: "info" as const,
+        }
+      : null,
+    {
+      action: "Review Budget",
+      description: `${formatPeso(data.completedSpending)} completed spending from approved financial transactions. ${formatPeso(data.allocatedBudget)} remains planned or allocated in events.`,
+      icon: BanknoteIcon,
+      title: "Budget spending uses completed transactions",
+      tone: "warning" as const,
+    },
+  ].filter((insight) => insight !== null);
+
   return (
     <section className="mb-8 rounded-xl border border-slate-200 bg-white p-6 shadow-sm">
       <div className="mb-4 flex items-center justify-between gap-4">
@@ -152,7 +183,7 @@ function InsightsPanel() {
             Decision Support Insights
           </h2>
           <p className="mt-1 text-sm text-slate-500">
-            AI-powered recommendations based on your data
+            Survey-based and live operational signals
           </p>
         </div>
         <a
@@ -206,7 +237,7 @@ function InsightsPanel() {
   );
 }
 
-function UpcomingEvents() {
+function UpcomingEvents({ data }: { data: DashboardData }) {
   function ClockIcon({ className }: { className?: string }) {
     return (
       <svg
@@ -277,46 +308,117 @@ function UpcomingEvents() {
       </div>
 
       <div className="flex flex-col gap-4">
-        {upcomingEvents.map((event) => (
+        {data.recentEvents.map((event) => {
+          const eventDate = event.event_date ? new Date(event.event_date) : null;
+          return (
           <article
             className="flex overflow-hidden rounded-xl border border-slate-200 bg-white shadow-sm max-sm:flex-col"
-            key={`${event.month}-${event.day}-${event.title}`}
+            key={event.event_id}
           >
             <div className="flex w-24 min-w-24 flex-col items-center justify-center bg-[#1e3a5f] p-4 text-white max-sm:w-full max-sm:flex-row max-sm:gap-2">
               <span className="text-xs font-semibold uppercase tracking-wide">
-                {event.month}
+                {eventDate ? eventDate.toLocaleDateString("en", { month: "short" }) : "TBA"}
               </span>
               <span className="text-3xl font-bold leading-tight">
-                {event.day}
+                {eventDate ? eventDate.getDate() : "--"}
               </span>
             </div>
             <div className="flex-1 px-6 py-5">
               <h3 className="text-lg font-semibold text-slate-800">
-                {event.title}
+                {event.event_name}
               </h3>
               <div className="mt-3 flex flex-col gap-2 text-sm font-medium text-slate-400">
                 <span className="flex items-center gap-2">
                   <ClockIcon className="h-4 w-4" />
-                  {event.time}
+                  {event.event_time || "Time to be announced"}
                 </span>
                 <span className="flex items-center gap-2">
                   <MapPinIcon className="h-4 w-4" />
-                  {event.location}
+                  {event.location || "Location to be announced"}
                 </span>
                 <span className="flex items-center gap-2">
                   <UsersMiniIcon className="h-4 w-4" />
-                  Registered: {event.registered}
+                  Registered: {event.registered_count}
                 </span>
               </div>
             </div>
           </article>
-        ))}
+        )})}
+        {data.recentEvents.length === 0 ? (
+          <div className="rounded-xl border border-dashed border-slate-300 bg-white p-6 text-sm text-slate-500">
+            No scheduled or ongoing events yet.
+          </div>
+        ) : null}
       </div>
     </section>
   );
 }
 
 export default function DashboardSections() {
+  const [data, setData] = useState<DashboardData | null>(null);
+  const [isLoading, setIsLoading] = useState(true);
+  const [errorMessage, setErrorMessage] = useState<string | null>(null);
+
+  useEffect(() => {
+    let isMounted = true;
+
+    async function loadDashboard() {
+      setIsLoading(true);
+      const { data: dashboardData, error } = await getDashboardData();
+      if (!isMounted) return;
+      if (error) setErrorMessage(error.message);
+      setData(dashboardData);
+      setIsLoading(false);
+    }
+
+    loadDashboard();
+
+    return () => {
+      isMounted = false;
+    };
+  }, []);
+
+  if (isLoading) {
+    return <div className="flex-1 p-8 text-sm text-slate-500">Loading dashboard...</div>;
+  }
+
+  if (errorMessage || !data) {
+    return <div className="flex-1 p-8 text-sm text-amber-700">{errorMessage || "Unable to load dashboard."}</div>;
+  }
+
+  const summaryCards: SummaryCard[] = [
+    {
+      icon: UsersIcon,
+      note: `${data.activeYouth} approved`,
+      noteTone: "positive",
+      title: "Total Youth",
+      tone: "blue",
+      value: String(data.totalYouth),
+    },
+    {
+      icon: ClipboardIcon,
+      note: `${data.completedEventsCount} completed`,
+      noteTone: "positive",
+      title: "Active Programs",
+      tone: "green",
+      value: String(data.upcomingEventsCount + data.ongoingEventsCount),
+    },
+    {
+      icon: DollarIcon,
+      note: `${formatPeso(data.completedSpending)} spent`,
+      title: "Total Budget",
+      tone: "yellow",
+      value: formatPeso(data.totalBudget),
+    },
+    {
+      icon: CalendarIcon,
+      note: "Scheduled",
+      title: "Upcoming Events",
+      tone: "purple",
+      value: String(data.upcomingEventsCount),
+    },
+  ];
+
   return (
     <div className="flex-1 p-8">
       <section className="mb-8 grid grid-cols-4 gap-6 max-xl:grid-cols-2 max-md:grid-cols-1">
@@ -326,12 +428,12 @@ export default function DashboardSections() {
       </section>
 
       <section className="mb-6 grid grid-cols-2 gap-6 max-xl:grid-cols-1">
-        <PopulationCard />
-        <CategoryCard />
+        <PopulationCard data={data} />
+        <CategoryCard data={data} />
       </section>
 
-      <InsightsPanel />
-      <UpcomingEvents />
+      <InsightsPanel data={data} />
+      <UpcomingEvents data={data} />
     </div>
   );
 }

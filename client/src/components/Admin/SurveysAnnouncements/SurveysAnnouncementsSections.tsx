@@ -1,32 +1,35 @@
 import { useEffect, useState } from "react";
 import { Link } from "react-router-dom";
-import { announcements } from "./surveysAnnouncementsData";
+import {
+  deleteAnnouncement,
+  getAdminAnnouncements,
+  type Announcement,
+} from "./AnnouncementsService";
+import {
+  getAdminSurveyResponseDetails,
+  getPreferredActivityTypes,
+  getTopSuggestedEvents,
+  type AdminSurveyResponseDetail,
+  type PreferredActivityType,
+  type TopSuggestedEvent,
+} from "./SurveyInsightsService";
 import {
   getKabataanSuggestions,
-  getSurveyResponseReports,
   type KabataanSuggestion,
-  type SurveyResponseReport,
 } from "./SurveysAnnouncementsService";
 
 const activityTypeColors = ["#1a529b", "#38b6ff", "#ff9f68", "#22c55e"];
 
-function getActivityTypeBreakdown(rows: Array<{ type: string }>) {
-  const counts = rows.reduce<Record<string, number>>((acc, item) => {
-    acc[item.type] = (acc[item.type] ?? 0) + 1;
-    return acc;
-  }, {});
-
-  const total = rows.length || 1;
-
-  return Object.entries(counts).map(([label, value], index) => ({
+function getActivityTypeBreakdown(rows: PreferredActivityType[]) {
+  return rows.map((item, index) => ({
     color: activityTypeColors[index % activityTypeColors.length],
-    label,
-    percentage: Math.round((value / total) * 100),
-    value,
+    label: item.activity_type,
+    percentage: Math.round(item.respondent_percentage),
+    value: item.respondent_count,
   }));
 }
 
-function PreferredActivityPieChart({ rows }: { rows: Array<{ type: string }> }) {
+function PreferredActivityPieChart({ rows }: { rows: PreferredActivityType[] }) {
   const breakdown = getActivityTypeBreakdown(rows);
   const gradientStops = breakdown.map((item, index) => {
     const start = breakdown
@@ -188,9 +191,12 @@ export function KabataanSuggestionsSection() {
 }
 
 export function SurveyResponsesSection() {
-  const [responses, setResponses] = useState<SurveyResponseReport[]>([]);
+  const [responses, setResponses] = useState<AdminSurveyResponseDetail[]>([]);
+  const [preferredTypes, setPreferredTypes] = useState<PreferredActivityType[]>([]);
+  const [suggestedEvents, setSuggestedEvents] = useState<TopSuggestedEvent[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
+  const [search, setSearch] = useState("");
 
   useEffect(() => {
     let isMounted = true;
@@ -198,11 +204,18 @@ export function SurveyResponsesSection() {
     async function loadResponses() {
       setIsLoading(true);
       setErrorMessage(null);
-      const { data, error } = await getSurveyResponseReports();
+      const [responseResult, preferredResult, suggestedResult] = await Promise.all([
+        getAdminSurveyResponseDetails({ search }),
+        getPreferredActivityTypes(),
+        getTopSuggestedEvents(),
+      ]);
 
       if (!isMounted) return;
+      const error = responseResult.error || preferredResult.error || suggestedResult.error;
       if (error) setErrorMessage(error.message);
-      setResponses(data);
+      setResponses(responseResult.data);
+      setPreferredTypes(preferredResult.data);
+      setSuggestedEvents(suggestedResult.data);
       setIsLoading(false);
     }
 
@@ -211,22 +224,20 @@ export function SurveyResponsesSection() {
     return () => {
       isMounted = false;
     };
-  }, []);
+  }, [search]);
 
-  const activityRows = responses.flatMap((response) =>
-    response.survey_answers.map((answer) => {
-      const optionText = answer.survey_answer_options
-        .map((item) => item.survey_options?.option_text)
-        .filter(Boolean)
-        .join(", ");
-
-      return {
-        id: response.response_id,
-        date: formatDate(response.submitted_at),
-        type: answer.survey_questions?.question_text ?? response.surveys?.title ?? "Survey",
-        event: optionText || answer.answer_text || "-",
-      };
-    }),
+  const answerRows = responses.flatMap((response) =>
+    response.answers.map((answer, index) => ({
+      answer:
+        answer.selected_options.map((option) => option.option_text).join(", ") ||
+        answer.answer_text ||
+        "-",
+      date: formatDate(response.submitted_at),
+      id: `${response.response_id}-${index}`,
+      respondent: response.fullname,
+      survey: response.survey_title,
+      type: answer.question_text,
+    })),
   );
 
   return (
@@ -253,36 +264,60 @@ export function SurveyResponsesSection() {
             <h3 className="text-sm font-semibold uppercase tracking-[0.1em] text-slate-500">
               Preferred activity types
             </h3>
-            <PreferredActivityPieChart rows={activityRows} />
+            <PreferredActivityPieChart rows={preferredTypes} />
           </div>
           <div className="rounded-xl border border-slate-200 bg-slate-50 p-5">
             <h3 className="text-sm font-semibold uppercase tracking-[0.1em] text-slate-500">
               Top suggested events
             </h3>
-            <div className="mt-4 flex h-36 items-end gap-4 border-b border-slate-200">
-              {[80, 55, 42].map((height) => (
-                <div
-                  className="flex-1 rounded-t bg-[#1e3a5f]"
-                  style={{ height: `${height}%` }}
-                  key={height}
-                />
+            <div className="mt-4 space-y-3">
+              {suggestedEvents.slice(0, 5).map((event) => (
+                <div key={event.suggested_event_name}>
+                  <div className="flex items-center justify-between gap-3 text-sm">
+                    <span className="font-medium text-slate-700">
+                      {event.suggested_event_name}
+                    </span>
+                    <span className="text-slate-500">
+                      {event.respondent_count} ({event.respondent_support_percentage}%)
+                    </span>
+                  </div>
+                  <div className="mt-1 h-2 rounded-full bg-slate-200">
+                    <div
+                      className="h-2 rounded-full bg-[#1e3a5f]"
+                      style={{ width: `${Math.min(100, event.respondent_support_percentage)}%` }}
+                    />
+                  </div>
+                </div>
               ))}
+              {suggestedEvents.length === 0 ? (
+                <p className="text-sm text-slate-500">No suggested event data yet.</p>
+              ) : null}
             </div>
           </div>
+        </div>
+        <div className="mt-4">
+          <input
+            className="w-full rounded-lg border border-slate-200 bg-white px-4 py-2.5 text-sm outline-none focus:border-[#1e3a5f] focus:ring-2 focus:ring-[#1e3a5f]/15"
+            onChange={(event) => setSearch(event.target.value)}
+            placeholder="Search by Youth name or email"
+            value={search}
+          />
         </div>
         <div className="mt-4">
           {errorMessage ? (
             <div className="rounded-lg border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-800">{errorMessage}</div>
           ) : isLoading ? (
             <div className="rounded-[14px] border border-slate-200 bg-white p-6 text-sm text-slate-500 shadow-sm">Loading responses...</div>
-          ) : activityRows.length > 0 ? (
+          ) : answerRows.length > 0 ? (
             <DataTable
-              headers={["#", "Date", "Question", "Answer"]}
-              rows={activityRows.map((item, index) => [
+              headers={["#", "Date", "Respondent", "Survey", "Question", "Answer"]}
+              rows={answerRows.map((item, index) => [
                 index + 1,
                 item.date,
+                item.respondent,
+                item.survey,
                 item.type,
-                item.event,
+                item.answer,
               ])}
             />
           ) : (
@@ -296,9 +331,38 @@ export function SurveyResponsesSection() {
 
 export function AnnouncementsSection({
   onCreateAnnouncement,
+  onEditAnnouncement,
 }: {
   onCreateAnnouncement: () => void;
+  onEditAnnouncement: (announcement: Announcement) => void;
 }) {
+  const [announcements, setAnnouncements] = useState<Announcement[]>([]);
+  const [isLoading, setIsLoading] = useState(true);
+  const [errorMessage, setErrorMessage] = useState<string | null>(null);
+
+  async function loadAnnouncements() {
+    setIsLoading(true);
+    setErrorMessage(null);
+    const { data, error } = await getAdminAnnouncements();
+    if (error) setErrorMessage(error.message);
+    setAnnouncements(data);
+    setIsLoading(false);
+  }
+
+  async function handleDelete(announcementId: number) {
+    if (!window.confirm("Delete this announcement?")) return;
+    const { error } = await deleteAnnouncement(announcementId);
+    if (error) {
+      setErrorMessage(error.message);
+      return;
+    }
+    await loadAnnouncements();
+  }
+
+  useEffect(() => {
+    loadAnnouncements();
+  }, []);
+
   return (
     <div className="flex-1 p-8">
       <section className="rounded-xl border border-slate-200 bg-white p-6 shadow-sm">
@@ -320,20 +384,61 @@ export function AnnouncementsSection({
           </button>
         </div>
         <div className="mt-4 grid gap-4 md:grid-cols-2">
+          {errorMessage ? (
+            <div className="rounded-lg border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-800 md:col-span-2">
+              {errorMessage}
+            </div>
+          ) : null}
+          {isLoading ? (
+            <div className="rounded-xl border border-slate-200 bg-slate-50 p-5 text-sm text-slate-500 md:col-span-2">
+              Loading announcements...
+            </div>
+          ) : null}
+          {!isLoading && announcements.length === 0 ? (
+            <div className="rounded-xl border border-dashed border-slate-300 bg-slate-50 p-5 text-sm text-slate-500 md:col-span-2">
+              No announcements yet.
+            </div>
+          ) : null}
           {announcements.map((announcement) => (
             <article
               className="rounded-xl border border-slate-200 bg-slate-50 p-5"
-              key={announcement.title}
+              key={announcement.announcement_id}
             >
-              <p className="text-xs font-semibold text-slate-400">
-                {announcement.date}
-              </p>
+              <div className="flex items-center justify-between gap-3">
+                <p className="text-xs font-semibold text-slate-400">
+                  {formatDate(announcement.publish_at)}
+                </p>
+                <span className={[
+                  "rounded-full px-2.5 py-1 text-xs font-semibold",
+                  announcement.is_published
+                    ? "bg-emerald-50 text-emerald-700"
+                    : "bg-slate-200 text-slate-600",
+                ].join(" ")}>
+                  {announcement.is_published ? "Published" : "Draft"}
+                </span>
+              </div>
               <h3 className="mt-1 font-semibold text-slate-800">
                 {announcement.title}
               </h3>
               <p className="mt-2 text-sm text-slate-500">
-                {announcement.body}
+                {announcement.content}
               </p>
+              <div className="mt-4 flex flex-wrap gap-2">
+                <button
+                  className="rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm text-slate-800 hover:bg-slate-50"
+                  onClick={() => onEditAnnouncement(announcement)}
+                  type="button"
+                >
+                  Edit
+                </button>
+                <button
+                  className="rounded-lg border border-red-200 bg-white px-3 py-2 text-sm text-red-600 hover:bg-red-50"
+                  onClick={() => handleDelete(announcement.announcement_id)}
+                  type="button"
+                >
+                  Delete
+                </button>
+              </div>
             </article>
           ))}
         </div>

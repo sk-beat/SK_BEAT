@@ -92,9 +92,9 @@ function UtilizationSummaryCard({ summary }: UtilizationSummaryCardProps) {
       />
 
       <Insight
-        body={`${formatPeso(summary?.total_approved_amount ?? 0)} approved but not counted as spent; ${formatPeso(summary?.total_pending_amount ?? 0)} is still pending.`}
+        body={`${formatPeso(summary?.total_pending_amount ?? 0)} is still pending and not counted as used.`}
         icon={Clock3}
-        title="Approved and pending records are separate."
+        title="Pending records are separate."
         tone="amber"
       />
     </section>

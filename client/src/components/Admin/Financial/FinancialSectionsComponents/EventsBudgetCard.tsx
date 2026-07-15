@@ -97,7 +97,6 @@ export default function EventsBudgetsCard({
                 </p>
 
                 <p className="mt-1 text-xs text-slate-400">
-                  Approved not spent: {formatPeso(event.approved_amount)} |
                   Pending: {formatPeso(event.pending_amount)}
                 </p>
 

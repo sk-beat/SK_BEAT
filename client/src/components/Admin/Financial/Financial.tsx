@@ -29,6 +29,8 @@ export default function Financial() {
   const [modalMode, setModalMode] = useState<FinancialModalMode>(null);
   const [selectedEvent, setSelectedEvent] =
     useState<FinancialEventBudget | null>(null);
+  const [selectedTransaction, setSelectedTransaction] =
+    useState<FinancialTransaction | null>(null);
   const [successMessage, setSuccessMessage] = useState("");
   const [summary, setSummary] = useState<FinancialSummary | null>(null);
   const [transactions, setTransactions] = useState<FinancialTransaction[]>([]);
@@ -116,6 +118,7 @@ export default function Financial() {
   function closeModal() {
     setModalMode(null);
     setSelectedEvent(null);
+    setSelectedTransaction(null);
   }
 
   async function handleCreateAnnualBudget(amount: number) {
@@ -189,9 +192,14 @@ export default function Financial() {
             setSelectedEvent(event);
             setModalMode("event-expense");
           }}
+          onOpenStatusEditor={(transaction) => {
+            setSelectedTransaction(transaction);
+            setModalMode("edit-status");
+          }}
           selectedBudget={selectedBudget}
           successMessage={successMessage}
           summary={summary}
+          transactions={transactions}
         />
       </main>
       <FinancialModals
@@ -204,6 +212,7 @@ export default function Financial() {
         onCreateAnnualBudget={handleCreateAnnualBudget}
         onSaveTransaction={handleSaveTransaction}
         selectedEvent={selectedEvent}
+        selectedTransaction={selectedTransaction}
         transactions={transactions}
       />
     </div>

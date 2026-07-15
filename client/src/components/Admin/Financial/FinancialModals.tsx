@@ -9,9 +9,16 @@ import {
   type FinancialTransactionStatus,
 } from "./FinancialService";
 
+const financialStatuses: FinancialTransactionStatus[] = [
+  "pending",
+  "completed",
+  "rejected",
+];
+
 export type FinancialModalMode =
   | "add-expense"
   | "annual-budget"
+  | "edit-status"
   | "event-expense"
   | null;
 
@@ -25,6 +32,7 @@ type FinancialModalsProps = {
   onCreateAnnualBudget: (amount: number) => Promise<void>;
   onSaveTransaction: (payload: FinancialTransactionPayload) => Promise<void>;
   selectedEvent: FinancialEventBudget | null;
+  selectedTransaction: FinancialTransaction | null;
   transactions: FinancialTransaction[];
 };
 
@@ -79,6 +87,7 @@ export default function FinancialModals({
   onCreateAnnualBudget,
   onSaveTransaction,
   selectedEvent,
+  selectedTransaction,
   transactions,
 }: FinancialModalsProps) {
   const [amount, setAmount] = useState("");
@@ -123,6 +132,19 @@ export default function FinancialModals({
 
     return () => window.clearTimeout(timeout);
   }, [mode, selectedEvent]);
+
+  useEffect(() => {
+    if (mode !== "edit-status") {
+      return;
+    }
+
+    const timeout = window.setTimeout(() => {
+      setFormError("");
+      setStatus(selectedTransaction?.status ?? "pending");
+    }, 0);
+
+    return () => window.clearTimeout(timeout);
+  }, [mode, selectedTransaction]);
 
   async function saveExpense() {
     const numericAmount = Number(amount);
@@ -177,8 +199,98 @@ export default function FinancialModals({
     });
   }
 
+  async function saveStatus() {
+    if (!selectedTransaction) {
+      setFormError("Select an expense first.");
+      return;
+    }
+
+    await onSaveTransaction({
+      amount: selectedTransaction.amount,
+      budget_year_id: selectedTransaction.budget_year_id,
+      category: selectedTransaction.category,
+      description: selectedTransaction.description,
+      event_id: selectedTransaction.event_id,
+      payment_method: selectedTransaction.payment_method,
+      receipt_path: selectedTransaction.receipt_path,
+      reference_number: selectedTransaction.reference_number,
+      status,
+      transaction_date: selectedTransaction.transaction_date,
+      transaction_id: selectedTransaction.transaction_id,
+      transaction_type: selectedTransaction.transaction_type,
+    });
+  }
+
   return (
     <>
+      <AdminModal
+        footer={
+          <>
+            <button
+              className="rounded-lg border border-slate-200 px-4 py-2 text-sm font-medium text-slate-700 hover:bg-slate-50"
+              disabled={isSaving}
+              onClick={onClose}
+              type="button"
+            >
+              Cancel
+            </button>
+            <button
+              className="rounded-lg bg-[#1e3a5f] px-4 py-2 text-sm font-medium text-white hover:bg-[#2a4a6f] disabled:cursor-not-allowed disabled:opacity-60"
+              disabled={isSaving}
+              onClick={saveStatus}
+              type="button"
+            >
+              {isSaving ? "Saving..." : "Save Status"}
+            </button>
+          </>
+        }
+        maxWidthClass="max-w-md"
+        onClose={onClose}
+        open={mode === "edit-status"}
+        title="Edit Expense Status"
+      >
+        <div className="grid gap-4">
+          {formError ? (
+            <p className="text-sm font-medium text-red-600">{formError}</p>
+          ) : null}
+          <div className="rounded-xl bg-slate-50 p-4">
+            <p className="text-sm font-semibold text-slate-800">
+              {selectedTransaction?.description ??
+                selectedTransaction?.category ??
+                "Expense"}
+            </p>
+            <p className="mt-1 text-xs font-medium text-slate-400">
+              {selectedTransaction
+                ? formatPeso(selectedTransaction.amount)
+                : formatPeso(0)}
+            </p>
+          </div>
+          <label className="block">
+            <span className="mb-1.5 block text-sm font-medium text-slate-700">
+              Status
+            </span>
+            <select
+              className={inputClass}
+              onChange={(event) =>
+                setStatus(event.target.value as FinancialTransactionStatus)
+              }
+              value={status}
+            >
+              {financialStatuses.map(
+                (statusOption) => (
+                  <option key={statusOption} value={statusOption}>
+                    {labelize(statusOption)}
+                  </option>
+                ),
+              )}
+            </select>
+          </label>
+          <p className="text-sm font-medium text-slate-400">
+            Only completed expenses reduce the remaining budget.
+          </p>
+        </div>
+      </AdminModal>
+
       <AdminModal
         footer={
           <>
@@ -293,7 +405,7 @@ export default function FinancialModals({
               }
               value={status}
             >
-              {["pending", "approved", "completed", "cancelled", "rejected"].map(
+              {financialStatuses.map(
                 (statusOption) => (
                   <option key={statusOption} value={statusOption}>
                     {labelize(statusOption)}
@@ -482,7 +594,7 @@ export default function FinancialModals({
                 }
                 value={status}
               >
-                {["pending", "approved", "completed", "cancelled", "rejected"].map(
+                {financialStatuses.map(
                   (statusOption) => (
                     <option key={statusOption} value={statusOption}>
                       {labelize(statusOption)}

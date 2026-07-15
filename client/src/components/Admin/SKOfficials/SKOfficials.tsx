@@ -1,45 +1,40 @@
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useState } from "react";
 import { useAuth } from "../../../auth/useAuth";
 import Sidebar from "../../Sidebar/Sidebar";
 import AdminModal from "../shared/AdminModal";
 import {
   buildOfficialPhotoPath,
-  createSKOfficial,
   deleteOfficialPhoto,
   deleteSKOfficial,
   getAdminSKOfficials,
   getPhotoPublicUrl,
   isOfficialPhotoPath,
-  updateSKOfficial,
+  saveSKOfficial,
+  SK_OFFICIAL_POSITIONS,
   uploadOfficialPhoto,
   validateOfficialPhoto,
   type SKOfficial,
   type SKOfficialPayload,
+  type SKOfficialPosition,
 } from "./SKOfficialsService";
 
-type ModalMode = "view" | "edit" | "create" | null;
+type ModalMode = "edit" | "create" | null;
 
 type OfficialFormState = {
-  full_name: string;
-  position: string;
-  committee: string;
   biography: string;
-  display_order: string;
-  is_active: boolean;
-  term_start: string;
+  full_name: string;
+  position: SKOfficialPosition | "";
   term_end: string;
+  term_start: string;
 };
 
 const inputClass =
   "w-full rounded-lg border border-slate-200 bg-white px-3 py-2.5 text-sm text-slate-800 outline-none focus:border-[#1e3a5f] focus:ring-2 focus:ring-[#1e3a5f]/15";
 
-function emptyForm(nextOrder: number): OfficialFormState {
+function emptyForm(): OfficialFormState {
   return {
     biography: "",
-    committee: "",
-    display_order: String(nextOrder),
     full_name: "",
-    is_active: true,
     position: "",
     term_end: "",
     term_start: "",
@@ -49,10 +44,7 @@ function emptyForm(nextOrder: number): OfficialFormState {
 function officialToForm(official: SKOfficial): OfficialFormState {
   return {
     biography: official.biography ?? "",
-    committee: official.committee ?? "",
-    display_order: String(official.display_order),
     full_name: official.full_name,
-    is_active: official.is_active,
     position: official.position,
     term_end: official.term_end ?? "",
     term_start: official.term_start ?? "",
@@ -91,7 +83,7 @@ function PhotoAvatar({ official }: { official: SKOfficial }) {
 
   return (
     <div className="flex h-12 w-12 items-center justify-center rounded-full bg-[#1e3a5f] text-sm font-bold text-white">
-      {getInitials(official.full_name) || official.display_order + 1}
+      {getInitials(official.full_name) || "SK"}
     </div>
   );
 }
@@ -176,7 +168,7 @@ function OfficialFormModal({
           </button>
         </>
       }
-      maxWidthClass="max-w-4xl"
+      maxWidthClass="max-w-3xl"
       onClose={onClose}
       open
       title={mode === "create" ? "Add SK Official" : "Edit SK Official"}
@@ -194,24 +186,25 @@ function OfficialFormModal({
           placeholder="Juan Dela Cruz"
           value={form.full_name}
         />
-        <Field
-          label="Position *"
-          onChange={(value) => onChange("position", value)}
-          placeholder="SK Chairperson"
-          value={form.position}
-        />
-        <Field
-          label="Committee or Responsibility"
-          onChange={(value) => onChange("committee", value)}
-          placeholder="Education Committee"
-          value={form.committee}
-        />
-        <Field
-          label="Display Order *"
-          onChange={(value) => onChange("display_order", value)}
-          type="number"
-          value={form.display_order}
-        />
+        <label className="block">
+          <span className="mb-1.5 block text-sm font-medium text-slate-700">
+            Position *
+          </span>
+          <select
+            className={inputClass}
+            onChange={(event) =>
+              onChange("position", event.target.value as SKOfficialPosition)
+            }
+            value={form.position}
+          >
+            <option value="">Select position</option>
+            {SK_OFFICIAL_POSITIONS.map((position) => (
+              <option key={position} value={position}>
+                {position}
+              </option>
+            ))}
+          </select>
+        </label>
         <Field
           label="Term Start"
           onChange={(value) => onChange("term_start", value)}
@@ -237,19 +230,7 @@ function OfficialFormModal({
           />
         </label>
 
-        <label className="flex items-center gap-3 rounded-lg border border-slate-200 bg-slate-50 px-3 py-3">
-          <input
-            checked={form.is_active}
-            className="h-4 w-4 accent-[#1e3a5f]"
-            onChange={(event) => onChange("is_active", event.target.checked)}
-            type="checkbox"
-          />
-          <span className="text-sm font-medium text-slate-700">
-            Show on homepage
-          </span>
-        </label>
-
-        <label className="block">
+        <label className="block md:col-span-2">
           <span className="mb-1.5 block text-sm font-medium text-slate-700">
             Photo
           </span>
@@ -278,58 +259,6 @@ function OfficialFormModal({
   );
 }
 
-function PreviewModal({
-  official,
-  onClose,
-}: {
-  official: SKOfficial;
-  onClose: () => void;
-}) {
-  const photoUrl = getPhotoPublicUrl(official.photo_path);
-
-  return (
-    <AdminModal
-      footer={
-        <button
-          className="rounded-lg bg-[#1e3a5f] px-4 py-2 text-sm font-medium text-white hover:bg-[#2a4a6f]"
-          onClick={onClose}
-          type="button"
-        >
-          Done
-        </button>
-      }
-      maxWidthClass="max-w-md"
-      onClose={onClose}
-      open
-      title="Homepage Preview"
-    >
-      <article className="rounded-xl border border-slate-200 bg-white p-5 text-center shadow-sm">
-        {photoUrl ? (
-          <img
-            alt={official.full_name}
-            className="mx-auto h-24 w-24 rounded-full object-cover"
-            src={photoUrl}
-          />
-        ) : (
-          <div className="mx-auto flex h-24 w-24 items-center justify-center rounded-full bg-[#1e3a5f] text-2xl font-bold text-white">
-            {getInitials(official.full_name)}
-          </div>
-        )}
-        <h2 className="mt-4 font-bold text-slate-900">{official.full_name}</h2>
-        <p className="mt-1 text-sm font-medium text-[#1e3a5f]">
-          {official.position}
-        </p>
-        <p className="mt-1 text-sm text-slate-500">
-          {official.committee || "Barangay Galas Maasim"}
-        </p>
-        {official.biography ? (
-          <p className="mt-3 text-sm text-slate-500">{official.biography}</p>
-        ) : null}
-      </article>
-    </AdminModal>
-  );
-}
-
 export default function SKOfficials() {
   const { logout } = useAuth();
   const [officials, setOfficials] = useState<SKOfficial[]>([]);
@@ -337,23 +266,13 @@ export default function SKOfficials() {
     null,
   );
   const [modalMode, setModalMode] = useState<ModalMode>(null);
-  const [form, setForm] = useState<OfficialFormState>(emptyForm(0));
+  const [form, setForm] = useState<OfficialFormState>(emptyForm());
   const [photoFile, setPhotoFile] = useState<File | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [isSaving, setIsSaving] = useState(false);
   const [errorMessage, setErrorMessage] = useState("");
   const [formError, setFormError] = useState("");
   const [successMessage, setSuccessMessage] = useState("");
-
-  const activeCount = officials.filter((official) => official.is_active).length;
-  const hiddenCount = officials.length - activeCount;
-  const nextOrder = useMemo(
-    () =>
-      officials.length === 0
-        ? 0
-        : Math.max(...officials.map((official) => official.display_order)) + 1,
-    [officials],
-  );
 
   async function loadOfficials() {
     setIsLoading(true);
@@ -383,7 +302,7 @@ export default function SKOfficials() {
 
   function openCreateModal() {
     setSelectedOfficial(null);
-    setForm(emptyForm(nextOrder));
+    setForm(emptyForm());
     setPhotoFile(null);
     setFormError("");
     setModalMode("create");
@@ -405,20 +324,13 @@ export default function SKOfficials() {
   }
 
   function getPayload(photoPath: string | null): SKOfficialPayload | null {
-    const displayOrder = Number(form.display_order);
-
     if (form.full_name.trim() === "") {
       setFormError("Full name is required.");
       return null;
     }
 
-    if (form.position.trim() === "") {
+    if (!form.position) {
       setFormError("Position is required.");
-      return null;
-    }
-
-    if (!Number.isInteger(displayOrder) || displayOrder < 0) {
-      setFormError("Display order must be a nonnegative whole number.");
       return null;
     }
 
@@ -429,16 +341,30 @@ export default function SKOfficials() {
 
     return {
       biography: form.biography.trim() || null,
-      committee: form.committee.trim() || null,
-      display_order: displayOrder,
       full_name: form.full_name.trim(),
-      is_active: form.is_active,
-      official_id: selectedOfficial?.official_id,
+      official_id: selectedOfficial?.official_id ?? null,
       photo_path: photoPath,
-      position: form.position.trim(),
+      position: form.position,
       term_end: form.term_end || null,
       term_start: form.term_start || null,
     };
+  }
+
+  async function createPlaceholderOfficial(payload: SKOfficialPayload) {
+    const { data, error } = await saveSKOfficial({
+      ...payload,
+      photo_path: null,
+    });
+
+    if (error) {
+      throw error;
+    }
+
+    if (!data) {
+      throw new Error("Unable to save official.");
+    }
+
+    return data;
   }
 
   async function handleSave() {
@@ -454,32 +380,23 @@ export default function SKOfficials() {
       }
     }
 
+    const initialPayload = getPayload(selectedOfficial?.photo_path ?? null);
+
+    if (!initialPayload) {
+      return;
+    }
+
     setIsSaving(true);
 
     try {
-      const isEditing = Boolean(selectedOfficial);
-      let officialId = selectedOfficial?.official_id;
+      let officialId = selectedOfficial?.official_id ?? null;
       let nextPhotoPath = selectedOfficial?.photo_path ?? null;
       let uploadedPhotoPath: string | null = null;
-
-      if (!isEditing) {
-        const initialPayload = getPayload(null);
-
-        if (!initialPayload) {
-          return;
-        }
-
-        const { data, error } = await createSKOfficial(initialPayload);
-
-        if (error) {
-          throw error;
-        }
-
-        officialId = data?.official_id;
-      }
+      let savedOfficial: SKOfficial | null = null;
 
       if (!officialId) {
-        throw new Error("Unable to identify the saved official.");
+        savedOfficial = await createPlaceholderOfficial(initialPayload);
+        officialId = savedOfficial.official_id;
       }
 
       if (photoFile) {
@@ -505,7 +422,7 @@ export default function SKOfficials() {
         return;
       }
 
-      const { error } = await updateSKOfficial({
+      const { error } = await saveSKOfficial({
         ...finalPayload,
         official_id: officialId,
       });
@@ -525,7 +442,7 @@ export default function SKOfficials() {
         await deleteOfficialPhoto(oldPhotoPath);
       }
 
-      setSuccessMessage(isEditing ? "Official updated." : "Official created.");
+      setSuccessMessage(selectedOfficial ? "Official updated." : "Official created.");
       closeModal();
       await loadOfficials();
     } catch (error) {
@@ -561,60 +478,6 @@ export default function SKOfficials() {
     await loadOfficials();
   }
 
-  async function handleToggleActive(official: SKOfficial) {
-    setErrorMessage("");
-
-    const { error } = await updateSKOfficial({
-      ...official,
-      is_active: !official.is_active,
-    });
-
-    if (error) {
-      setErrorMessage(error.message);
-      return;
-    }
-
-    setSuccessMessage(official.is_active ? "Official hidden." : "Official shown.");
-    await loadOfficials();
-  }
-
-  async function handleMove(official: SKOfficial, direction: "up" | "down") {
-    const currentIndex = officials.findIndex(
-      (item) => item.official_id === official.official_id,
-    );
-    const swapIndex = direction === "up" ? currentIndex - 1 : currentIndex + 1;
-    const swapOfficial = officials[swapIndex];
-
-    if (!swapOfficial) {
-      return;
-    }
-
-    setErrorMessage("");
-
-    const first = await updateSKOfficial({
-      ...official,
-      display_order: swapOfficial.display_order,
-    });
-
-    if (first.error) {
-      setErrorMessage(first.error.message);
-      return;
-    }
-
-    const second = await updateSKOfficial({
-      ...swapOfficial,
-      display_order: official.display_order,
-    });
-
-    if (second.error) {
-      setErrorMessage(second.error.message);
-      return;
-    }
-
-    setSuccessMessage("Display order updated.");
-    await loadOfficials();
-  }
-
   return (
     <div className="flex min-h-screen bg-slate-100 font-sans text-slate-900">
       <Sidebar onLogout={logout} />
@@ -643,29 +506,8 @@ export default function SKOfficials() {
         </header>
 
         <section className="mx-auto w-full max-w-7xl flex-1 px-6 py-6">
-          <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
-            <article className="rounded-xl border border-slate-200 bg-white p-5 shadow-sm">
-              <p className="text-sm font-semibold text-slate-400">Total</p>
-              <p className="mt-1 text-3xl font-bold text-[#1e3a5f]">
-                {officials.length}
-              </p>
-            </article>
-            <article className="rounded-xl border border-slate-200 bg-white p-5 shadow-sm">
-              <p className="text-sm font-semibold text-slate-400">Active</p>
-              <p className="mt-1 text-3xl font-bold text-emerald-600">
-                {activeCount}
-              </p>
-            </article>
-            <article className="rounded-xl border border-slate-200 bg-white p-5 shadow-sm">
-              <p className="text-sm font-semibold text-slate-400">Hidden</p>
-              <p className="mt-1 text-3xl font-bold text-slate-500">
-                {hiddenCount}
-              </p>
-            </article>
-          </div>
-
           {successMessage ? (
-            <p className="mt-5 rounded-lg border border-emerald-200 bg-emerald-50 px-4 py-3 text-sm font-medium text-emerald-700">
+            <p className="rounded-lg border border-emerald-200 bg-emerald-50 px-4 py-3 text-sm font-medium text-emerald-700">
               {successMessage}
             </p>
           ) : null}
@@ -691,19 +533,17 @@ export default function SKOfficials() {
 
             {!isLoading && officials.length > 0 ? (
               <div className="overflow-x-auto">
-                <table className="w-full min-w-[980px] text-left text-sm">
+                <table className="w-full min-w-[820px] text-left text-sm">
                   <thead className="bg-slate-50 text-xs font-bold uppercase tracking-[0.08em] text-slate-500">
                     <tr>
                       <th className="px-4 py-3">Official</th>
-                      <th className="px-4 py-3">Committee</th>
                       <th className="px-4 py-3">Term</th>
-                      <th className="px-4 py-3">Status</th>
-                      <th className="px-4 py-3">Order</th>
+                      <th className="px-4 py-3">Biography</th>
                       <th className="px-4 py-3 text-right">Actions</th>
                     </tr>
                   </thead>
                   <tbody className="divide-y divide-slate-100">
-                    {officials.map((official, index) => (
+                    {officials.map((official) => (
                       <tr key={official.official_id}>
                         <td className="px-4 py-4">
                           <div className="flex items-center gap-3">
@@ -719,67 +559,21 @@ export default function SKOfficials() {
                           </div>
                         </td>
                         <td className="px-4 py-4 text-slate-600">
-                          {official.committee || "Not set"}
-                        </td>
-                        <td className="px-4 py-4 text-slate-600">
                           {formatTerm(official)}
                         </td>
-                        <td className="px-4 py-4">
-                          <span
-                            className={[
-                              "inline-flex rounded-full px-2.5 py-1 text-xs font-semibold",
-                              official.is_active
-                                ? "bg-emerald-50 text-emerald-700"
-                                : "bg-slate-100 text-slate-600",
-                            ].join(" ")}
-                          >
-                            {official.is_active ? "Active" : "Hidden"}
+                        <td className="max-w-md px-4 py-4 text-slate-600">
+                          <span className="line-clamp-2">
+                            {official.biography || "Not set"}
                           </span>
-                        </td>
-                        <td className="px-4 py-4 text-slate-600">
-                          {official.display_order}
                         </td>
                         <td className="px-4 py-4">
                           <div className="flex flex-wrap justify-end gap-2">
-                            <button
-                              className="rounded-lg border border-slate-200 px-3 py-1.5 text-xs font-semibold text-slate-600 hover:bg-slate-50 disabled:opacity-40"
-                              disabled={index === 0}
-                              onClick={() => handleMove(official, "up")}
-                              type="button"
-                            >
-                              Up
-                            </button>
-                            <button
-                              className="rounded-lg border border-slate-200 px-3 py-1.5 text-xs font-semibold text-slate-600 hover:bg-slate-50 disabled:opacity-40"
-                              disabled={index === officials.length - 1}
-                              onClick={() => handleMove(official, "down")}
-                              type="button"
-                            >
-                              Down
-                            </button>
-                            <button
-                              className="rounded-lg border border-slate-200 px-3 py-1.5 text-xs font-semibold text-slate-600 hover:bg-slate-50"
-                              onClick={() => {
-                                setSelectedOfficial(official);
-                                setModalMode("view");
-                              }}
-                              type="button"
-                            >
-                              Preview
-                            </button>
                             <button
                               className="rounded-lg border border-slate-200 px-3 py-1.5 text-xs font-semibold text-slate-600 hover:bg-slate-50"
                               onClick={() => openEditModal(official)}
                               type="button"
                             >
                               Edit
-                            </button>
-                            <button
-                              className="rounded-lg border border-slate-200 px-3 py-1.5 text-xs font-semibold text-slate-600 hover:bg-slate-50"
-                              onClick={() => handleToggleActive(official)}
-                              type="button"
-                            >
-                              {official.is_active ? "Hide" : "Activate"}
                             </button>
                             <button
                               className="rounded-lg border border-red-200 px-3 py-1.5 text-xs font-semibold text-red-600 hover:bg-red-50"
@@ -813,10 +607,6 @@ export default function SKOfficials() {
           photoFile={photoFile}
           selectedOfficial={selectedOfficial}
         />
-      ) : null}
-
-      {modalMode === "view" && selectedOfficial ? (
-        <PreviewModal official={selectedOfficial} onClose={closeModal} />
       ) : null}
     </div>
   );

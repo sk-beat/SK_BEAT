@@ -1,8 +1,29 @@
+import { useEffect, useState } from "react";
 import { Link } from "react-router-dom";
 import skLogo from "../assets/sklogo.png";
+import { getPublicSKOfficials } from "../components/Admin/SKOfficials/SKOfficialsService";
 import { youthEvents, youthImages } from "../utils/adminPortalData";
 
 export default function LandingPage() {
+  const [officialsCount, setOfficialsCount] = useState(0);
+
+  useEffect(() => {
+    let isMounted = true;
+
+    async function loadOfficialsCount() {
+      const { data } = await getPublicSKOfficials();
+      if (isMounted) {
+        setOfficialsCount(data.length);
+      }
+    }
+
+    loadOfficialsCount();
+
+    return () => {
+      isMounted = false;
+    };
+  }, []);
+
   return (
     <main>
       <section
@@ -46,7 +67,7 @@ export default function LandingPage() {
             <div className="mt-10 grid max-w-xl grid-cols-3 overflow-hidden rounded-2xl border border-white/15 bg-white/10 backdrop-blur">
               {[
                 ["3", "Programs"],
-                ["8", "SK Officials"],
+                [String(officialsCount), "SK Officials"],
                 ["24/7", "Updates"],
               ].map(([value, label]) => (
                 <div className="border-r border-white/15 p-4 last:border-r-0" key={label}>

@@ -85,7 +85,7 @@ export default function AdminOfficialsPage() {
                   />
                 ) : (
                   <div className="mx-auto flex h-24 w-24 items-center justify-center rounded-full bg-[#1e3a5f] text-2xl font-bold text-white">
-                    {getInitials(official.full_name) || official.display_order + 1}
+                    {getInitials(official.full_name) || "SK"}
                   </div>
                 )}
                 <h2 className="mt-4 font-bold text-slate-900">
@@ -94,9 +94,16 @@ export default function AdminOfficialsPage() {
                 <p className="mt-1 text-sm font-medium text-[#1e3a5f]">
                   {official.position}
                 </p>
-                <p className="mt-1 text-sm text-slate-500">
-                  {official.committee || "Barangay Galas Maasim"}
-                </p>
+                {official.biography ? (
+                  <p className="mt-3 text-sm leading-6 text-slate-500">
+                    {official.biography}
+                  </p>
+                ) : null}
+                {(official.term_start || official.term_end) ? (
+                  <p className="mt-3 text-xs font-medium text-slate-400">
+                    {official.term_start ?? "Start not set"} - {official.term_end ?? "Present"}
+                  </p>
+                ) : null}
               </article>
             );
           })}

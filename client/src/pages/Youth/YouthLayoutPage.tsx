@@ -1,9 +1,12 @@
-import { Link, NavLink, Outlet } from "react-router-dom";
+import { Bell, Megaphone, User } from "lucide-react";
+import { Link, NavLink, Outlet, useNavigate } from "react-router-dom";
 import skLogo from "../../assets/sklogo.png";
 import BottomNav from "../../components/Youth/shared/BottomNav";
 import { youthAppNavItems } from "../../components/Youth/shared/youthNavigation";
 
 export default function YouthLayoutPage() {
+  const navigate = useNavigate();
+
   return (
     <div className="min-h-screen bg-slate-50 text-slate-900">
       <header className="sticky top-0 z-40 border-b border-white/20 bg-[#0b1f3b]/95 text-white backdrop-blur">
@@ -32,6 +35,34 @@ export default function YouthLayoutPage() {
               </NavLink>
             ))}
           </nav>
+          <div className="flex items-center gap-2">
+            <button
+              aria-label="Notifications"
+              className="flex h-10 w-10 items-center justify-center rounded-full text-white/80 transition hover:bg-white/10 hover:text-white"
+              title="Notifications"
+              type="button"
+            >
+              <Bell className="h-5 w-5" />
+            </button>
+            <button
+              aria-label="Announcements"
+              className="flex h-10 w-10 items-center justify-center rounded-full text-white/80 transition hover:bg-white/10 hover:text-white"
+              onClick={() => navigate("/youth/announcements")}
+              title="Announcements"
+              type="button"
+            >
+              <Megaphone className="h-5 w-5" />
+            </button>
+            <button
+              aria-label="Profile"
+              className="flex h-10 w-10 items-center justify-center rounded-full bg-white/10 text-white transition hover:bg-white/15"
+              onClick={() => navigate("/youth/profile")}
+              title="Profile"
+              type="button"
+            >
+              <User className="h-5 w-5" />
+            </button>
+          </div>
         </div>
       </header>
 

@@ -12,6 +12,7 @@ import {
   MapPin,
   User,
 } from "lucide-react";
+import AdminModal from "../../Admin/shared/AdminModal";
 import type { YouthProfileRecord } from "./ProfileService";
 
 export type ChangePasswordFormValues = {
@@ -127,6 +128,7 @@ export default function ProfileSections({
     new: false,
     confirm: false,
   });
+  const [isPasswordModalOpen, setIsPasswordModalOpen] = useState(false);
   const fullName = profile?.fullname ?? "Youth Member";
   const profileDetails = [
     {
@@ -179,7 +181,24 @@ export default function ProfileSections({
         new: false,
         confirm: false,
       });
+      setIsPasswordModalOpen(false);
     }
+  }
+
+  function closePasswordModal() {
+    if (isChangingPassword) {
+      return;
+    }
+
+    setCurrentPassword("");
+    setNewPassword("");
+    setConfirmPassword("");
+    setVisibleFields({
+      current: false,
+      new: false,
+      confirm: false,
+    });
+    setIsPasswordModalOpen(false);
   }
 
   if (isLoading) {
@@ -334,19 +353,60 @@ export default function ProfileSections({
           </div>
         </div>
 
-        {changePasswordError ? (
-          <div className="mb-4 rounded-lg border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700">
-            {changePasswordError}
-          </div>
-        ) : null}
-
         {changePasswordSuccess ? (
           <div className="mb-4 rounded-lg border border-emerald-200 bg-emerald-50 px-4 py-3 text-sm text-emerald-700">
             {changePasswordSuccess}
           </div>
         ) : null}
 
-        <form className="grid gap-4" onSubmit={handlePasswordSubmit}>
+        <button
+          className="inline-flex items-center justify-center gap-2 rounded-lg bg-[#1e3a5f] px-4 py-3 text-sm font-medium text-white transition-colors hover:bg-[#173256]"
+          onClick={() => setIsPasswordModalOpen(true)}
+          type="button"
+        >
+          <Lock className="h-4 w-4" />
+          Change Password
+        </button>
+      </section>
+      </div>
+
+      <AdminModal
+        footer={
+          <>
+            <button
+              className="rounded-lg border border-slate-200 px-4 py-2 text-sm font-medium text-slate-700 hover:bg-slate-50 disabled:cursor-not-allowed disabled:opacity-60"
+              disabled={isChangingPassword}
+              onClick={closePasswordModal}
+              type="button"
+            >
+              Cancel
+            </button>
+            <button
+              className="inline-flex items-center justify-center gap-2 rounded-lg bg-[#1e3a5f] px-4 py-2 text-sm font-medium text-white transition-colors hover:bg-[#173256] disabled:cursor-not-allowed disabled:opacity-60"
+              disabled={isChangingPassword}
+              form="change-youth-password-form"
+              type="submit"
+            >
+              <Lock className="h-4 w-4" />
+              {isChangingPassword ? "Changing..." : "Change Password"}
+            </button>
+          </>
+        }
+        onClose={closePasswordModal}
+        open={isPasswordModalOpen}
+        title="Change Password"
+      >
+        {changePasswordError ? (
+          <div className="mb-4 rounded-lg border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700">
+            {changePasswordError}
+          </div>
+        ) : null}
+
+        <form
+          className="grid gap-4"
+          id="change-youth-password-form"
+          onSubmit={handlePasswordSubmit}
+        >
           <PasswordField
             disabled={isChangingPassword}
             isVisible={visibleFields.current}
@@ -388,17 +448,8 @@ export default function ProfileSections({
               value={confirmPassword}
             />
           </div>
-          <button
-            className="inline-flex w-full items-center justify-center gap-2 rounded-lg bg-[#1e3a5f] px-4 py-3 text-sm font-medium text-white transition-colors hover:bg-[#173256] disabled:cursor-not-allowed disabled:opacity-60 sm:w-auto"
-            disabled={isChangingPassword}
-            type="submit"
-          >
-            <Lock className="h-4 w-4" />
-            {isChangingPassword ? "Updating..." : "Update Password"}
-          </button>
         </form>
-      </section>
-      </div>
+      </AdminModal>
     </div>
   );
 }

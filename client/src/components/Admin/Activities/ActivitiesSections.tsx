@@ -380,13 +380,15 @@ function EventInsightsPanel({
           <h3 className="text-sm font-semibold text-slate-800">
             {topRecommendation
               ? `${topRecommendation.suggested_event_name} has the strongest Youth support`
-              : "No survey recommendation data yet"}
+              : lowRegistrationEvent
+                ? `${lowRegistrationEvent.event_name} needs registration attention`
+                : "No decision-support data yet"}
           </h3>
           <p className="mt-1 text-xs leading-relaxed text-slate-500">
             {topRecommendation
-              ? `${topRecommendation.respondent_count} Youth respondent(s) supported this suggestion across ${topRecommendation.source_surveys.join(", ")}.`
+              ? `${topRecommendation.respondent_count} distinct Youth respondent(s) supported this suggestion${topRecommendation.source_surveys.length > 0 ? ` across ${topRecommendation.source_surveys.join(", ")}` : ""}.`
               : lowRegistrationEvent
-                ? `${lowRegistrationEvent.event_name} currently has ${lowRegistrationEvent.event_registrations?.length ?? 0} registration(s).`
+                ? `${lowRegistrationEvent.event_name} currently has ${lowRegistrationEvent.event_registrations?.length ?? 0} registration(s) out of ${lowRegistrationEvent.expected_attendees ?? 0} expected attendee(s).`
                 : "Publish surveys or collect event registrations to show decision-support insights."}
           </p>
           <span className="mt-2 inline-flex items-center gap-1 text-xs font-semibold text-[#1e3a5f]">
@@ -394,6 +396,69 @@ function EventInsightsPanel({
           </span>
         </div>
       </article>
+    </section>
+  );
+}
+
+function UpcomingEventsPanel({ events }: Pick<ActivitiesSectionsProps, "events">) {
+  const today = new Date().toISOString().slice(0, 10);
+  const upcomingEvents = events
+    .filter(
+      (event) =>
+        (event.status === "scheduled" || event.status === "ongoing") &&
+        (!event.event_date || event.event_date >= today),
+    )
+    .sort((first, second) => {
+      const firstDate = first.event_date ?? "9999-12-31";
+      const secondDate = second.event_date ?? "9999-12-31";
+      return firstDate.localeCompare(secondDate);
+    })
+    .slice(0, 4);
+
+  return (
+    <section className="rounded-xl border border-slate-200 bg-white p-5 shadow-sm">
+      <div className="mb-3">
+        <h2 className="text-base font-semibold text-slate-800">
+          Upcoming Events
+        </h2>
+        <p className="mt-1 text-xs text-slate-500">
+          Scheduled and ongoing activities from live event records
+        </p>
+      </div>
+      <div className="flex flex-col gap-3">
+        {upcomingEvents.length === 0 ? (
+          <div className="rounded-lg border border-dashed border-slate-300 bg-slate-50 p-4 text-sm text-slate-500">
+            No upcoming scheduled or ongoing events yet.
+          </div>
+        ) : null}
+        {upcomingEvents.map((event) => (
+          <article className="rounded-lg border border-slate-200 bg-slate-50 p-4" key={event.event_id}>
+            <div className="flex items-start justify-between gap-3">
+              <div>
+                <h3 className="text-sm font-semibold text-slate-800">
+                  {event.event_name}
+                </h3>
+                <p className="mt-1 text-xs text-slate-500">
+                  {event.category} - {event.event_date ?? "Date TBA"}
+                </p>
+              </div>
+              <StatusBadge status={event.status} />
+            </div>
+            <div className="mt-3 flex flex-col gap-1.5 text-xs text-slate-500">
+              <span className="flex items-center gap-2">
+                <ClockIcon className="h-3.5 w-3.5" /> {formatTime(event.event_time)}
+              </span>
+              <span className="flex items-center gap-2">
+                <MapPinIcon className="h-3.5 w-3.5" /> {event.location || "No location set"}
+              </span>
+              <span className="flex items-center gap-2">
+                <UsersIcon className="h-3.5 w-3.5" />{" "}
+                {event.event_registrations?.length ?? 0} registered / {event.expected_attendees ?? 0} expected
+              </span>
+            </div>
+          </article>
+        ))}
+      </div>
     </section>
   );
 }
@@ -644,6 +709,7 @@ export default function ActivitiesSections({
             selectedDate={selectedDate}
           />
           <EventInsightsPanel events={events} recommendations={recommendations} />
+          <UpcomingEventsPanel events={events} />
         </div>
       </div>
 

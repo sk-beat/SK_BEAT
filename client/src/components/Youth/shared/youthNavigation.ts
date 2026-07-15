@@ -1,4 +1,4 @@
-import { Bell, Calendar, ClipboardList, Home, MessageSquare, User } from "lucide-react";
+import { Calendar, ClipboardList, Home, MessageSquare, User } from "lucide-react";
 
 export const youthAppNavItems = [
   {
@@ -16,11 +16,6 @@ export const youthAppNavItems = [
     to: "/youth/events",
     label: "Events",
     icon: Calendar,
-  },
-  {
-    to: "/youth/announcements",
-    label: "Announcements",
-    icon: Bell,
   },
   {
     to: "/youth/feedback",

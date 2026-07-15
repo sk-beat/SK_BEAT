@@ -48,6 +48,22 @@ function formatPeso(amount: number) {
 }
 
 function PopulationCard({ data }: { data: DashboardData }) {
+  const [groupMode, setGroupMode] = useState<"gender" | "purok">("gender");
+  const groups = groupMode === "gender" ? data.genderGroups : data.purokGroups;
+  const colors = ["#1a529b", "#38b6ff", "#26ba9a", "#ff9f68", "#312e81", "#64748b"];
+  let runningPercentage = 0;
+  const conicStops =
+    groups.length > 0
+      ? groups
+          .map((group, index) => {
+            const percentage = data.totalYouth > 0 ? (group.count / data.totalYouth) * 100 : 0;
+            const start = runningPercentage;
+            runningPercentage += percentage;
+            return `${colors[index % colors.length]} ${start}% ${runningPercentage}%`;
+          })
+          .join(",")
+      : "#e2e8f0 0 100%";
+
   return (
     <section className="flex h-full flex-col gap-5 rounded-[14px] border border-slate-200 bg-white p-6 shadow-sm">
       <div className="flex items-center justify-between gap-4">
@@ -63,9 +79,11 @@ function PopulationCard({ data }: { data: DashboardData }) {
           <select
             className="rounded-md border border-slate-200 bg-white px-3 py-1.5 text-xs text-slate-700 outline-none"
             aria-label="Sort population overview"
+            onChange={(event) => setGroupMode(event.target.value as "gender" | "purok")}
+            value={groupMode}
           >
-            <option>By Gender</option>
-            <option>By Purok</option>
+            <option value="gender">By Gender</option>
+            <option value="purok">By Purok</option>
           </select>
           <div className="flex h-10 w-10 items-center justify-center rounded-full bg-[#1e3a5f]/6 text-[#1e3a5f]">
             <UserRoundIcon className="h-5 w-5" />
@@ -75,10 +93,13 @@ function PopulationCard({ data }: { data: DashboardData }) {
 
       <div className="flex flex-1 flex-col gap-3">
         <h3 className="text-[0.8rem] font-semibold text-slate-400">
-          By Gender
+          {groupMode === "gender" ? "By Gender" : "By Purok"}
         </h3>
         <div className="flex flex-wrap items-center gap-6">
-          <div className="relative h-[200px] w-[200px] shrink-0 rounded-full bg-[conic-gradient(#1a529b_0_52%,#38b6ff_52%_100%)]">
+          <div
+            className="relative h-[200px] w-[200px] shrink-0 rounded-full"
+            style={{ background: `conic-gradient(${conicStops})` }}
+          >
             <div className="absolute inset-[24px] rounded-full bg-white" />
             <div className="absolute inset-0 flex items-center justify-center text-2xl font-bold text-slate-900">
               {data.totalYouth}
@@ -86,16 +107,19 @@ function PopulationCard({ data }: { data: DashboardData }) {
           </div>
 
           <div className="flex min-w-0 flex-1 flex-col gap-2 text-sm">
-            <div className="grid grid-cols-[auto_1fr_auto] items-center gap-2">
-              <span className="h-2.5 w-2.5 rounded-full bg-[#1a529b]" />
-              <span className="text-slate-800">Approved Youth</span>
-              <span className="text-slate-500">{data.activeYouth}</span>
-            </div>
-            <div className="grid grid-cols-[auto_1fr_auto] items-center gap-2">
-              <span className="h-2.5 w-2.5 rounded-full bg-[#38b6ff]" />
-              <span className="text-slate-800">Pending or inactive</span>
-              <span className="text-slate-500">{data.totalYouth - data.activeYouth}</span>
-            </div>
+            {groups.length === 0 ? (
+              <p className="text-sm text-slate-500">No registered Youth profiles yet.</p>
+            ) : null}
+            {groups.map((group, index) => (
+              <div className="grid grid-cols-[auto_1fr_auto] items-center gap-2" key={group.label}>
+                <span
+                  className="h-2.5 w-2.5 rounded-full"
+                  style={{ backgroundColor: colors[index % colors.length] }}
+                />
+                <span className="text-slate-800">{group.label}</span>
+                <span className="text-slate-500">{group.count}</span>
+              </div>
+            ))}
           </div>
         </div>
       </div>
@@ -389,7 +413,7 @@ export default function DashboardSections() {
   const summaryCards: SummaryCard[] = [
     {
       icon: UsersIcon,
-      note: `${data.activeYouth} approved`,
+      note: `${data.genderGroups.length} gender group(s)`,
       noteTone: "positive",
       title: "Total Youth",
       tone: "blue",

@@ -1,4 +1,4 @@
-import { Bell, Megaphone, User } from "lucide-react";
+import { Megaphone, User } from "lucide-react";
 import { Link, NavLink, Outlet, useNavigate } from "react-router-dom";
 import skLogo from "../../assets/sklogo.png";
 import BottomNav from "../../components/Youth/shared/BottomNav";
@@ -36,14 +36,6 @@ export default function YouthLayoutPage() {
             ))}
           </nav>
           <div className="flex items-center gap-2">
-            <button
-              aria-label="Notifications"
-              className="flex h-10 w-10 items-center justify-center rounded-full text-white/80 transition hover:bg-white/10 hover:text-white"
-              title="Notifications"
-              type="button"
-            >
-              <Bell className="h-5 w-5" />
-            </button>
             <button
               aria-label="Announcements"
               className="flex h-10 w-10 items-center justify-center rounded-full text-white/80 transition hover:bg-white/10 hover:text-white"

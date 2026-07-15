@@ -51,7 +51,7 @@ export default function Activities() {
         getActivityDecisionData(),
       ]);
 
-    const loadError = error || decisionData.error;
+    const loadError = error;
 
     if (loadError) {
       setErrorMessage(loadError.message);
@@ -60,8 +60,11 @@ export default function Activities() {
     }
 
     setEvents(activityData);
-    setRecommendations(decisionData.data.topSuggestedEvents);
+    setRecommendations(decisionData.error ? [] : decisionData.data.topSuggestedEvents);
     setBudgetYearId(budgetData?.budget_year_id ?? null);
+    if (decisionData.error) {
+      setErrorMessage(decisionData.error.message);
+    }
     setIsLoading(false);
   }
 

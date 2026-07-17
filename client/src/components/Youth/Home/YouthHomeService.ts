@@ -1,6 +1,6 @@
 import { supabase } from "../../../utils/supabase";
 import { getVisibleAnnouncements, type Announcement } from "../../Admin/SurveysAnnouncements/AnnouncementsService";
-import { getYouthEventRegistrations, getYouthEvents, type YouthEvent } from "../Events/EventsService";
+import { getYouthEvents, type YouthEvent } from "../Events/EventsService";
 import { getYouthSurveys, type YouthSurvey } from "../Surveys/SurveysService";
 
 export type YouthHomeData = {
@@ -11,10 +11,9 @@ export type YouthHomeData = {
 };
 
 export async function getYouthHomeData(userId: string) {
-  const [announcements, events, registrations, surveys] = await Promise.all([
+  const [announcements, events, surveys] = await Promise.all([
     getVisibleAnnouncements(3),
     getYouthEvents(3),
-    getYouthEventRegistrations(userId),
     getYouthSurveys(userId),
   ]);
 
@@ -22,10 +21,10 @@ export async function getYouthHomeData(userId: string) {
     data: {
       announcements: announcements.data,
       events: events.data,
-      registeredEventIds: registrations.data,
+      registeredEventIds: new Set(events.data.filter((event) => event.is_registered).map((event) => event.event_id)),
       surveys: surveys.data.slice(0, 3),
     } as YouthHomeData,
-    error: announcements.error || events.error || registrations.error || surveys.error,
+    error: announcements.error || events.error || surveys.error,
   };
 }
 

@@ -19,38 +19,21 @@ export type YouthEvent = {
   cover_image: string | null;
   description: string | null;
   created_at: string | null;
-  event_registrations?: { registration_id: number }[];
+  registration_count: number;
+  occupied_slots: number;
+  remaining_slots: number | null;
+  is_registered: boolean;
+  attendance_status: "registered" | "attended" | "absent" | null;
 };
 
 export async function getYouthEvents(limit?: number) {
-  let query = supabase
-    .from("events")
-    .select(
-      "event_id,event_name,category,status,event_date,event_time,location,expected_attendees,cover_image,description,created_at,event_registrations(registration_id)",
-    )
-    .in("status", ["scheduled", "ongoing"])
-    .order("event_date", { ascending: true, nullsFirst: false })
-    .order("created_at", { ascending: false });
+  const { data, error } = await supabase.rpc("get_youth_scheduled_events");
+  const rows = ((data ?? []) as YouthEvent[]).map((event) => ({
+    ...event,
+    created_at: null,
+  }));
 
-  if (limit) {
-    query = query.limit(limit);
-  }
-
-  const { data, error } = await query;
-
-  return { data: (data ?? []) as YouthEvent[], error };
-}
-
-export async function getYouthEventRegistrations(_userId: string) {
-  const { data, error } = await supabase
-    .from("event_registrations")
-    .select("event_id")
-    .eq("attendance_status", "registered");
-
-  return {
-    data: new Set((data ?? []).map((registration) => registration.event_id)),
-    error,
-  };
+  return { data: typeof limit === "number" ? rows.slice(0, limit) : rows, error };
 }
 
 export async function registerYouthEvent(eventId: number) {

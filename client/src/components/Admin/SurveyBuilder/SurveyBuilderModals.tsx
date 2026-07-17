@@ -52,6 +52,7 @@ export default function SurveyBuilderModals({
   const [title, setTitle] = useState("");
   const [description, setDescription] = useState("");
   const [status, setStatus] = useState<SurveyStatus>("draft");
+  const [allowGuestResponses, setAllowGuestResponses] = useState(false);
   const [startDate, setStartDate] = useState("");
   const [endDate, setEndDate] = useState("");
   const [questions, setQuestions] = useState<SurveyQuestion[]>([blankQuestion()]);
@@ -62,6 +63,7 @@ export default function SurveyBuilderModals({
     setTitle(survey?.title ?? "");
     setDescription(survey?.description ?? "");
     setStatus(survey?.status ?? "draft");
+    setAllowGuestResponses(survey?.allow_guest_responses ?? false);
     setStartDate(toDateInputValue(survey?.start_date ?? null));
     setEndDate(toDateInputValue(survey?.end_date ?? null));
     setQuestions(
@@ -108,6 +110,7 @@ export default function SurveyBuilderModals({
     await onSave({
       description: description.trim() || null,
       end_date: fromDateInputValue(endDate),
+      allow_guest_responses: allowGuestResponses,
       questions: questions.map((question, index) => ({
         ...question,
         question_text: `Rate your interest in ${question.event_name?.trim()}`,
@@ -165,6 +168,18 @@ export default function SurveyBuilderModals({
               <option value="published">Published</option>
               <option value="closed">Closed</option>
             </select>
+          </label>
+          <label className="flex items-center gap-3 rounded-lg border border-slate-200 bg-slate-50 px-3 py-2.5 text-sm font-medium text-slate-700 md:col-span-2">
+            <input
+              checked={allowGuestResponses}
+              disabled={isSaving}
+              onChange={(event) => setAllowGuestResponses(event.target.checked)}
+              type="checkbox"
+            />
+            Allow Guest Responses
+            <span className="text-xs font-normal text-slate-500">
+              Guests submit with a browser session id, not a Youth account.
+            </span>
           </label>
           <div className="grid gap-3 sm:grid-cols-2">
             <label className="block">

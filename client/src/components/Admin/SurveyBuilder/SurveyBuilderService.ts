@@ -38,6 +38,7 @@ export type AdminSurvey = {
   start_date: string | null;
   end_date: string | null;
   target_audience: "kabataan";
+  allow_guest_responses: boolean;
   created_at: string | null;
   survey_questions: SurveyQuestion[];
   survey_responses: { response_id: number }[];
@@ -51,6 +52,7 @@ export type SaveSurveyPayload = {
   start_date: string | null;
   end_date: string | null;
   target_audience: "kabataan";
+  allow_guest_responses: boolean;
   questions: SurveyQuestion[];
 };
 
@@ -58,7 +60,7 @@ export async function getAdminSurveys() {
   const { data, error } = await supabase
     .from("surveys")
     .select(
-      "survey_id,title,question_text,description,status,is_active,start_date,end_date,target_audience,created_at,survey_questions(question_id,question_text,question_type,is_required,sort_order,reporting_key,event_name,event_category,event_description,survey_options(option_id,option_text,sort_order,score_value)),survey_responses(response_id)",
+      "survey_id,title,question_text,description,status,is_active,start_date,end_date,target_audience,allow_guest_responses,created_at,survey_questions(question_id,question_text,question_type,is_required,sort_order,reporting_key,event_name,event_category,event_description,survey_options(option_id,option_text,sort_order,score_value)),survey_responses(response_id)",
     )
     .order("created_at", { ascending: false });
 
@@ -89,6 +91,7 @@ export async function saveAdminSurvey(payload: SaveSurveyPayload) {
     p_survey_id: payload.survey_id,
     p_target_audience: payload.target_audience,
     p_title: payload.title,
+    p_allow_guest_responses: payload.allow_guest_responses,
   });
 
   return { data: data as AdminSurvey | null, error };

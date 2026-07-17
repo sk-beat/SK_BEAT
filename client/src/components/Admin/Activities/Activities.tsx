@@ -166,6 +166,10 @@ export default function Activities() {
             setSelectedPastEvent(event);
             setModalMode("feedback-qr");
           }}
+          onOpenRegistrations={(event) => {
+            setSelectedActivity(event);
+            setModalMode("registrations");
+          }}
           onSelectDate={setSelectedScheduleDate}
           onScheduleEvent={(date) => {
             if (date) {

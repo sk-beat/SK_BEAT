@@ -113,6 +113,25 @@ export type CompletedEventPerformance = {
   budget_utilization_percentage: number | null;
 };
 
+export type AdminEventRegistration = {
+  registration_id: number;
+  event_id: number;
+  profile_id: string;
+  fullname: string;
+  email: string;
+  purok: string | null;
+  profile_image: string | null;
+  registration_date: string | null;
+  attendance_status: "registered" | "attended" | "absent" | null;
+  total_registrations: number;
+  registered_count: number;
+  attended_count: number;
+  absent_count: number;
+  occupied_slots: number;
+  expected_attendees: number | null;
+  remaining_slots: number | null;
+};
+
 export async function getCurrentBudgetYearId() {
   const { data, error } = await supabase
     .from("annual_budgets")
@@ -151,4 +170,18 @@ export async function deleteActivityEvent(eventId: number) {
   return await supabase.rpc("delete_admin_event", {
     p_event_id: eventId,
   });
+}
+
+export async function getAdminEventRegistrations(options: {
+  attendanceStatus?: "registered" | "attended" | "absent" | null;
+  eventId: number;
+  search?: string;
+}) {
+  const { data, error } = await supabase.rpc("get_admin_event_registrations", {
+    p_attendance_status: options.attendanceStatus ?? null,
+    p_event_id: options.eventId,
+    p_search: options.search?.trim() || null,
+  });
+
+  return { data: (data ?? []) as AdminEventRegistration[], error };
 }

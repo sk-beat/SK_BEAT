@@ -93,6 +93,7 @@ type ActivitiesSectionActions = {
   onEditCatalogEvent: (activity: ActivityEvent) => void;
   onCreateFromRecommendation: (recommendation: ActivityRecommendation) => void;
   onOpenPastFeedbackQr: (event: ActivityEvent) => void;
+  onOpenRegistrations: (event: ActivityEvent) => void;
   onSelectDate: (date: string) => void;
   onScheduleEvent: (date?: string) => void;
 };
@@ -382,7 +383,7 @@ function EventInsightsPanel({
   const insights = [
     topRecommendation
       ? {
-          description: `${topRecommendation.event_name} averages ${topRecommendation.average_rating}/5 from ${topRecommendation.response_count} distinct Youth respondent(s).`,
+          description: `${topRecommendation.event_name} averages ${topRecommendation.average_rating}/5 from ${topRecommendation.total_respondent_count ?? topRecommendation.response_count} respondent(s): ${topRecommendation.authenticated_respondent_count ?? 0} registered Youth and ${topRecommendation.guest_respondent_count ?? 0} guest(s).`,
           title: "Highest-rated unscheduled recommendation",
         }
       : {
@@ -515,6 +516,7 @@ function ActivitiesListPanel({
   onDeleteCatalogEvent,
   onEditCatalogEvent,
   onOpenPastFeedbackQr,
+  onOpenRegistrations,
   onCreateFromRecommendation,
   recommendations,
 }: Pick<
@@ -526,6 +528,7 @@ function ActivitiesListPanel({
   | "onDeleteCatalogEvent"
   | "onEditCatalogEvent"
   | "onOpenPastFeedbackQr"
+  | "onOpenRegistrations"
   | "onCreateFromRecommendation"
   | "recommendations"
 >) {
@@ -588,7 +591,7 @@ function ActivitiesListPanel({
                 {event.positive_interest_percentage}% positive
               </p>
               <p className="mt-1 text-xs text-slate-500">
-                {event.response_count} respondent(s)
+                {event.authenticated_respondent_count ?? 0} Youth / {event.guest_respondent_count ?? 0} guest(s)
               </p>
               <p className="mt-1 text-xs text-slate-400">
                 {event.source_surveys.join(", ")}
@@ -648,6 +651,9 @@ function ActivitiesListPanel({
             <div className="flex gap-2">
               <button className="rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm text-slate-800 hover:bg-slate-50" onClick={() => onEditCatalogEvent(item)} type="button">
                 Edit
+              </button>
+              <button className="rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm text-slate-800 hover:bg-slate-50" onClick={() => onOpenRegistrations(item)} type="button">
+                Registrations
               </button>
               <button className="rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm text-red-600 hover:bg-red-50" onClick={() => onDeleteCatalogEvent(item.event_id)} type="button">
                 Delete
@@ -738,6 +744,7 @@ export default function ActivitiesSections({
   onEditCatalogEvent,
   onCreateFromRecommendation,
   onOpenPastFeedbackQr,
+  onOpenRegistrations,
   onSelectDate,
   onScheduleEvent,
   recommendations,
@@ -774,6 +781,7 @@ export default function ActivitiesSections({
         onEditCatalogEvent={onEditCatalogEvent}
         onCreateFromRecommendation={onCreateFromRecommendation}
         onOpenPastFeedbackQr={onOpenPastFeedbackQr}
+        onOpenRegistrations={onOpenRegistrations}
         recommendations={recommendations}
       />
     </div>

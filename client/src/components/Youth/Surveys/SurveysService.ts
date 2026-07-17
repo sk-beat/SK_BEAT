@@ -8,9 +8,10 @@ export type YouthSurvey = {
   status: SurveyStatus;
   start_date: string | null;
   end_date: string | null;
+  allow_guest_responses: boolean;
   created_at: string | null;
   survey_questions: SurveyQuestion[];
-  survey_responses: { response_id: number; user_id: string }[];
+  survey_responses: { response_id: number; user_id: string | null }[];
 };
 
 export type SurveyAnswerPayload = {
@@ -45,7 +46,7 @@ function isEligibleSurvey(survey: YouthSurvey) {
 export async function getYouthSurveys(userId: string) {
   const { data, error } = await supabase
     .from("surveys")
-    .select("survey_id,title,description,status,start_date,end_date,created_at,survey_questions(question_id,question_text,question_type,is_required,sort_order,reporting_key,event_name,event_category,event_description,survey_options(option_id,option_text,sort_order,score_value)),survey_responses(response_id,user_id)")
+    .select("survey_id,title,description,status,start_date,end_date,allow_guest_responses,created_at,survey_questions(question_id,question_text,question_type,is_required,sort_order,reporting_key,event_name,event_category,event_description,survey_options(option_id,option_text,sort_order,score_value)),survey_responses(response_id,user_id)")
     .order("created_at", { ascending: false });
 
   const surveys = ((data ?? []) as YouthSurvey[])
@@ -68,7 +69,7 @@ export async function getYouthSurveys(userId: string) {
 export async function getYouthSurvey(surveyId: number, userId: string) {
   const { data, error } = await supabase
     .from("surveys")
-    .select("survey_id,title,description,status,start_date,end_date,created_at,survey_questions(question_id,question_text,question_type,is_required,sort_order,reporting_key,event_name,event_category,event_description,survey_options(option_id,option_text,sort_order,score_value)),survey_responses(response_id,user_id)")
+    .select("survey_id,title,description,status,start_date,end_date,allow_guest_responses,created_at,survey_questions(question_id,question_text,question_type,is_required,sort_order,reporting_key,event_name,event_category,event_description,survey_options(option_id,option_text,sort_order,score_value)),survey_responses(response_id,user_id)")
     .eq("survey_id", surveyId)
     .maybeSingle();
 

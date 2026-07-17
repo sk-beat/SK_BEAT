@@ -66,7 +66,7 @@ export default function SurveyBuilderSections({
           <table className="w-full min-w-[980px] border-collapse text-sm">
             <thead>
               <tr>
-                {["#", "Title", "Status", "Schedule", "Questions", "Responses", "Actions"].map((heading) => (
+                {["#", "Title", "Status", "Schedule", "Guest", "Questions", "Responses", "Actions"].map((heading) => (
                   <th
                     className="bg-slate-50 px-5 py-4 text-center text-[0.6875rem] font-semibold uppercase tracking-[0.08em] text-slate-400"
                     key={heading}
@@ -79,13 +79,13 @@ export default function SurveyBuilderSections({
             <tbody>
               {isLoading ? (
                 <tr>
-                  <td className="border-t border-slate-200 px-5 py-8 text-center text-slate-500" colSpan={7}>
+                  <td className="border-t border-slate-200 px-5 py-8 text-center text-slate-500" colSpan={8}>
                     Loading surveys...
                   </td>
                 </tr>
               ) : surveys.length === 0 ? (
                 <tr>
-                  <td className="border-t border-slate-200 px-5 py-8 text-center text-slate-500" colSpan={7}>
+                  <td className="border-t border-slate-200 px-5 py-8 text-center text-slate-500" colSpan={8}>
                     No surveys created yet.
                   </td>
                 </tr>
@@ -104,6 +104,11 @@ export default function SurveyBuilderSections({
                     </td>
                     <td className="border-t border-slate-200 px-5 py-4 text-center">
                       {formatDate(survey.start_date)} - {formatDate(survey.end_date)}
+                    </td>
+                    <td className="border-t border-slate-200 px-5 py-4 text-center">
+                      <span className={survey.allow_guest_responses ? "text-emerald-600" : "text-slate-400"}>
+                        {survey.allow_guest_responses ? "Allowed" : "Off"}
+                      </span>
                     </td>
                     <td className="border-t border-slate-200 px-5 py-4 text-center">{survey.survey_questions.length}</td>
                     <td className="border-t border-slate-200 px-5 py-4 text-center">{survey.survey_responses.length}</td>

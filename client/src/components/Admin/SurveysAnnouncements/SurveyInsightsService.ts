@@ -29,6 +29,9 @@ export type EventPreferenceRecommendation = {
   event_name: string;
   event_category: string;
   response_count: number;
+  authenticated_respondent_count: number;
+  guest_respondent_count: number;
+  total_respondent_count: number;
   average_rating: number;
   total_score: number;
   positive_count: number;

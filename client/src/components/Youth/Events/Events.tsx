@@ -3,7 +3,7 @@ import { useAuth } from "../../../auth/useAuth";
 import EventsHeader from "./EventsHeader";
 import EventsSections from "./EventsSections";
 import {
-  getYouthEventRegistrations,
+  cancelYouthEventRegistration,
   getYouthEvents,
   registerYouthEvent,
   type YouthEvent,
@@ -12,9 +12,6 @@ import {
 export default function Events() {
   const { user } = useAuth();
   const [events, setEvents] = useState<YouthEvent[]>([]);
-  const [registeredEventIds, setRegisteredEventIds] = useState<Set<number>>(
-    new Set(),
-  );
   const [registeringEventId, setRegisteringEventId] = useState<number | null>(
     null,
   );
@@ -25,21 +22,13 @@ export default function Events() {
     setIsLoading(true);
     setErrorMessage(null);
 
-    const [{ data, error }, registrations] = await Promise.all([
-      getYouthEvents(),
-      user?.id
-        ? getYouthEventRegistrations(user.id)
-        : Promise.resolve({ data: new Set<number>(), error: null }),
-    ]);
+    const { data, error } = await getYouthEvents();
 
-    if (error ?? registrations.error) {
-      setErrorMessage(
-        (error ?? registrations.error)?.message ?? "Unable to load events.",
-      );
+    if (error) {
+      setErrorMessage(error.message ?? "Unable to load events.");
     }
 
     setEvents(data);
-    setRegisteredEventIds(registrations.data);
     setIsLoading(false);
   }
 
@@ -60,7 +49,20 @@ export default function Events() {
       return;
     }
 
-    setRegisteredEventIds((current) => new Set(current).add(eventId));
+    await loadEvents();
+  }
+
+  async function handleCancel(eventId: number) {
+    if (!user?.id || registeringEventId) return;
+    setRegisteringEventId(eventId);
+    setErrorMessage(null);
+    const { error } = await cancelYouthEventRegistration(eventId);
+    setRegisteringEventId(null);
+    if (error) {
+      setErrorMessage(error.message);
+      return;
+    }
+    await loadEvents();
   }
 
   useEffect(() => {
@@ -70,25 +72,17 @@ export default function Events() {
       setIsLoading(true);
       setErrorMessage(null);
 
-      const [{ data, error }, registrations] = await Promise.all([
-        getYouthEvents(),
-        user?.id
-          ? getYouthEventRegistrations(user.id)
-          : Promise.resolve({ data: new Set<number>(), error: null }),
-      ]);
+      const { data, error } = await getYouthEvents();
 
       if (!isMounted) {
         return;
       }
 
-      if (error ?? registrations.error) {
-        setErrorMessage(
-          (error ?? registrations.error)?.message ?? "Unable to load events.",
-        );
+      if (error) {
+        setErrorMessage(error.message ?? "Unable to load events.");
       }
 
       setEvents(data);
-      setRegisteredEventIds(registrations.data);
       setIsLoading(false);
     }
 
@@ -107,8 +101,8 @@ export default function Events() {
         events={events}
         isLoading={isLoading}
         onRefresh={loadEvents}
+        onCancel={handleCancel}
         onRegister={handleRegister}
-        registeredEventIds={registeredEventIds}
         registeringEventId={registeringEventId}
       />
     </div>

@@ -3,23 +3,30 @@ import { Link } from "react-router-dom";
 import skLogo from "../assets/sklogo.png";
 import { getPublicSKOfficials } from "../components/Admin/SKOfficials/SKOfficialsService";
 import { getPublicScheduledEvents, type PublicScheduledEvent } from "../services/PublicEventsService";
+import {
+  getLandingAssetUrl,
+  getPublicLandingPageSettings,
+} from "../services/LandingPageSettingsService";
 import { youthImages } from "../utils/adminPortalData";
 
 export default function LandingPage() {
   const [officialsCount, setOfficialsCount] = useState(0);
   const [scheduledEvents, setScheduledEvents] = useState<PublicScheduledEvent[]>([]);
+  const [heroBackgroundPath, setHeroBackgroundPath] = useState<string | null>(null);
 
   useEffect(() => {
     let isMounted = true;
 
     async function loadLandingData() {
-      const [officials, events] = await Promise.all([
+      const [officials, events, settings] = await Promise.all([
         getPublicSKOfficials(),
         getPublicScheduledEvents(),
+        getPublicLandingPageSettings(),
       ]);
       if (isMounted) {
         setOfficialsCount(officials.data.length);
         setScheduledEvents(events.data);
+        setHeroBackgroundPath(settings.data.hero_background_path);
       }
     }
 
@@ -30,12 +37,14 @@ export default function LandingPage() {
     };
   }, []);
 
+  const heroBackgroundUrl = getLandingAssetUrl(heroBackgroundPath) || youthImages.galas;
+
   return (
     <main>
       <section
         className="bg-cover bg-center px-6 py-20 text-white md:py-24"
         style={{
-          backgroundImage: `linear-gradient(90deg, rgba(11,31,59,.88), rgba(11,31,59,.62)), url(${youthImages.galas})`,
+          backgroundImage: `linear-gradient(90deg, rgba(11,31,59,.88), rgba(11,31,59,.62)), url(${heroBackgroundUrl})`,
         }}
       >
         <div className="mx-auto flex min-h-[62vh] max-w-6xl items-center">

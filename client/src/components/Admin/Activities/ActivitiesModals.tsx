@@ -1,14 +1,17 @@
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
+import { getProfileImageUrl } from "../../../utils/profileImages";
 import AdminModal from "../shared/AdminModal";
 import type {
+  AdminEventRegistration,
   ActivityCalculationType,
   ActivityEvent,
   ActivityEventStatus,
   ActivityExpense,
   SaveActivityEventPayload,
 } from "./ActivitiesService";
+import { getAdminEventRegistrations } from "./ActivitiesService";
 
-export type ActivitiesModalMode = "catalog" | "schedule" | "feedback-qr" | null;
+export type ActivitiesModalMode = "catalog" | "schedule" | "feedback-qr" | "registrations" | null;
 
 type ActivitiesModalsProps = {
   budgetYearId: number | null;
@@ -978,6 +981,136 @@ function ScheduleEventModal({
   );
 }
 
+function RegistrationsModal({
+  onClose,
+  selectedActivity,
+}: Pick<ActivitiesModalsProps, "onClose" | "selectedActivity">) {
+  const [rows, setRows] = useState<AdminEventRegistration[]>([]);
+  const [search, setSearch] = useState("");
+  const [status, setStatus] = useState<"" | "registered" | "attended" | "absent">("");
+  const [isLoading, setIsLoading] = useState(true);
+  const [errorMessage, setErrorMessage] = useState("");
+  const summary = rows[0];
+
+  useEffect(() => {
+    let isMounted = true;
+
+    async function loadRows() {
+      if (!selectedActivity) return;
+      setIsLoading(true);
+      setErrorMessage("");
+      const { data, error } = await getAdminEventRegistrations({
+        attendanceStatus: status || null,
+        eventId: selectedActivity.event_id,
+        search,
+      });
+      if (!isMounted) return;
+      if (error) setErrorMessage(error.message);
+      setRows(data);
+      setIsLoading(false);
+    }
+
+    loadRows();
+
+    return () => {
+      isMounted = false;
+    };
+  }, [search, selectedActivity, status]);
+
+  return (
+    <AdminModal
+      footer={
+        <button
+          className="rounded-lg bg-[#1e3a5f] px-4 py-2 text-sm font-medium text-white hover:bg-[#2a4a6f]"
+          onClick={onClose}
+          type="button"
+        >
+          Done
+        </button>
+      }
+      maxWidthClass="max-w-5xl"
+      onClose={onClose}
+      open
+      title={`Registrations${selectedActivity ? ` - ${selectedActivity.event_name}` : ""}`}
+    >
+      <div className="grid gap-3 md:grid-cols-4">
+        {[
+          ["Total", summary?.total_registrations ?? 0],
+          ["Registered", summary?.registered_count ?? 0],
+          ["Attended", summary?.attended_count ?? 0],
+          ["Remaining", summary?.remaining_slots ?? "No limit"],
+        ].map(([label, value]) => (
+          <div className="rounded-lg border border-slate-200 bg-slate-50 p-3" key={label}>
+            <p className="text-xs font-semibold uppercase tracking-[0.08em] text-slate-400">{label}</p>
+            <p className="mt-1 text-xl font-bold text-[#1e3a5f]">{value}</p>
+          </div>
+        ))}
+      </div>
+
+      <div className="mt-4 grid gap-3 md:grid-cols-[1fr_220px]">
+        <input
+          className={inputClass}
+          onChange={(event) => setSearch(event.target.value)}
+          placeholder="Search by name or email"
+          value={search}
+        />
+        <select
+          className={inputClass}
+          onChange={(event) => setStatus(event.target.value as typeof status)}
+          value={status}
+        >
+          <option value="">All statuses</option>
+          <option value="registered">Registered</option>
+          <option value="attended">Attended</option>
+          <option value="absent">Absent</option>
+        </select>
+      </div>
+
+      {errorMessage ? (
+        <div className="mt-4 rounded-lg border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700">
+          {errorMessage}
+        </div>
+      ) : null}
+
+      <div className="mt-4 overflow-hidden rounded-xl border border-slate-200">
+        {isLoading ? (
+          <div className="p-5 text-sm text-slate-500">Loading registrations...</div>
+        ) : rows.length === 0 ? (
+          <div className="p-5 text-sm text-slate-500">No registrations found.</div>
+        ) : (
+          <div className="divide-y divide-slate-100">
+            {rows.map((row) => (
+              <article className="grid gap-3 p-4 md:grid-cols-[auto_1fr_auto] md:items-center" key={row.registration_id}>
+                {getProfileImageUrl(row.profile_image) ? (
+                  <img
+                    alt={row.fullname}
+                    className="h-11 w-11 rounded-full object-cover"
+                    src={getProfileImageUrl(row.profile_image) || ""}
+                  />
+                ) : (
+                  <div className="flex h-11 w-11 items-center justify-center rounded-full bg-[#1e3a5f] text-sm font-bold text-white">
+                    {row.fullname.slice(0, 2).toUpperCase()}
+                  </div>
+                )}
+                <div>
+                  <h3 className="text-sm font-semibold text-slate-900">{row.fullname}</h3>
+                  <p className="text-xs text-slate-500">{row.email} {row.purok ? `- ${row.purok}` : ""}</p>
+                  <p className="text-xs text-slate-400">
+                    Registered {row.registration_date ? new Date(row.registration_date).toLocaleString("en-PH") : "date unavailable"}
+                  </p>
+                </div>
+                <span className="rounded-full bg-blue-50 px-3 py-1 text-xs font-semibold capitalize text-blue-700">
+                  {row.attendance_status ?? "registered"}
+                </span>
+              </article>
+            ))}
+          </div>
+        )}
+      </div>
+    </AdminModal>
+  );
+}
+
 export default function ActivitiesModals({
   budgetYearId,
   events,
@@ -1017,6 +1150,13 @@ export default function ActivitiesModals({
           onClose={onClose}
           onSave={onSave}
           scheduleDate={scheduleDate}
+        />
+      ) : null}
+
+      {mode === "registrations" ? (
+        <RegistrationsModal
+          onClose={onClose}
+          selectedActivity={selectedActivity}
         />
       ) : null}
 

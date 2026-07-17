@@ -5,6 +5,7 @@ import Activities from "./components/Admin/Activities/Activities";
 import Dashboard from "./components/Admin/Dashboard/Dashboard";
 import Financial from "./components/Admin/Financial/Financial";
 import SKOfficials from "./components/Admin/SKOfficials/SKOfficials";
+import LandingPageSettings from "./components/Admin/LandingPageSettings/LandingPageSettings";
 import SurveyBuilder from "./components/Admin/SurveyBuilder/SurveyBuilder";
 import SurveysAnnouncements from "./components/Admin/SurveysAnnouncements/SurveysAnnouncements";
 import YouthRecord from "./components/Admin/YouthRecord/YouthRecord";
@@ -17,6 +18,7 @@ import AdminLayout from "./pages/Admin/AdminLayout";
 import AdminOfficialsPage from "./pages/Admin/AdminOfficialsPage";
 import AdminPortalPage from "./pages/Admin/AdminPortalPage";
 import AdminSurveysPage from "./pages/Admin/AdminSurveysPage";
+import PublicSurveyDetailsPage from "./pages/PublicSurveyDetailsPage";
 import { ProtectedRoute } from "./routes/ProtectedRoute";
 import YouthEventsPage from "./pages/Youth/YouthEventsPage";
 import YouthAnnouncementsPage from "./pages/Youth/YouthAnnouncementsPage";
@@ -222,6 +224,16 @@ function App() {
               </ProtectedRoute>
             }
           />
+          <Route
+            path="/landing-page-settings"
+            element={
+              <ProtectedRoute allowedRoles={["admin"] as const}>
+                <PageTitle title="Landing Page Settings">
+                  <LandingPageSettings />
+                </PageTitle>
+              </ProtectedRoute>
+            }
+          />
           <Route element={<AdminLayout />}>
             <Route
               path="/"
@@ -261,6 +273,15 @@ function App() {
               element={
                 <PageTitle title="Surveys">
                   <AdminSurveysPage />
+                </PageTitle>
+              }
+            />
+            <Route path="/surveys" element={<Navigate to="/youth-surveys" replace />} />
+            <Route
+              path="/surveys/:surveyId"
+              element={
+                <PageTitle title="Survey">
+                  <PublicSurveyDetailsPage />
                 </PageTitle>
               }
             />

@@ -221,6 +221,7 @@ const defaultSidebarItems: SidebarItem[] = [
   { label: "Activities", to: "/activities", icon: CalendarIcon },
   { label: "Financial", to: "/financial", icon: BriefcaseIcon },
   { label: "SK Officials", to: "/sk-officials", icon: UsersIcon },
+  { label: "Landing Page", to: "/landing-page-settings", icon: DashboardIcon },
   {
     label: "Surveys & Announcements",
     to: "/kabataan-suggestions",

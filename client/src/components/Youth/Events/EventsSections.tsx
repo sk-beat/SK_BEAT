@@ -13,9 +13,9 @@ type EventsSectionsProps = {
   errorMessage: string | null;
   events: YouthEvent[];
   isLoading: boolean;
+  onCancel: (eventId: number) => void;
   onRefresh: () => void;
   onRegister: (eventId: number) => void;
-  registeredEventIds: Set<number>;
   registeringEventId: number | null;
 };
 
@@ -41,15 +41,18 @@ function statusClass(status: YouthEvent["status"]) {
 
 function EventCardItem({
   event,
-  isRegistered,
   isRegistering,
+  onCancel,
   onRegister,
 }: {
   event: YouthEvent;
-  isRegistered: boolean;
   isRegistering: boolean;
+  onCancel: (eventId: number) => void;
   onRegister: (eventId: number) => void;
 }) {
+  const isRegistered = event.is_registered;
+  const isFull = event.remaining_slots !== null && event.remaining_slots <= 0 && !isRegistered;
+
   return (
     <article className="overflow-hidden rounded-[14px] border border-slate-200 bg-white shadow-sm">
       <div className="relative">
@@ -97,7 +100,10 @@ function EventCardItem({
           </p>
           <p className="flex items-center gap-2">
             <Users className="h-4 w-4" />
-            {event.expected_attendees ?? 0} expected attendees
+            {event.registration_count} registered / {event.expected_attendees ?? 0} expected
+          </p>
+          <p className="text-xs font-medium text-slate-400">
+            {event.remaining_slots === null ? "No capacity limit set" : `${event.remaining_slots} slot(s) remaining`}
           </p>
         </div>
 
@@ -108,17 +114,19 @@ function EventCardItem({
               ? "border border-emerald-200 bg-emerald-50 text-emerald-700"
               : "bg-[#1e3a5f] text-white hover:bg-[#173256]",
           ].join(" ")}
-          disabled={isRegistered || isRegistering}
-          onClick={() => onRegister(event.event_id)}
+          disabled={isRegistering || isFull}
+          onClick={() => (isRegistered ? onCancel(event.event_id) : onRegister(event.event_id))}
           type="button"
         >
           {isRegistered ? (
             <>
               <CheckCircle2 className="h-4 w-4" />
-              Registered
+              {isRegistering ? "Cancelling..." : "Cancel Registration"}
             </>
           ) : isRegistering ? (
             "Registering..."
+          ) : isFull ? (
+            "Full"
           ) : (
             "Register"
           )}
@@ -147,9 +155,9 @@ export default function EventsSections({
   errorMessage,
   events,
   isLoading,
+  onCancel,
   onRefresh,
   onRegister,
-  registeredEventIds,
   registeringEventId,
 }: EventsSectionsProps) {
   return (
@@ -179,9 +187,9 @@ export default function EventsSections({
           {events.map((event) => (
             <EventCardItem
               event={event}
-              isRegistered={registeredEventIds.has(event.event_id)}
               isRegistering={registeringEventId === event.event_id}
               key={event.event_id}
+              onCancel={onCancel}
               onRegister={onRegister}
             />
           ))}

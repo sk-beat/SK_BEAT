@@ -9,6 +9,7 @@ import type {
   ActivityEvent,
   ActivityEventStatus,
   ActivityRecommendation,
+  CompletedEventPerformance,
 } from "./ActivitiesService";
 
 const pageSize = 6;
@@ -98,6 +99,7 @@ type ActivitiesSectionActions = {
 
 type ActivitiesSectionsProps = ActivitiesSectionActions & {
   errorMessage: string | null;
+  completedEventPerformance: CompletedEventPerformance[];
   events: ActivityEvent[];
   isLoading: boolean;
   recommendations: ActivityRecommendation[];
@@ -350,17 +352,67 @@ function DayEventsPanel({
 }
 
 function EventInsightsPanel({
+  completedEventPerformance,
   events,
   recommendations,
-}: Pick<ActivitiesSectionsProps, "events" | "recommendations">) {
-  const topRecommendation = recommendations[0];
+}: Pick<ActivitiesSectionsProps, "completedEventPerformance" | "events" | "recommendations">) {
+  const topRecommendation = recommendations.find(
+    (recommendation) => !recommendation.is_already_planned && recommendation.response_count >= 3,
+  );
   const lowRegistrationEvent = events
-    .filter((event) => event.status === "scheduled")
+    .filter((event) => {
+      if (event.status !== "scheduled" || !event.expected_attendees) return false;
+      return ((event.event_registrations?.length ?? 0) / event.expected_attendees) * 100 < 30;
+    })
     .sort(
       (first, second) =>
-        (first.event_registrations?.length ?? 0) -
-        (second.event_registrations?.length ?? 0),
+        ((first.event_registrations?.length ?? 0) / Math.max(first.expected_attendees ?? 1, 1)) -
+        ((second.event_registrations?.length ?? 0) / Math.max(second.expected_attendees ?? 1, 1)),
     )[0];
+  const strongCompletedEvent = completedEventPerformance.find(
+    (event) =>
+      event.registration_count >= 3 &&
+      (event.attendance_rate ?? 0) >= 70 &&
+      event.feedback_count >= 3 &&
+      (event.average_feedback_rating ?? 0) >= 4,
+  );
+  const overBudgetEvent = completedEventPerformance.find(
+    (event) => (event.budget_utilization_percentage ?? 0) > 100,
+  );
+  const insights = [
+    topRecommendation
+      ? {
+          description: `${topRecommendation.event_name} averages ${topRecommendation.average_rating}/5 from ${topRecommendation.response_count} distinct Youth respondent(s).`,
+          title: "Highest-rated unscheduled recommendation",
+        }
+      : {
+          description: "Not enough data. At least 3 distinct Youth respondents are needed for a recommendation.",
+          title: "Survey recommendation",
+        },
+    lowRegistrationEvent
+      ? {
+          description: `${lowRegistrationEvent.event_name} has ${lowRegistrationEvent.event_registrations?.length ?? 0} registration(s) out of ${lowRegistrationEvent.expected_attendees ?? 0} expected attendee(s).`,
+          title: "Scheduled event with low registration",
+        }
+      : {
+          description: "Not enough data or no scheduled event is below the 30% registration-fill threshold.",
+          title: "Registration attention",
+        },
+    strongCompletedEvent
+      ? {
+          description: `${strongCompletedEvent.event_name} had ${strongCompletedEvent.attendance_count} attended out of ${strongCompletedEvent.registration_count} registration(s) and ${strongCompletedEvent.average_feedback_rating}/5 feedback.`,
+          title: "Strong completed event performance",
+        }
+      : overBudgetEvent
+        ? {
+            description: `${overBudgetEvent.event_name} used ${overBudgetEvent.budget_utilization_percentage}% of allocation based on completed transactions only.`,
+            title: "Event exceeded allocation",
+          }
+        : {
+            description: "Not enough data. Attendance comparisons need at least 3 registrations and feedback conclusions need 3 responses.",
+            title: "Completed event performance",
+          },
+  ];
 
   return (
     <section className="rounded-xl border border-slate-200 bg-white p-5 shadow-sm">
@@ -372,30 +424,22 @@ function EventInsightsPanel({
           Survey-based signals from Youth responses and live event registrations
         </p>
       </div>
-      <article className="flex gap-3 rounded-xl border border-slate-200 bg-amber-100/40 p-4 shadow-sm">
-        <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg bg-amber-100 text-amber-700">
-          <AlertIcon className="h-5 w-5" />
-        </div>
-        <div>
-          <h3 className="text-sm font-semibold text-slate-800">
-            {topRecommendation
-              ? `${topRecommendation.event_name} has the strongest Youth support`
-              : lowRegistrationEvent
-                ? `${lowRegistrationEvent.event_name} needs registration attention`
-                : "No decision-support data yet"}
-          </h3>
-          <p className="mt-1 text-xs leading-relaxed text-slate-500">
-            {topRecommendation
-              ? `${topRecommendation.response_count} Youth respondent(s) rated this ${topRecommendation.average_rating}/5 on average${topRecommendation.source_surveys.length > 0 ? ` across ${topRecommendation.source_surveys.join(", ")}` : ""}.`
-              : lowRegistrationEvent
-                ? `${lowRegistrationEvent.event_name} currently has ${lowRegistrationEvent.event_registrations?.length ?? 0} registration(s) out of ${lowRegistrationEvent.expected_attendees ?? 0} expected attendee(s).`
-                : "Publish surveys or collect event registrations to show decision-support insights."}
-          </p>
-          <span className="mt-2 inline-flex items-center gap-1 text-xs font-semibold text-[#1e3a5f]">
-            Use for next event plan <ArrowRightIcon className="h-3.5 w-3.5" />
-          </span>
-        </div>
-      </article>
+      <div className="flex flex-col gap-3">
+        {insights.map((insight) => (
+          <article className="flex gap-3 rounded-xl border border-slate-200 bg-amber-100/40 p-4 shadow-sm" key={insight.title}>
+            <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg bg-amber-100 text-amber-700">
+              <AlertIcon className="h-5 w-5" />
+            </div>
+            <div>
+              <h3 className="text-sm font-semibold text-slate-800">{insight.title}</h3>
+              <p className="mt-1 text-xs leading-relaxed text-slate-500">{insight.description}</p>
+              <span className="mt-2 inline-flex items-center gap-1 text-xs font-semibold text-[#1e3a5f]">
+                Use for next event plan <ArrowRightIcon className="h-3.5 w-3.5" />
+              </span>
+            </div>
+          </article>
+        ))}
+      </div>
     </section>
   );
 }
@@ -685,6 +729,7 @@ function ActivitiesListPanel({
 
 export default function ActivitiesSections({
   errorMessage,
+  completedEventPerformance,
   events,
   isLoading,
   selectedDate,
@@ -711,7 +756,11 @@ export default function ActivitiesSections({
             onScheduleEvent={onScheduleEvent}
             selectedDate={selectedDate}
           />
-          <EventInsightsPanel events={events} recommendations={recommendations} />
+          <EventInsightsPanel
+            completedEventPerformance={completedEventPerformance}
+            events={events}
+            recommendations={recommendations}
+          />
           <UpcomingEventsPanel events={events} />
         </div>
       </div>

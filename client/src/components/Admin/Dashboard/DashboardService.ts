@@ -24,12 +24,18 @@ export type DashboardPopulationGroup = {
 };
 
 export type DashboardData = {
+  fiscalYear: number | null;
   totalYouth: number;
   genderGroups: DashboardPopulationGroup[];
   purokGroups: DashboardPopulationGroup[];
   totalBudget: number;
   allocatedBudget: number;
   completedSpending: number;
+  unallocatedBudget: number;
+  availableToSpend: number;
+  oversubscribedAllocation: number;
+  allocationPercentage: number | null;
+  spendingPercentage: number | null;
   upcomingEventsCount: number;
   ongoingEventsCount: number;
   completedEventsCount: number;
@@ -37,8 +43,16 @@ export type DashboardData = {
   surveyResponsesCount: number;
   publishedAnnouncementsCount: number;
   recentEvents: DashboardEvent[];
+  decisionInsights: DashboardInsight[];
   preferredActivityTypes: PreferredActivityType[];
   topSuggestedEvents: TopSuggestedEvent[];
+};
+
+export type DashboardInsight = {
+  title: string;
+  description: string;
+  tone: "success" | "info" | "warning";
+  basis?: Record<string, unknown>;
 };
 
 type EventRow = Omit<DashboardEvent, "registered_count"> & {
@@ -59,10 +73,6 @@ function countByValue<T>(rows: T[], getValue: (row: T) => string | null | undefi
   );
 }
 
-function sumAmounts(rows: Array<Record<string, unknown>>, column: string) {
-  return rows.reduce((total, row) => total + Number(row[column] ?? 0), 0);
-}
-
 function todayValue() {
   return new Date().toISOString().slice(0, 10);
 }
@@ -74,8 +84,7 @@ export async function getDashboardData(): Promise<{
   const today = todayValue();
   const [
     profiles,
-    budgets,
-    transactions,
+    dashboardSummary,
     events,
     surveys,
     responses,
@@ -84,11 +93,7 @@ export async function getDashboardData(): Promise<{
     suggested,
   ] = await Promise.all([
     supabase.from("kabataan_profiles").select("profile_id,gender,purok"),
-    supabase.from("annual_budgets").select("total_allocation,remaining_balance"),
-    supabase
-      .from("financial_transactions")
-      .select("amount,status,transaction_type")
-      .eq("status", "completed"),
+    supabase.rpc("get_admin_dashboard_decision_support"),
     supabase
       .from("events")
       .select(
@@ -109,8 +114,7 @@ export async function getDashboardData(): Promise<{
 
   const firstError =
     profiles.error ||
-    budgets.error ||
-    transactions.error ||
+    dashboardSummary.error ||
     events.error ||
     surveys.error ||
     responses.error ||
@@ -127,11 +131,7 @@ export async function getDashboardData(): Promise<{
   }>;
   const eventRows = (events.data ?? []) as EventRow[];
   const visibleUpcomingEvents = eventRows
-    .filter(
-      (event) =>
-        (event.status === "scheduled" || event.status === "ongoing") &&
-        (!event.event_date || event.event_date >= today),
-    )
+    .filter((event) => event.status === "scheduled" && event.event_date !== null && event.event_date >= today)
     .slice(0, 5)
     .map(({ event_registrations, ...event }) => ({
       ...event,
@@ -139,28 +139,37 @@ export async function getDashboardData(): Promise<{
         ["registered", "attended"].includes(registration.attendance_status ?? "registered"),
       ).length,
     }));
-  const budgetRows = (budgets.data ?? []) as Array<Record<string, unknown>>;
-  const transactionRows = (transactions.data ?? []) as Array<Record<string, unknown>>;
+  const summary = dashboardSummary.data as {
+    budget_year?: { fiscal_year?: number | null };
+    metrics?: Record<string, number | null>;
+    insights?: DashboardInsight[];
+  } | null;
+  const metrics = summary?.metrics ?? {};
 
   return {
     data: {
-      allocatedBudget: sumAmounts(eventRows as unknown as Array<Record<string, unknown>>, "allocated_budget"),
-      completedEventsCount: eventRows.filter((event) => event.status === "completed").length,
-      completedSpending: sumAmounts(transactionRows, "amount"),
+      allocatedBudget: Number(metrics.total_allocated_budget ?? 0),
+      allocationPercentage: metrics.allocation_percentage === null ? null : Number(metrics.allocation_percentage ?? 0),
+      availableToSpend: Number(metrics.available_to_spend ?? 0),
+      completedEventsCount: Number(metrics.completed_events ?? 0),
+      completedSpending: Number(metrics.total_completed_spending ?? 0),
+      decisionInsights: summary?.insights ?? [],
+      fiscalYear: summary?.budget_year?.fiscal_year ?? null,
       genderGroups: countByValue(profileRows, (profile) => profile.gender),
-      ongoingEventsCount: eventRows.filter((event) => event.status === "ongoing").length,
+      ongoingEventsCount: Number(metrics.ongoing_events ?? 0),
+      oversubscribedAllocation: Number(metrics.oversubscribed_allocation ?? 0),
       preferredActivityTypes: preferred.error ? [] : preferred.data,
-      publishedAnnouncementsCount: announcements.count ?? 0,
-      publishedSurveysCount: surveys.count ?? 0,
+      publishedAnnouncementsCount: Number(metrics.published_announcements ?? announcements.count ?? 0),
+      publishedSurveysCount: Number(metrics.published_surveys ?? surveys.count ?? 0),
       purokGroups: countByValue(profileRows, (profile) => profile.purok),
       recentEvents: visibleUpcomingEvents,
-      surveyResponsesCount: responses.count ?? 0,
+      spendingPercentage: metrics.spending_percentage === null ? null : Number(metrics.spending_percentage ?? 0),
+      surveyResponsesCount: Number(metrics.survey_responses ?? responses.count ?? 0),
       topSuggestedEvents: suggested.error ? [] : suggested.data,
-      totalBudget: sumAmounts(budgetRows, "total_allocation"),
-      totalYouth: profileRows.length,
-      upcomingEventsCount: eventRows.filter(
-        (event) => event.status === "scheduled" && (!event.event_date || event.event_date >= today),
-      ).length,
+      totalBudget: Number(metrics.total_annual_budget ?? 0),
+      totalYouth: Number(metrics.total_youth ?? profileRows.length),
+      unallocatedBudget: Number(metrics.unallocated_budget ?? 0),
+      upcomingEventsCount: Number(metrics.upcoming_events ?? 0),
     },
     error: null,
   };

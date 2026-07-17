@@ -78,21 +78,40 @@ export async function getActivityEvents() {
 }
 
 export async function getActivityDecisionData() {
-  const [preferred, suggested] = await Promise.all([
+  const [preferred, suggested, performance] = await Promise.all([
     getPreferredActivityTypes(),
     getEventPreferenceRecommendations(),
+    supabase.rpc("get_admin_completed_event_performance"),
   ]);
 
   return {
     data: {
+      completedEventPerformance: (performance.data ?? []) as CompletedEventPerformance[],
       preferredActivityTypes: preferred.data as PreferredActivityType[],
       topSuggestedEvents: suggested.data as EventPreferenceRecommendation[],
     },
-    error: preferred.error || suggested.error,
+    error: preferred.error || suggested.error || performance.error,
   };
 }
 
 export type ActivityRecommendation = EventPreferenceRecommendation;
+
+export type CompletedEventPerformance = {
+  event_id: number;
+  event_name: string;
+  category: string;
+  event_date: string | null;
+  expected_attendees: number | null;
+  allocated_budget: number;
+  registration_count: number;
+  attendance_count: number;
+  attendance_rate: number | null;
+  registration_fill_rate: number | null;
+  feedback_count: number;
+  average_feedback_rating: number | null;
+  completed_spending: number;
+  budget_utilization_percentage: number | null;
+};
 
 export async function getCurrentBudgetYearId() {
   const { data, error } = await supabase

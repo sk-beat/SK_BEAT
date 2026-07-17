@@ -11,6 +11,7 @@ import {
   getCurrentBudgetYearId,
   saveActivityEvent,
   type ActivityRecommendation,
+  type CompletedEventPerformance,
   type ActivityEvent,
   type SaveActivityEventPayload,
 } from "./ActivitiesService";
@@ -31,6 +32,7 @@ export default function Activities() {
   );
   const [selectedPastEvent, setSelectedPastEvent] = useState<ActivityEvent | null>(null);
   const [events, setEvents] = useState<ActivityEvent[]>([]);
+  const [completedEventPerformance, setCompletedEventPerformance] = useState<CompletedEventPerformance[]>([]);
   const [recommendations, setRecommendations] = useState<ActivityRecommendation[]>([]);
   const [budgetYearId, setBudgetYearId] = useState<number | null>(null);
   const [isLoading, setIsLoading] = useState(true);
@@ -60,6 +62,7 @@ export default function Activities() {
     }
 
     setEvents(activityData);
+    setCompletedEventPerformance(decisionData.error ? [] : decisionData.data.completedEventPerformance);
     setRecommendations(decisionData.error ? [] : decisionData.data.topSuggestedEvents);
     setBudgetYearId(budgetData?.budget_year_id ?? null);
     if (decisionData.error) {
@@ -124,6 +127,7 @@ export default function Activities() {
         <ActivitiesHeader />
         <ActivitiesSections
           errorMessage={errorMessage}
+          completedEventPerformance={completedEventPerformance}
           events={events}
           isLoading={isLoading}
           recommendations={recommendations}

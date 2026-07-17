@@ -171,33 +171,23 @@ function CategoryCard({ data }: { data: DashboardData }) {
 }
 
 function InsightsPanel({ data }: { data: DashboardData }) {
-  const insights = [
-    data.preferredActivityTypes[0]
-      ? {
-          action: "Review Activity Plan",
-          description: `${data.preferredActivityTypes[0].respondent_count} of ${data.preferredActivityTypes[0].total_respondents} respondents selected ${data.preferredActivityTypes[0].activity_type}.`,
-          icon: LineChartIcon,
-          title: `${data.preferredActivityTypes[0].activity_type} is the leading preference`,
-          tone: "success" as const,
-        }
-      : null,
-    data.topSuggestedEvents[0]
-      ? {
-          action: "Open Activities",
-          description: `${data.topSuggestedEvents[0].suggested_event_name} is supported by ${data.topSuggestedEvents[0].respondent_count} distinct Youth respondent(s).`,
+  const insights = data.decisionInsights.length
+    ? data.decisionInsights.map((insight) => ({
+        action: "Review Details",
+        description: insight.description,
+        icon: insight.tone === "warning" ? AlertIcon : insight.tone === "success" ? LineChartIcon : BanknoteIcon,
+        title: insight.title,
+        tone: insight.tone,
+      }))
+    : [
+        {
+          action: "Review Details",
+          description: "Not enough data. Publish event-interest surveys, collect registrations, and record completed-event feedback to show decision-support insights.",
           icon: AlertIcon,
-          title: "Top suggested event",
+          title: "Decision support",
           tone: "info" as const,
-        }
-      : null,
-    {
-      action: "Review Budget",
-      description: `${formatPeso(data.completedSpending)} completed spending from approved financial transactions. ${formatPeso(data.allocatedBudget)} remains planned or allocated in events.`,
-      icon: BanknoteIcon,
-      title: "Budget spending uses completed transactions",
-      tone: "warning" as const,
-    },
-  ].filter((insight) => insight !== null);
+        },
+      ];
 
   return (
     <section className="mb-8 rounded-xl border border-slate-200 bg-white p-6 shadow-sm">
@@ -421,7 +411,7 @@ export default function DashboardSections() {
     },
     {
       icon: ClipboardIcon,
-      note: `${data.completedEventsCount} completed`,
+      note: `${data.completedEventsCount} completed in FY ${data.fiscalYear ?? "current"}`,
       noteTone: "positive",
       title: "Active Programs",
       tone: "green",
@@ -429,7 +419,7 @@ export default function DashboardSections() {
     },
     {
       icon: DollarIcon,
-      note: `${formatPeso(data.completedSpending)} spent`,
+      note: `${formatPeso(data.completedSpending)} spent, ${formatPeso(data.unallocatedBudget)} unallocated`,
       title: "Total Budget",
       tone: "yellow",
       value: formatPeso(data.totalBudget),

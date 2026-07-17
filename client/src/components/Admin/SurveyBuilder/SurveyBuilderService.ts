@@ -5,12 +5,14 @@ export type SurveyQuestionType =
   | "short_text"
   | "long_text"
   | "single_choice"
-  | "multiple_choice";
+  | "multiple_choice"
+  | "event_interest_likert";
 
 export type SurveyOption = {
   option_id?: number;
   option_text: string;
   sort_order: number;
+  score_value?: number | null;
 };
 
 export type SurveyQuestion = {
@@ -19,6 +21,10 @@ export type SurveyQuestion = {
   question_type: SurveyQuestionType;
   is_required: boolean;
   sort_order: number;
+  reporting_key?: string | null;
+  event_name?: string | null;
+  event_category?: string | null;
+  event_description?: string | null;
   survey_options: SurveyOption[];
 };
 
@@ -52,7 +58,7 @@ export async function getAdminSurveys() {
   const { data, error } = await supabase
     .from("surveys")
     .select(
-      "survey_id,title,question_text,description,status,is_active,start_date,end_date,target_audience,created_at,survey_questions(question_id,question_text,question_type,is_required,sort_order,survey_options(option_id,option_text,sort_order)),survey_responses(response_id)",
+      "survey_id,title,question_text,description,status,is_active,start_date,end_date,target_audience,created_at,survey_questions(question_id,question_text,question_type,is_required,sort_order,reporting_key,event_name,event_category,event_description,survey_options(option_id,option_text,sort_order,score_value)),survey_responses(response_id)",
     )
     .order("created_at", { ascending: false });
 
@@ -70,8 +76,13 @@ export async function saveAdminSurvey(payload: SaveSurveyPayload) {
       sort_order: index,
       options: question.survey_options.map((option, optionIndex) => ({
         option_text: option.option_text,
+        score_value: option.score_value ?? null,
         sort_order: optionIndex,
       })),
+      reporting_key: question.reporting_key ?? null,
+      event_name: question.event_name ?? null,
+      event_category: question.event_category ?? null,
+      event_description: question.event_description ?? null,
     })),
     p_start_date: payload.start_date,
     p_status: payload.status,

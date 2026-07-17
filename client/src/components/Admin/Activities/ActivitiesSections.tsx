@@ -91,7 +91,7 @@ type ActivitiesSectionActions = {
   onDeleteCatalogEvent: (eventId: number) => void;
   onEditCatalogEvent: (activity: ActivityEvent) => void;
   onCreateFromRecommendation: (recommendation: ActivityRecommendation) => void;
-  onOpenPastFeedbackQr: (eventTitle: string) => void;
+  onOpenPastFeedbackQr: (event: ActivityEvent) => void;
   onSelectDate: (date: string) => void;
   onScheduleEvent: (date?: string) => void;
 };
@@ -379,14 +379,14 @@ function EventInsightsPanel({
         <div>
           <h3 className="text-sm font-semibold text-slate-800">
             {topRecommendation
-              ? `${topRecommendation.suggested_event_name} has the strongest Youth support`
+              ? `${topRecommendation.event_name} has the strongest Youth support`
               : lowRegistrationEvent
                 ? `${lowRegistrationEvent.event_name} needs registration attention`
                 : "No decision-support data yet"}
           </h3>
           <p className="mt-1 text-xs leading-relaxed text-slate-500">
             {topRecommendation
-              ? `${topRecommendation.respondent_count} distinct Youth respondent(s) supported this suggestion${topRecommendation.source_surveys.length > 0 ? ` across ${topRecommendation.source_surveys.join(", ")}` : ""}.`
+              ? `${topRecommendation.response_count} Youth respondent(s) rated this ${topRecommendation.average_rating}/5 on average${topRecommendation.source_surveys.length > 0 ? ` across ${topRecommendation.source_surveys.join(", ")}` : ""}.`
               : lowRegistrationEvent
                 ? `${lowRegistrationEvent.event_name} currently has ${lowRegistrationEvent.event_registrations?.length ?? 0} registration(s) out of ${lowRegistrationEvent.expected_attendees ?? 0} expected attendee(s).`
                 : "Publish surveys or collect event registrations to show decision-support insights."}
@@ -528,20 +528,23 @@ function ActivitiesListPanel({
           {topRecommendations.map((event, index) => (
             <article
               className="rounded-lg border border-slate-200 bg-white p-4"
-              key={event.suggested_event_name}
+              key={event.event_name}
             >
               <span className="text-xs font-bold text-[#1e3a5f]">
                 #{index + 1}
               </span>
               <h4 className="mt-1 text-sm font-semibold text-slate-800">
-                {event.suggested_event_name}
+                {event.event_name}
               </h4>
               <p className="mt-1 text-xs text-slate-500">
-                {event.category}
+                {event.event_category}
               </p>
               <p className="mt-2 text-xs text-slate-500">
-                {event.respondent_count} Youth support -{" "}
-                {event.respondent_support_percentage}%
+                {event.average_rating}/5 average -{" "}
+                {event.positive_interest_percentage}% positive
+              </p>
+              <p className="mt-1 text-xs text-slate-500">
+                {event.response_count} respondent(s)
               </p>
               <p className="mt-1 text-xs text-slate-400">
                 {event.source_surveys.join(", ")}
@@ -654,7 +657,7 @@ function ActivitiesListPanel({
               <button
                 className="rounded-lg border border-slate-200 bg-white p-3 text-left hover:border-[#1e3a5f]"
                 key={event.event_id}
-                onClick={() => onOpenPastFeedbackQr(event.event_name)}
+                onClick={() => onOpenPastFeedbackQr(event)}
                 type="button"
               >
                 <span className="block text-sm font-semibold text-slate-800">

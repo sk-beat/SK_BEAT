@@ -3,6 +3,7 @@ import { useAuth } from "../../../auth/useAuth";
 import { BellIcon, ChevronDownIcon } from "../Dashboard/icons";
 import AdminAccountModals from "./AdminAccountModals";
 import { supabase } from "../../../utils/supabase";
+import { getProfileImageUrl } from "../../../utils/profileImages";
 
 type AccountModalKind = "profile" | "add-admin" | null;
 
@@ -18,6 +19,7 @@ export default function AdminHeader({ subtitle, title }: AdminHeaderProps) {
 
   const [adminName, setAdminName] = useState("");
   const [adminPosition, setAdminPostion] = useState("");
+  const [adminImage, setAdminImage] = useState<string | null>(null);
 
   function openAccountModal(modal: AccountModalKind) {
     setAccountModal(modal);
@@ -33,10 +35,13 @@ export default function AdminHeader({ subtitle, title }: AdminHeaderProps) {
 
     setAdminName(data.fullname);
     setAdminPostion(data.position);
+    setAdminImage(data.profile_image ?? null);
   }
 
   useEffect(() => {
+    // eslint-disable-next-line react-hooks/set-state-in-effect
     fetchAdmin();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   return (
@@ -66,9 +71,17 @@ export default function AdminHeader({ subtitle, title }: AdminHeaderProps) {
               onClick={() => setIsUserMenuOpen((open) => !open)}
               type="button"
             >
-              <span className="flex h-10 w-10 items-center justify-center rounded-full bg-[#1e3a5f] text-sm font-semibold text-white">
-                AD
-              </span>
+              {getProfileImageUrl(adminImage) ? (
+                <img
+                  alt={adminName || "Admin"}
+                  className="h-10 w-10 rounded-full object-cover"
+                  src={getProfileImageUrl(adminImage) || ""}
+                />
+              ) : (
+                <span className="flex h-10 w-10 items-center justify-center rounded-full bg-[#1e3a5f] text-sm font-semibold text-white">
+                  AD
+                </span>
+              )}
               <span className="flex flex-col text-left max-md:hidden">
                 <span className="text-sm font-medium text-slate-800">
                   {adminName}

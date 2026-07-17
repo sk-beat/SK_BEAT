@@ -27,6 +27,10 @@ function blankQuestion(sortOrder = 0): SurveyQuestion {
     question_type: "single_choice",
     is_required: true,
     sort_order: sortOrder,
+    reporting_key: null,
+    event_name: null,
+    event_category: null,
+    event_description: null,
     survey_options: [
       { option_text: "", sort_order: 0 },
       { option_text: "", sort_order: 1 },
@@ -104,6 +108,10 @@ export default function SurveyBuilderModals({
 
     for (const question of questions) {
       if (!question.question_text.trim()) return "Each question needs text.";
+      if (question.question_type === "event_interest_likert") {
+        if (!question.event_name?.trim()) return "Event Interest questions need an event name.";
+        if (!question.event_category?.trim()) return "Event Interest questions need a category.";
+      }
       if (["single_choice", "multiple_choice"].includes(question.question_type)) {
         const validOptions = question.survey_options.filter((option) => option.option_text.trim());
         if (validOptions.length === 0) return "Choice questions need at least one option.";
@@ -132,6 +140,13 @@ export default function SurveyBuilderModals({
               .filter((option) => option.option_text.trim())
               .map((option, optionIndex) => ({ ...option, option_text: option.option_text.trim(), sort_order: optionIndex }))
           : [],
+        reporting_key:
+          question.question_type === "event_interest_likert"
+            ? "suggested_event_rating"
+            : question.reporting_key ?? null,
+        event_name: question.event_name?.trim() || null,
+        event_category: question.event_category?.trim() || null,
+        event_description: question.event_description?.trim() || null,
       })),
       start_date: fromDateInputValue(startDate),
       status,
@@ -201,12 +216,58 @@ export default function SurveyBuilderModals({
                   <option value="long_text">Long text</option>
                   <option value="single_choice">Single choice</option>
                   <option value="multiple_choice">Multiple choice</option>
+                  <option value="event_interest_likert">Event Interest</option>
                 </select>
                 <label className="flex items-center gap-2 text-sm text-slate-700">
                   <input checked={question.is_required} disabled={isSaving} onChange={(event) => updateQuestion(questionIndex, { is_required: event.target.checked })} type="checkbox" />
                   Required
                 </label>
               </div>
+              {question.question_type === "event_interest_likert" ? (
+                <div className="mt-3 grid gap-3 md:grid-cols-2">
+                  <input
+                    className={inputClass}
+                    disabled={isSaving}
+                    onChange={(event) =>
+                      updateQuestion(questionIndex, {
+                        event_name: event.target.value,
+                        question_text: event.target.value
+                          ? `Rate your interest in ${event.target.value}`
+                          : question.question_text,
+                        reporting_key: "suggested_event_rating",
+                      })
+                    }
+                    placeholder="Event name, e.g. Basketball Tournament"
+                    value={question.event_name ?? ""}
+                  />
+                  <input
+                    className={inputClass}
+                    disabled={isSaving}
+                    onChange={(event) =>
+                      updateQuestion(questionIndex, {
+                        event_category: event.target.value,
+                        reporting_key: "suggested_event_rating",
+                      })
+                    }
+                    placeholder="Category, e.g. Sports"
+                    value={question.event_category ?? ""}
+                  />
+                  <textarea
+                    className={`${inputClass} min-h-20 resize-y md:col-span-2`}
+                    disabled={isSaving}
+                    onChange={(event) =>
+                      updateQuestion(questionIndex, {
+                        event_description: event.target.value,
+                      })
+                    }
+                    placeholder="Optional event description"
+                    value={question.event_description ?? ""}
+                  />
+                  <p className="text-xs text-slate-500 md:col-span-2">
+                    Fixed choices will be generated automatically: 1 Not Interested, 2 Slightly Interested, 3 Neutral, 4 Interested, 5 Very Interested.
+                  </p>
+                </div>
+              ) : null}
               {["single_choice", "multiple_choice"].includes(question.question_type) ? (
                 <div className="mt-3 space-y-2">
                   {question.survey_options.map((option, optionIndex) => (

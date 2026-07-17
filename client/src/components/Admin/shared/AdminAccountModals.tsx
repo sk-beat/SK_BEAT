@@ -2,6 +2,13 @@ import { useAuth } from "../../../auth/useAuth";
 import { supabase } from "../../../utils/supabase";
 import AdminModal from "./AdminModal";
 import { useEffect, useState } from "react";
+import {
+  buildAdminProfileImagePath,
+  deleteProfileImage,
+  getProfileImageUrl,
+  uploadProfileImage,
+  validateProfileImageFile,
+} from "../../../utils/profileImages";
 
 type AccountModalKind = "profile" | "add-admin" | null;
 
@@ -53,6 +60,9 @@ export default function AdminAccountModals({
   const [email, setEmail] = useState<string>("");
   const [contactNumber, setContactNumber] = useState<string>("");
   const [barangay, setBarangay] = useState<string>("");
+  const [profileImage, setProfileImage] = useState<string>("");
+  const [profileImageFile, setProfileImageFile] = useState<File | null>(null);
+  const [profileImagePreview, setProfileImagePreview] = useState<string | null>(null);
 
   const [password, setPassword] = useState<string>(" ");
   // const [isLoading, setIsLoading] = useState<boolean>(false);
@@ -70,10 +80,13 @@ export default function AdminAccountModals({
     setEmail(data.email);
     setContactNumber(data.contact_number);
     setBarangay(data.barangay);
+    setProfileImage(data.profile_image ?? "");
   }
 
   useEffect(() => {
+    // eslint-disable-next-line react-hooks/set-state-in-effect
     fetchAdmin();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   async function handleAddAdminSubmit() {
@@ -131,6 +144,47 @@ export default function AdminAccountModals({
     onClose();
   }
 
+  async function handleSaveAdminProfile() {
+    if (!user?.id) return;
+    let nextProfileImage = profileImage || null;
+    let uploadedPath: string | null = null;
+
+    if (profileImageFile) {
+      const validationError = validateProfileImageFile(profileImageFile);
+      if (validationError) {
+        alert(validationError);
+        return;
+      }
+
+      uploadedPath = buildAdminProfileImagePath(user.id, profileImageFile);
+      const { error: uploadError } = await uploadProfileImage(uploadedPath, profileImageFile);
+      if (uploadError) {
+        alert(uploadError.message);
+        return;
+      }
+      nextProfileImage = uploadedPath;
+    }
+
+    const { error } = await supabase.rpc("update_admin_profile_image", {
+      p_profile_image: nextProfileImage,
+    });
+
+    if (error) {
+      if (uploadedPath) await deleteProfileImage(uploadedPath);
+      alert(error.message);
+      return;
+    }
+
+    if (uploadedPath && profileImage && profileImage !== uploadedPath) {
+      await deleteProfileImage(profileImage);
+    }
+
+    setProfileImage(nextProfileImage ?? "");
+    setProfileImageFile(null);
+    setProfileImagePreview(null);
+    onClose();
+  }
+
   return (
     <>
       {/* For Editing Admin Profile*/}
@@ -146,7 +200,7 @@ export default function AdminAccountModals({
             </button>
             <button
               className="rounded-lg bg-[#1e3a5f] px-4 py-2 text-sm font-medium text-white hover:bg-[#2a4a6f]"
-              onClick={onClose}
+              onClick={handleSaveAdminProfile}
               type="button"
             >
               Save Changes
@@ -162,6 +216,39 @@ export default function AdminAccountModals({
           <Field label="Position" value={position} />
           <Field label="Email Address" type="email" value={email} />
           <Field label="Contact Number" value={contactNumber} />
+          <div className="md:col-span-2">
+            <span className="mb-1.5 block text-sm font-medium text-slate-700">
+              Profile Image
+            </span>
+            <div className="flex flex-wrap items-center gap-4 rounded-lg border border-slate-200 bg-slate-50 p-4">
+              {profileImagePreview || getProfileImageUrl(profileImage || null) ? (
+                <img
+                  alt="Admin profile preview"
+                  className="h-20 w-20 rounded-full object-cover"
+                  src={profileImagePreview || getProfileImageUrl(profileImage || null) || ""}
+                />
+              ) : (
+                <div className="grid h-20 w-20 place-items-center rounded-full bg-white text-xs font-semibold text-slate-400">
+                  No image
+                </div>
+              )}
+              <div className="min-w-0 flex-1">
+                <input
+                  accept="image/jpeg,image/png,image/webp"
+                  capture="environment"
+                  onChange={(event) => {
+                    const file = event.target.files?.[0] ?? null;
+                    setProfileImageFile(file);
+                    setProfileImagePreview(file ? URL.createObjectURL(file) : null);
+                  }}
+                  type="file"
+                />
+                <p className="mt-2 text-xs text-slate-500">
+                  Optional JPG, PNG, or WebP up to 5 MB.
+                </p>
+              </div>
+            </div>
+          </div>
           <label className="block md:col-span-2">
             <span className="mb-1.5 block text-sm font-medium text-slate-700">
               Barangay

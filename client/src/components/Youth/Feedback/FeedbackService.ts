@@ -5,7 +5,9 @@ export type PastFeedbackEvent = {
   event_name: string;
   category: string;
   event_date: string | null;
+  event_time?: string | null;
   location: string | null;
+  description?: string | null;
 };
 
 export async function getPastFeedbackEvents() {
@@ -30,21 +32,30 @@ export async function getSubmittedFeedbackEventIds(userId: string) {
   };
 }
 
+export async function getPublicFeedbackEvent(eventId: number) {
+  const { data, error } = await supabase.rpc("get_public_feedback_event", {
+    p_event_id: eventId,
+  });
+
+  const event = Array.isArray(data) ? data[0] : null;
+  return { data: (event ?? null) as PastFeedbackEvent | null, error };
+}
+
 export async function submitPostEventFeedback({
   comments,
   eventId,
+  guestName,
   rating,
-  userId,
 }: {
   comments: string;
   eventId: number;
+  guestName?: string | null;
   rating: number;
-  userId: string;
 }) {
-  return supabase.from("post_event_feedback").insert({
-    comments,
-    event_id: eventId,
-    rating,
-    user_id: userId,
+  return supabase.rpc("submit_event_feedback", {
+    p_comments: comments,
+    p_event_id: eventId,
+    p_guest_name: guestName || null,
+    p_rating: rating,
   });
 }

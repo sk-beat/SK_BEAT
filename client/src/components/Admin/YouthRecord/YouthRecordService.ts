@@ -26,7 +26,22 @@ export async function addYouth(
     throw functionError;
   }
 
-  return { data: responseData, error: null };
+  const profileId = responseData?.profile_id;
+  if (profileId) {
+    return { data: { profile_id: profileId }, error: null };
+  }
+
+  const { data: profile, error: profileLookupError } = await supabase
+    .from("kabataan_profiles")
+    .select("profile_id")
+    .eq("email", data.email)
+    .maybeSingle();
+
+  if (profileLookupError) {
+    throw profileLookupError;
+  }
+
+  return { data: profile, error: null };
 }
 
     

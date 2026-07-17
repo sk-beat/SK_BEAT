@@ -11,6 +11,7 @@ import YouthRecord from "./components/Admin/YouthRecord/YouthRecord";
 import LoginPage from "./pages/LoginPage";
 import UnauthorizedPage from "./pages/UnauthorizedPage";
 import LandingPage from "./pages/LandingPage";
+import EventFeedbackPage from "./pages/EventFeedbackPage";
 import AdminEventsPage from "./pages/Admin/AdminEventsPage";
 import AdminLayout from "./pages/Admin/AdminLayout";
 import AdminOfficialsPage from "./pages/Admin/AdminOfficialsPage";
@@ -109,6 +110,14 @@ function App() {
             />
           </Route>
 
+          <Route
+            path="/event-feedback/:eventId"
+            element={
+              <PageTitle title="Event Feedback">
+                <EventFeedbackPage />
+              </PageTitle>
+            }
+          />
           <Route
             path="/login"
             element={

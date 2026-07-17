@@ -67,11 +67,6 @@ export default function Feedback() {
     setErrorMessage(null);
     setSuccessMessage(null);
 
-    if (!user?.id) {
-      setErrorMessage("You need to be signed in to submit feedback.");
-      return;
-    }
-
     if (!selectedEventId) {
       setErrorMessage("Please choose a past event.");
       return;
@@ -98,7 +93,6 @@ export default function Feedback() {
       comments: trimmedComments,
       eventId: selectedEventId,
       rating,
-      userId: user.id,
     });
 
     setIsSubmitting(false);

@@ -2,22 +2,28 @@ import { useEffect, useState } from "react";
 import { Link } from "react-router-dom";
 import skLogo from "../assets/sklogo.png";
 import { getPublicSKOfficials } from "../components/Admin/SKOfficials/SKOfficialsService";
-import { youthEvents, youthImages } from "../utils/adminPortalData";
+import { getPublicScheduledEvents, type PublicScheduledEvent } from "../services/PublicEventsService";
+import { youthImages } from "../utils/adminPortalData";
 
 export default function LandingPage() {
   const [officialsCount, setOfficialsCount] = useState(0);
+  const [scheduledEvents, setScheduledEvents] = useState<PublicScheduledEvent[]>([]);
 
   useEffect(() => {
     let isMounted = true;
 
-    async function loadOfficialsCount() {
-      const { data } = await getPublicSKOfficials();
+    async function loadLandingData() {
+      const [officials, events] = await Promise.all([
+        getPublicSKOfficials(),
+        getPublicScheduledEvents(),
+      ]);
       if (isMounted) {
-        setOfficialsCount(data.length);
+        setOfficialsCount(officials.data.length);
+        setScheduledEvents(events.data);
       }
     }
 
-    loadOfficialsCount();
+    loadLandingData();
 
     return () => {
       isMounted = false;
@@ -100,29 +106,38 @@ export default function LandingPage() {
           </Link>
         </div>
         <div className="mt-6 grid gap-5 md:grid-cols-3">
-          {youthEvents.map((event) => (
+          {scheduledEvents.map((event) => (
             <article
               className="overflow-hidden rounded-xl border border-slate-200 bg-white shadow-sm transition hover:-translate-y-1 hover:shadow-lg"
-              key={event.title}
+              key={event.event_id}
             >
               <img
                 className="h-44 w-full object-cover"
-                src={event.image}
+                src={event.cover_image || youthImages.seminar}
                 alt=""
               />
               <div className="p-5">
                 <p className="text-xs font-semibold uppercase tracking-wide text-slate-400">
-                  {event.date}
+                  {new Date(event.event_date).toLocaleDateString("en-PH", {
+                    day: "numeric",
+                    month: "long",
+                    year: "numeric",
+                  })}
                 </p>
                 <h3 className="mt-1 font-bold text-slate-900">
-                  {event.title}
+                  {event.event_name}
                 </h3>
                 <p className="mt-2 text-sm leading-6 text-slate-500">
-                  {event.description}
+                  {event.description || `${event.category}${event.location ? ` at ${event.location}` : ""}`}
                 </p>
               </div>
             </article>
           ))}
+          {scheduledEvents.length === 0 ? (
+            <div className="rounded-xl border border-dashed border-slate-300 bg-white p-6 text-sm text-slate-500 md:col-span-3">
+              No scheduled future events yet.
+            </div>
+          ) : null}
         </div>
       </section>
     </main>

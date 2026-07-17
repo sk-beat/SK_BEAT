@@ -60,6 +60,21 @@ export default function SurveyDetailsSections({
                   <legend className="px-1 text-sm font-semibold text-slate-900">
                     {index + 1}. {question.question_text} {question.is_required ? <span className="text-red-500">*</span> : null}
                   </legend>
+                  {question.question_type === "event_interest_likert" ? (
+                    <div className="mt-3 rounded-lg border border-blue-100 bg-blue-50 p-3">
+                      <p className="text-sm font-semibold text-[#1e3a5f]">
+                        {question.event_name}
+                      </p>
+                      <p className="mt-1 text-xs font-medium text-slate-500">
+                        {question.event_category}
+                      </p>
+                      {question.event_description ? (
+                        <p className="mt-2 text-xs leading-relaxed text-slate-600">
+                          {question.event_description}
+                        </p>
+                      ) : null}
+                    </div>
+                  ) : null}
                   {question.question_type === "short_text" || question.question_type === "long_text" ? (
                     <textarea
                       className="mt-3 min-h-24 w-full resize-y rounded-lg border border-slate-200 px-3 py-3 text-sm outline-none transition focus:border-blue-400 focus:ring-2 focus:ring-blue-100"
@@ -89,7 +104,12 @@ export default function SurveyDetailsSections({
                               }}
                               type={isMultiple ? "checkbox" : "radio"}
                             />
-                            {option.option_text}
+                            <span>
+                              {question.question_type === "event_interest_likert" && option.score_value ? (
+                                <strong className="mr-2 text-[#1e3a5f]">{option.score_value}</strong>
+                              ) : null}
+                              {option.option_text}
+                            </span>
                           </label>
                         );
                       })}

@@ -1,9 +1,9 @@
 import { supabase } from "../../../utils/supabase";
 import {
+  getEventPreferenceRecommendations,
   getPreferredActivityTypes,
-  getTopSuggestedEvents,
+  type EventPreferenceRecommendation,
   type PreferredActivityType,
-  type TopSuggestedEvent,
 } from "../SurveysAnnouncements/SurveyInsightsService";
 
 export type ActivityEventStatus =
@@ -80,19 +80,19 @@ export async function getActivityEvents() {
 export async function getActivityDecisionData() {
   const [preferred, suggested] = await Promise.all([
     getPreferredActivityTypes(),
-    getTopSuggestedEvents(),
+    getEventPreferenceRecommendations(),
   ]);
 
   return {
     data: {
       preferredActivityTypes: preferred.data as PreferredActivityType[],
-      topSuggestedEvents: suggested.data as TopSuggestedEvent[],
+      topSuggestedEvents: suggested.data as EventPreferenceRecommendation[],
     },
     error: preferred.error || suggested.error,
   };
 }
 
-export type ActivityRecommendation = TopSuggestedEvent;
+export type ActivityRecommendation = EventPreferenceRecommendation;
 
 export async function getCurrentBudgetYearId() {
   const { data, error } = await supabase

@@ -29,7 +29,7 @@ export default function Activities() {
   const [selectedActivity, setSelectedActivity] = useState<ActivityEvent | null>(
     null,
   );
-  const [selectedPastEvent, setSelectedPastEvent] = useState<string | null>(null);
+  const [selectedPastEvent, setSelectedPastEvent] = useState<ActivityEvent | null>(null);
   const [events, setEvents] = useState<ActivityEvent[]>([]);
   const [recommendations, setRecommendations] = useState<ActivityRecommendation[]>([]);
   const [budgetYearId, setBudgetYearId] = useState<number | null>(null);
@@ -135,19 +135,19 @@ export default function Activities() {
               budget_items: [],
               budget_year_id: budgetYearId,
               category:
-                recommendation.category === "Uncategorized"
+                recommendation.event_category === "Uncategorized"
                   ? "Sports"
-                  : recommendation.category,
+                  : recommendation.event_category,
               cover_image: null,
               created_at: null,
               created_by: null,
-              description: `Survey-based recommendation supported by ${recommendation.respondent_count} Youth respondent(s).`,
+              description: `Survey-based recommendation with ${recommendation.average_rating}/5 average rating from ${recommendation.response_count} Youth respondent(s).`,
               event_date: null,
               event_expenses: [],
               event_id: 0,
-              event_name: recommendation.suggested_event_name,
+              event_name: recommendation.event_name,
               event_time: null,
-              expected_attendees: recommendation.respondent_count,
+              expected_attendees: recommendation.response_count,
               location: null,
               status: "draft",
             });
@@ -158,8 +158,8 @@ export default function Activities() {
             setModalMode("catalog");
           }}
           onDeleteCatalogEvent={handleDeleteEvent}
-          onOpenPastFeedbackQr={(eventTitle) => {
-            setSelectedPastEvent(eventTitle);
+          onOpenPastFeedbackQr={(event) => {
+            setSelectedPastEvent(event);
             setModalMode("feedback-qr");
           }}
           onSelectDate={setSelectedScheduleDate}

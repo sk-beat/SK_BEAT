@@ -14,6 +14,7 @@ import {
 } from "lucide-react";
 import AdminModal from "../../Admin/shared/AdminModal";
 import type { YouthProfileRecord } from "./ProfileService";
+import { getProfileImageUrl } from "../../../utils/profileImages";
 
 export type ChangePasswordFormValues = {
   currentPassword: string;
@@ -130,6 +131,7 @@ export default function ProfileSections({
   });
   const [isPasswordModalOpen, setIsPasswordModalOpen] = useState(false);
   const fullName = profile?.fullname ?? "Youth Member";
+  const profileImageUrl = getProfileImageUrl(profile?.profile_image ?? null);
   const profileDetails = [
     {
       label: "Age",
@@ -225,11 +227,11 @@ export default function ProfileSections({
       <section className="overflow-hidden rounded-[14px] border border-slate-200 bg-white shadow-sm">
         <div className="bg-[#1e3a5f] px-6 py-8 text-white">
           <div className="flex items-center justify-between gap-4">
-            {profile?.profile_image ? (
+            {profileImageUrl ? (
               <img
                 alt={fullName}
                 className="h-24 w-24 rounded-full border-4 border-white/20 object-cover shadow-sm"
-                src={profile.profile_image}
+                src={profileImageUrl}
               />
             ) : (
               <div className="flex h-24 w-24 items-center justify-center rounded-full border-4 border-white/20 bg-white/10 text-3xl font-bold shadow-sm">

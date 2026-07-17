@@ -24,6 +24,20 @@ export type TopSuggestedEvent = {
   matching_event_id: number | null;
 };
 
+export type EventPreferenceRecommendation = {
+  rank: number;
+  event_name: string;
+  event_category: string;
+  response_count: number;
+  average_rating: number;
+  total_score: number;
+  positive_count: number;
+  positive_interest_percentage: number;
+  source_surveys: string[];
+  is_already_planned: boolean;
+  matching_event_id: number | null;
+};
+
 export type SurveyResponseAnswer = {
   question_id: number;
   question_text: string;
@@ -55,6 +69,11 @@ export async function getTopSuggestedEvents() {
   return { data: (data ?? []) as TopSuggestedEvent[], error };
 }
 
+export async function getEventPreferenceRecommendations() {
+  const { data, error } = await supabase.rpc("get_admin_event_preference_recommendations");
+  return { data: (data ?? []) as EventPreferenceRecommendation[], error };
+}
+
 export async function getAdminSurveyResponseDetails(options?: {
   search?: string;
   surveyId?: number | null;
@@ -66,4 +85,3 @@ export async function getAdminSurveyResponseDetails(options?: {
 
   return { data: (data ?? []) as AdminSurveyResponseDetail[], error };
 }
-

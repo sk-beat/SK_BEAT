@@ -129,15 +129,15 @@ async function loadRecords() {
 async function createYouth(
   data: Omit<YouthRecordType, "profile_id" | "created_at">
 ){
-  const { error } = await addYouth(data);
+  const { data: createdProfile, error } = await addYouth(data);
 
   if (error) {
     console.error(error);
-    return;
+    return null;
   }
 
   await loadRecords();
-  closeModal();
+  return createdProfile?.profile_id ?? null;
 }
 
 async function editYouth(

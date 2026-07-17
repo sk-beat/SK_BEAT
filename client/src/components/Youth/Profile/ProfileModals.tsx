@@ -1,5 +1,12 @@
 import { useEffect, useState } from "react";
 import AdminModal from "../../Admin/shared/AdminModal";
+import {
+  buildYouthProfileImagePath,
+  deleteProfileImage,
+  getProfileImageUrl,
+  uploadProfileImage,
+  validateProfileImageFile,
+} from "../../../utils/profileImages";
 import type {
   UpdateYouthProfilePayload,
   YouthProfileRecord,
@@ -104,8 +111,12 @@ export default function ProfileModals({
   const [educationalStatus, setEducationalStatus] = useState("");
   const [scholarStatus, setScholarStatus] = useState("");
   const [profileImage, setProfileImage] = useState("");
+  const [profileImageFile, setProfileImageFile] = useState<File | null>(null);
+  const [profileImagePreview, setProfileImagePreview] = useState<string | null>(null);
+  const [imageError, setImageError] = useState<string | null>(null);
 
   useEffect(() => {
+    // eslint-disable-next-line react-hooks/set-state-in-effect
     setFullname(profile?.fullname ?? "");
     setAge(profile?.age ?? "");
     setGender(profile?.gender ?? "");
@@ -114,9 +125,32 @@ export default function ProfileModals({
     setEducationalStatus(profile?.educational_status ?? "");
     setScholarStatus(profile?.scholar_status ?? "");
     setProfileImage(profile?.profile_image ?? "");
+    setProfileImageFile(null);
+    setProfileImagePreview(null);
+    setImageError(null);
   }, [profile, mode]);
 
   async function handleSubmit() {
+    if (!profile) return;
+    let nextProfileImage = profileImage || null;
+    let uploadedPath: string | null = null;
+
+    if (profileImageFile) {
+      const validationError = validateProfileImageFile(profileImageFile);
+      if (validationError) {
+        setImageError(validationError);
+        return;
+      }
+
+      uploadedPath = buildYouthProfileImagePath(profile.profile_id, profileImageFile);
+      const { error: uploadError } = await uploadProfileImage(uploadedPath, profileImageFile);
+      if (uploadError) {
+        setImageError(uploadError.message);
+        return;
+      }
+      nextProfileImage = uploadedPath;
+    }
+
     await onSave({
       fullname,
       age: age === "" ? null : age,
@@ -125,8 +159,12 @@ export default function ProfileModals({
       address_line: address || null,
       scholar_status: scholarStatus || null,
       educational_status: educationalStatus || null,
-      profile_image: profileImage || null,
+      profile_image: nextProfileImage,
     });
+
+    if (uploadedPath && profile.profile_image && profile.profile_image !== uploadedPath) {
+      await deleteProfileImage(profile.profile_image);
+    }
   }
 
   return (
@@ -215,13 +253,40 @@ export default function ProfileModals({
           value={scholarStatus}
         />
         <div className="md:col-span-2">
-          <Field
-            disabled={isSaving}
-            label="Profile Image URL"
-            onChange={(event) => setProfileImage(event.target.value)}
-            placeholder="Paste image URL"
-            value={profileImage}
-          />
+          <span className="mb-1.5 block text-sm font-medium text-slate-700">
+            Profile Image
+          </span>
+          <div className="flex flex-wrap items-center gap-4 rounded-lg border border-slate-200 bg-slate-50 p-4">
+            {profileImagePreview || getProfileImageUrl(profileImage || null) ? (
+              <img
+                alt="Profile preview"
+                className="h-20 w-20 rounded-full object-cover"
+                src={profileImagePreview || getProfileImageUrl(profileImage || null) || ""}
+              />
+            ) : (
+              <div className="grid h-20 w-20 place-items-center rounded-full bg-white text-xs font-semibold text-slate-400">
+                No image
+              </div>
+            )}
+            <div className="min-w-0 flex-1">
+              <input
+                accept="image/jpeg,image/png,image/webp"
+                capture="environment"
+                disabled={isSaving}
+                onChange={(event) => {
+                  const file = event.target.files?.[0] ?? null;
+                  setImageError(null);
+                  setProfileImageFile(file);
+                  setProfileImagePreview(file ? URL.createObjectURL(file) : null);
+                }}
+                type="file"
+              />
+              <p className="mt-2 text-xs text-slate-500">
+                Optional JPG, PNG, or WebP up to 5 MB.
+              </p>
+              {imageError ? <p className="mt-1 text-xs text-red-600">{imageError}</p> : null}
+            </div>
+          </div>
         </div>
       </div>
     </AdminModal>

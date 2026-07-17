@@ -55,12 +55,12 @@ Deno.serve(async (req) => {
         email: profileData.email,
         educational_status: profileData.educational_status,
         scholar_status: profileData.scholar_status,
-        profile_image: profileData.profile_image || "",
+        profile_image: profileData.profile_image || null,
       });
 
     if (profileError) throw profileError;
 
-    return new Response(JSON.stringify({ success: true }), {
+    return new Response(JSON.stringify({ success: true, profile_id: authData.user.id }), {
       headers: { ...corsHeaders, "Content-Type": "application/json" },
       status: 200,
     });

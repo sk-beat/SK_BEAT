@@ -1,6 +1,13 @@
 import { useEffect, useState } from "react";
 import AdminModal from "../shared/AdminModal";
 import type { CreateYouthRecord, YouthRecord } from "./youthRecordData";
+import {
+  buildYouthProfileImagePath,
+  deleteProfileImage,
+  getProfileImageUrl,
+  uploadProfileImage,
+  validateProfileImageFile,
+} from "../../../utils/profileImages";
 
 export type YouthRecordModalMode = "add" | "edit" | "view" | "delete" | null;
 
@@ -8,7 +15,7 @@ type YouthRecordModalsProps = {
   mode: YouthRecordModalMode;
   onClose: () => void;
   record: YouthRecord | null;
-  onCreate: (data: CreateYouthRecord) => Promise<void>;
+  onCreate: (data: CreateYouthRecord) => Promise<string | null>;
   onUpdate: (profile_id: string, data: CreateYouthRecord) => Promise<void>;
   onDelete: (profile_id: string) => Promise<void>;
 };
@@ -144,19 +151,6 @@ function isValidEmail(value: string) {
   return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(value);
 }
 
-function isValidUrl(value: string) {
-  if (!value) {
-    return true;
-  }
-
-  try {
-    const url = new URL(value);
-    return url.protocol === "http:" || url.protocol === "https:";
-  } catch {
-    return false;
-  }
-}
-
 export default function YouthRecordModals({
   mode,
   onClose,
@@ -183,11 +177,14 @@ export default function YouthRecordModals({
   >("");
   const [scholar, setScholar] = useState<"Scholar" | "Non-Scholar" | "">("");
   const [profileImage, setProfileImage] = useState("");
+  const [profileImageFile, setProfileImageFile] = useState<File | null>(null);
+  const [profileImagePreview, setProfileImagePreview] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
   const [errors, setErrors] = useState<FormErrors>({});
 
   useEffect(() => {
     if (record) {
+      // eslint-disable-next-line react-hooks/set-state-in-effect
       setName(record.fullname ?? "");
       setAge(record.age ?? "");
       setGender(record.gender ?? "");
@@ -198,6 +195,8 @@ export default function YouthRecordModals({
       setEducation(record.educational_status ?? "");
       setScholar(record.scholar_status ?? "");
       setProfileImage(record.profile_image ?? "");
+      setProfileImageFile(null);
+      setProfileImagePreview(null);
       setPassword("");
     } else {
       setName("");
@@ -210,6 +209,8 @@ export default function YouthRecordModals({
       setEducation("");
       setScholar("");
       setProfileImage("");
+      setProfileImageFile(null);
+      setProfileImagePreview(null);
       setPassword("");
     }
 
@@ -264,8 +265,9 @@ export default function YouthRecordModals({
       nextErrors.scholar = "Scholar status is required.";
     }
 
-    if (!isValidUrl(profileImage.trim())) {
-      nextErrors.profileImage = "Enter a valid http or https image URL.";
+    if (profileImageFile) {
+      const imageError = validateProfileImageFile(profileImageFile);
+      if (imageError) nextErrors.profileImage = imageError;
     }
 
     setErrors(nextErrors);
@@ -287,7 +289,7 @@ export default function YouthRecordModals({
       email: email.trim(),
       educational_status: education as YouthRecord["educational_status"],
       scholar_status: scholar as "Scholar" | "Non-Scholar",
-      profile_image: profileImage.trim(),
+      profile_image: profileImage.trim() || "",
       password,
     };
 
@@ -295,9 +297,29 @@ export default function YouthRecordModals({
       setLoading(true);
 
       if (isEdit && record) {
-        await onUpdate(record.profile_id, youth);
+        let nextProfileImage = profileImage.trim();
+        let uploadedPath: string | null = null;
+        if (profileImageFile) {
+          uploadedPath = buildYouthProfileImagePath(record.profile_id, profileImageFile);
+          const { error: uploadError } = await uploadProfileImage(uploadedPath, profileImageFile);
+          if (uploadError) throw uploadError;
+          nextProfileImage = uploadedPath;
+        }
+        await onUpdate(record.profile_id, { ...youth, profile_image: nextProfileImage });
+        if (uploadedPath && record.profile_image && record.profile_image !== uploadedPath) {
+          await deleteProfileImage(record.profile_image);
+        }
       } else {
-        await onCreate(youth);
+        const profileId = await onCreate({ ...youth, profile_image: "" });
+        if (profileId && profileImageFile) {
+          const uploadedPath = buildYouthProfileImagePath(profileId, profileImageFile);
+          const { error: uploadError } = await uploadProfileImage(uploadedPath, profileImageFile);
+          if (uploadError) {
+            window.alert("Youth account was created, but image upload failed. You can add the image later.");
+          } else {
+            await onUpdate(profileId, { ...youth, profile_image: uploadedPath });
+          }
+        }
       }
 
       onClose();
@@ -478,14 +500,39 @@ export default function YouthRecordModals({
             value={scholar}
           />
           <div className="md:col-span-2">
-            <Field
-              disabled={loading}
-              error={errors.profileImage}
-              label="Profile Image URL"
-              onChange={(event) => setProfileImage(event.target.value)}
-              placeholder="Paste image URL"
-              value={profileImage}
-            />
+            <span className="mb-1.5 block text-sm font-medium text-slate-700">
+              Profile Image (optional)
+            </span>
+            <div className="flex flex-wrap items-center gap-4 rounded-lg border border-slate-200 bg-slate-50 p-4">
+              {profileImagePreview || getProfileImageUrl(profileImage || null) ? (
+                <img
+                  alt="Youth profile preview"
+                  className="h-20 w-20 rounded-full object-cover"
+                  src={profileImagePreview || getProfileImageUrl(profileImage || null) || ""}
+                />
+              ) : (
+                <div className="grid h-20 w-20 place-items-center rounded-full bg-white text-xs font-semibold text-slate-400">
+                  No image
+                </div>
+              )}
+              <div className="min-w-0 flex-1">
+                <input
+                  accept="image/jpeg,image/png,image/webp"
+                  capture="environment"
+                  disabled={loading}
+                  onChange={(event) => {
+                    const file = event.target.files?.[0] ?? null;
+                    setProfileImageFile(file);
+                    setProfileImagePreview(file ? URL.createObjectURL(file) : null);
+                  }}
+                  type="file"
+                />
+                <p className="mt-2 text-xs text-slate-500">
+                  Optional JPG, PNG, or WebP up to 5 MB.
+                </p>
+                {errors.profileImage ? <p className="mt-1 text-xs text-red-600">{errors.profileImage}</p> : null}
+              </div>
+            </div>
           </div>
         </div>
       </AdminModal>

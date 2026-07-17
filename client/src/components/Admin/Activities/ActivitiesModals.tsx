@@ -19,7 +19,7 @@ type ActivitiesModalsProps = {
   onSave: (payload: SaveActivityEventPayload) => Promise<void>;
   scheduleDate: string;
   selectedActivity: ActivityEvent | null;
-  selectedPastEvent: string | null;
+  selectedPastEvent: ActivityEvent | null;
 };
 
 type BudgetRow = {
@@ -989,6 +989,13 @@ export default function ActivitiesModals({
   selectedActivity,
   selectedPastEvent,
 }: ActivitiesModalsProps) {
+  const feedbackUrl = selectedPastEvent
+    ? `${window.location.origin}/event-feedback/${selectedPastEvent.event_id}`
+    : "";
+  const qrImageUrl = feedbackUrl
+    ? `https://api.qrserver.com/v1/create-qr-code/?size=220x220&data=${encodeURIComponent(feedbackUrl)}`
+    : "";
+
   return (
     <>
       {mode === "catalog" ? (
@@ -1030,13 +1037,20 @@ export default function ActivitiesModals({
       >
         <div className="text-center">
           <p className="text-sm font-medium text-slate-800">
-            {selectedPastEvent || "Past Event"}
+            {selectedPastEvent?.event_name || "Past Event"}
           </p>
-          <div className="mx-auto mt-5 grid h-44 w-44 place-items-center rounded-2xl border-4 border-[#1e3a5f] bg-white text-xs font-semibold uppercase tracking-[0.12em] text-[#1e3a5f]">
-            QR Code
-          </div>
+          {qrImageUrl ? (
+            <img
+              alt={`Feedback QR for ${selectedPastEvent?.event_name ?? "event"}`}
+              className="mx-auto mt-5 h-56 w-56 rounded-2xl border-4 border-[#1e3a5f] bg-white p-3"
+              src={qrImageUrl}
+            />
+          ) : null}
+          <p className="mt-4 break-all rounded-lg border border-slate-200 bg-slate-50 px-3 py-2 text-xs text-slate-600">
+            {feedbackUrl || "No feedback URL available."}
+          </p>
           <p className="mt-4 text-sm text-slate-500">
-            Static preview for post-event feedback survey sharing.
+            Scan to open this completed event's feedback form.
           </p>
         </div>
       </AdminModal>

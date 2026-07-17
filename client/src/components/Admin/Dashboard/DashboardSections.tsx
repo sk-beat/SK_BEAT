@@ -128,7 +128,7 @@ function PopulationCard({ data }: { data: DashboardData }) {
 }
 
 function CategoryCard({ data }: { data: DashboardData }) {
-  const maxValue = Math.max(...data.preferredActivityTypes.map((item) => item.respondent_count), 1);
+  const maxValue = Math.max(...data.preferredActivityTypes.map((item) => item.total_respondent_count), 1);
 
   return (
     <section className="rounded-[14px] border border-[#1e3a5f]/20 bg-white p-6 shadow-sm">
@@ -155,7 +155,7 @@ function CategoryCard({ data }: { data: DashboardData }) {
           >
             <div
               className="w-full max-w-12 rounded-t-md bg-[#1e3a5f]"
-              style={{ height: `${Math.max(8, (category.respondent_count / maxValue) * 100)}%` }}
+              style={{ height: `${Math.max(8, (category.total_respondent_count / maxValue) * 100)}%` }}
             />
             <span className="text-[0.7rem] font-medium text-slate-500">
               {category.activity_type}

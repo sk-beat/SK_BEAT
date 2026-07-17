@@ -3,12 +3,13 @@ import { supabase } from "../../../utils/supabase";
 export type PreferredActivityType = {
   rank: number;
   activity_type: string;
-  respondent_count: number;
-  total_respondents: number;
-  respondent_percentage: number;
-  selection_count: number;
-  total_selections: number;
-  selection_share_percentage: number;
+  authenticated_respondent_count: number;
+  guest_respondent_count: number;
+  total_respondent_count: number;
+  average_rating: number;
+  positive_count: number;
+  positive_interest_percentage: number;
+  total_score: number;
   source_surveys: string[];
 };
 
@@ -17,8 +18,15 @@ export type TopSuggestedEvent = {
   suggested_event_name: string;
   category: string;
   respondent_count: number;
-  submission_count: number;
+  total_respondent_count: number;
+  authenticated_respondent_count: number;
+  guest_respondent_count: number;
+  average_rating: number;
+  total_score: number;
+  positive_count: number;
+  positive_interest_percentage: number;
   respondent_support_percentage: number;
+  submission_count: number;
   source_surveys: string[];
   is_already_planned: boolean;
   matching_event_id: number | null;

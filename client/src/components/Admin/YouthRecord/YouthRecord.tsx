@@ -15,6 +15,7 @@ export default function YouthRecord() {
   const [search, setSearch] = useState("");
 const [scholarFilter, setScholarFilter] = useState("");
 const [educationFilter, setEducationFilter] = useState("");
+const [statusFilter, setStatusFilter] = useState("");
 
 const filteredRecords = records.filter((record) => {
   const searchValue = search.toLowerCase();
@@ -35,7 +36,12 @@ const filteredRecords = records.filter((record) => {
       ? true
       : record.educational_status === educationFilter;
 
-  return matchesSearch && matchesScholar && matchesEducation  ;
+  const matchesStatus =
+    statusFilter === ""
+      ? true
+      : record.status === statusFilter;
+
+  return matchesSearch && matchesScholar && matchesEducation && matchesStatus;
 });
 
 function escapeCsvCell(value: string | number | null | undefined) {
@@ -53,6 +59,7 @@ function exportYouthRecords() {
     "Profile ID",
     "Full Name",
     "Email",
+    "Account Status",
     "Age",
     "Gender",
     "Purok",
@@ -67,6 +74,7 @@ function exportYouthRecords() {
     record.profile_id,
     record.fullname,
     record.email,
+    record.status === "active" ? "Active" : "Inactive",
     record.age,
     record.gender,
     record.purok,
@@ -184,6 +192,8 @@ async function removeYouth(profile_id: string) {
   setScholarFilter={setScholarFilter}
   educationFilter={educationFilter}
   setEducationFilter={setEducationFilter}
+  statusFilter={statusFilter}
+  setStatusFilter={setStatusFilter}
 />
   
 

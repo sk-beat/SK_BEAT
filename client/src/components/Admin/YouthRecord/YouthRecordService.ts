@@ -62,6 +62,7 @@ console.log("Select error:", selectError);
   .from("kabataan_profiles")
   .update({
     fullname: data.fullname,
+    status: data.status,
     age: data.age,
     gender: data.gender,
     address_line: data.address_line,

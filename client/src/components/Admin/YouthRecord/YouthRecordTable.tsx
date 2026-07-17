@@ -80,7 +80,7 @@ export default function YouthRecordTable({
 }) {
   return (
     <div className="overflow-hidden overflow-x-auto rounded-[14px] border border-slate-200 bg-white shadow-sm">
-      <table className="w-full min-w-215 border-collapse text-sm">
+      <table className="w-full min-w-230 border-collapse text-sm">
         <thead>
           <tr>
             {[
@@ -88,7 +88,8 @@ export default function YouthRecordTable({
               "Name",
               "Gender",
               "Scholar Status",
-              "Status",
+              "Account Status",
+              "Education",
               "Purok",
               "Actions",
             ].map((heading) => (
@@ -105,7 +106,7 @@ export default function YouthRecordTable({
           {records.map((record) => (
             <tr className="hover:bg-slate-50" key={record.profile_id}>
               <td className="border-t px-5 py-4">
-                #{record.profile_id.slice(0,8)}
+                #{record.profile_id.slice(0, 8)}
               </td>
               <td className="border-t border-slate-200 px-5 py-4">
                 <div className="flex items-center gap-3">
@@ -127,12 +128,17 @@ export default function YouthRecordTable({
                 <span
                   className={[
                     "inline-flex items-center gap-1 rounded-md px-3 py-1.5 text-xs font-semibold",
-                    record.educational_status === "Active"
+                    record.status === "active"
                       ? "bg-emerald-500/10 text-emerald-500"
                       : "bg-slate-200 text-slate-500",
                   ].join(" ")}
                 >
-                  {record.educational_status === "Active" ? "✓" : null}
+                  {record.status === "active" ? "✓" : null}
+                  {record.status === "active" ? "Active" : "Inactive"}
+                </span>
+              </td>
+              <td className="border-t border-slate-200 px-5 py-4 text-center">
+                <span className="inline-flex items-center gap-1 rounded-md bg-slate-100 px-3 py-1.5 text-xs font-semibold text-slate-600">
                   {record.educational_status}
                 </span>
               </td>
@@ -163,7 +169,7 @@ export default function YouthRecordTable({
                     type="button"
                     title="Delete"
                   >
-                    <TrashIcon className="h-4 w-4 " />
+                    <TrashIcon className="h-4 w-4" />
                   </button>
                 </div>
               </td>

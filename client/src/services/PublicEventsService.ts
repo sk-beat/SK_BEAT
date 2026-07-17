@@ -16,3 +16,8 @@ export async function getPublicScheduledEvents() {
   const { data, error } = await supabase.rpc("get_public_scheduled_events");
   return { data: (data ?? []) as PublicScheduledEvent[], error };
 }
+
+export async function getAllPublicScheduledEvents() {
+  const { data, error } = await supabase.rpc("get_all_public_scheduled_events");
+  return { data: (data ?? []) as PublicScheduledEvent[], error };
+}

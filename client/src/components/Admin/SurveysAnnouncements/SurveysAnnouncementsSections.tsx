@@ -24,8 +24,8 @@ function getActivityTypeBreakdown(rows: PreferredActivityType[]) {
   return rows.map((item, index) => ({
     color: activityTypeColors[index % activityTypeColors.length],
     label: item.activity_type,
-    percentage: Math.round(item.respondent_percentage),
-    value: item.respondent_count,
+    percentage: Math.round(item.positive_interest_percentage),
+    value: item.total_respondent_count,
   }));
 }
 
@@ -54,18 +54,22 @@ function PreferredActivityPieChart({ rows }: { rows: PreferredActivityType[] }) 
 
       <div className="space-y-3">
         {breakdown.length > 0 ? breakdown.map((item) => (
-          <div
-            className="grid grid-cols-[auto_1fr_auto] items-center gap-3 text-sm"
-            key={item.label}
-          >
-            <span
-              className="h-3 w-3 rounded-full"
-              style={{ backgroundColor: item.color }}
-            />
-            <span className="font-medium text-slate-700">{item.label}</span>
-            <span className="text-slate-500">
-              {item.value} ({item.percentage}%)
-            </span>
+          <div key={item.label}>
+            <div className="grid grid-cols-[auto_1fr_auto] items-center gap-3 text-sm">
+              <span
+                className="h-3 w-3 rounded-full"
+                style={{ backgroundColor: item.color }}
+              />
+              <span className="font-medium text-slate-700">{item.label}</span>
+              <span className="text-slate-500">
+                {item.value} respondent(s), {item.percentage}% positive
+              </span>
+            </div>
+            {item.value < 3 ? (
+              <p className="ml-6 mt-1 text-xs text-amber-700">
+                Not enough data. Needs at least 3 respondents.
+              </p>
+            ) : null}
           </div>
         )) : <p className="text-sm text-slate-500">No response data yet.</p>}
       </div>
@@ -271,20 +275,35 @@ export function SurveyResponsesSection() {
               Top suggested events
             </h3>
             <div className="mt-4 space-y-3">
-              {suggestedEvents.slice(0, 5).map((event) => (
+              {suggestedEvents.slice(0, 3).map((event) => (
                 <div key={event.suggested_event_name}>
                   <div className="flex items-center justify-between gap-3 text-sm">
-                    <span className="font-medium text-slate-700">
-                      {event.suggested_event_name}
-                    </span>
-                    <span className="text-slate-500">
-                      {event.respondent_count} ({event.respondent_support_percentage}%)
+                    <div>
+                      <span className="font-medium text-slate-700">
+                        #{event.rank} {event.suggested_event_name}
+                      </span>
+                      <p className="text-xs text-slate-500">
+                        {event.category}
+                        {event.is_already_planned ? " · Already planned" : ""}
+                      </p>
+                    </div>
+                    <span className="text-right text-slate-500">
+                      {event.average_rating}/5
+                      <br />
+                      <span className="text-xs">
+                        {event.total_respondent_count} respondent(s)
+                      </span>
                     </span>
                   </div>
-                  <div className="mt-1 h-2 rounded-full bg-slate-200">
+                  {event.total_respondent_count < 3 ? (
+                    <p className="mt-1 text-xs text-amber-700">
+                      Not enough data. Needs at least 3 respondents.
+                    </p>
+                  ) : null}
+                  <div className="mt-2 h-2 rounded-full bg-slate-200">
                     <div
                       className="h-2 rounded-full bg-[#1e3a5f]"
-                      style={{ width: `${Math.min(100, event.respondent_support_percentage)}%` }}
+                      style={{ width: `${Math.min(100, event.positive_interest_percentage)}%` }}
                     />
                   </div>
                 </div>
@@ -360,7 +379,7 @@ export function AnnouncementsSection({
   }
 
   useEffect(() => {
-    loadAnnouncements();
+    void Promise.resolve().then(loadAnnouncements);
   }, []);
 
   return (

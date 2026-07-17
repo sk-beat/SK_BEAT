@@ -32,6 +32,7 @@ const educationalStatusOptions = [
 
 const scholarStatusOptions = ["Scholar", "Non-Scholar"] as const;
 const genderOptions = ["Male", "Female"] as const;
+const accountStatusOptions = ["active", "inactive"] as const;
 
 type FormErrors = Partial<
   Record<
@@ -44,6 +45,7 @@ type FormErrors = Partial<
     | "password"
     | "education"
     | "scholar"
+    | "status"
     | "profileImage",
     string
   >
@@ -176,6 +178,7 @@ export default function YouthRecordModals({
     YouthRecord["educational_status"] | ""
   >("");
   const [scholar, setScholar] = useState<"Scholar" | "Non-Scholar" | "">("");
+  const [accountStatus, setAccountStatus] = useState<YouthRecord["status"]>("active");
   const [profileImage, setProfileImage] = useState("");
   const [profileImageFile, setProfileImageFile] = useState<File | null>(null);
   const [profileImagePreview, setProfileImagePreview] = useState<string | null>(null);
@@ -194,6 +197,7 @@ export default function YouthRecordModals({
       setEmail(record.email ?? "");
       setEducation(record.educational_status ?? "");
       setScholar(record.scholar_status ?? "");
+      setAccountStatus(record.status ?? "active");
       setProfileImage(record.profile_image ?? "");
       setProfileImageFile(null);
       setProfileImagePreview(null);
@@ -208,6 +212,7 @@ export default function YouthRecordModals({
       setEmail("");
       setEducation("");
       setScholar("");
+      setAccountStatus("active");
       setProfileImage("");
       setProfileImageFile(null);
       setProfileImagePreview(null);
@@ -265,6 +270,10 @@ export default function YouthRecordModals({
       nextErrors.scholar = "Scholar status is required.";
     }
 
+    if (!accountStatus) {
+      nextErrors.status = "Account status is required.";
+    }
+
     if (profileImageFile) {
       const imageError = validateProfileImageFile(profileImageFile);
       if (imageError) nextErrors.profileImage = imageError;
@@ -287,6 +296,7 @@ export default function YouthRecordModals({
       purok: purok.trim(),
       contact_number: contact.trim(),
       email: email.trim(),
+      status: accountStatus,
       educational_status: education as YouthRecord["educational_status"],
       scholar_status: scholar as "Scholar" | "Non-Scholar",
       profile_image: profileImage.trim() || "",
@@ -479,6 +489,16 @@ export default function YouthRecordModals({
           </div>
           <SelectField
             disabled={loading}
+            error={errors.status}
+            label="Account Status"
+            onChange={(event) =>
+              setAccountStatus(event.target.value as YouthRecord["status"])
+            }
+            options={accountStatusOptions}
+            value={accountStatus}
+          />
+          <SelectField
+            disabled={loading}
             error={errors.education}
             label="Educational Status"
             onChange={(event) =>
@@ -559,6 +579,10 @@ export default function YouthRecordModals({
           <Detail label="Age" value={age} />
           <Detail label="Gender" value={gender} />
           <Detail label="Email" value={email} />
+          <Detail
+            label="Account Status"
+            value={accountStatus === "active" ? "Active" : "Inactive"}
+          />
           <Detail label="Contact" value={contact} />
           <Detail label="Purok" value={purok} />
           <Detail label="Address" value={address} />

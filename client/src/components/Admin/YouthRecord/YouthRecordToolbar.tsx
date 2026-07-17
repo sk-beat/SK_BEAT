@@ -64,6 +64,8 @@ type YouthRecordToolbarProps = {
   setScholarFilter: (value: string) => void;
   educationFilter: string;
   setEducationFilter: (value: string) => void;
+  statusFilter: string;
+  setStatusFilter: (value: string) => void;
 };
 
 export default function YouthRecordToolbar({
@@ -76,7 +78,9 @@ export default function YouthRecordToolbar({
   scholarFilter,
   setScholarFilter,
   educationFilter,        
-  setEducationFilter
+  setEducationFilter,
+  statusFilter,
+  setStatusFilter
 }: YouthRecordToolbarProps)  {
   return (
     <>
@@ -94,13 +98,24 @@ export default function YouthRecordToolbar({
 
         <div className="flex gap-3 max-sm:flex-col">
           <select
+  value={statusFilter}
+  onChange={(e) => setStatusFilter(e.target.value)}
+  className="cursor-pointer rounded-lg border border-slate-200 bg-white px-4 py-3 pr-8 text-sm font-medium text-slate-700 shadow-sm"
+>
+  <option value="">All Account Status</option>
+  <option value="active">Active</option>
+  <option value="inactive">Inactive</option>
+</select>
+          <select
   value={educationFilter}
   onChange={(e) => setEducationFilter(e.target.value)}
   className="cursor-pointer rounded-lg border border-slate-200 bg-white px-4 py-3 pr-8 text-sm font-medium text-slate-700 shadow-sm"
 >
-  <option value="">All Scholar Status</option>
+  <option value="">All Educational Status</option>
   <option value="Active">Active</option>
   <option value="Inactive">Inactive</option>
+  <option value="Student">Student</option>
+  <option value="Out of School Youth">Out of School Youth</option>
 </select>
          <select
   value={scholarFilter}

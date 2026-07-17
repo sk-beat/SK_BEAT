@@ -3,6 +3,7 @@ export type YouthRecord = {
   fullname: string;
   email: string;
   contact_number: string;
+  status: "active" | "inactive";
   age: number ;
   gender: "Male" | "Female" ;
   purok: string ;

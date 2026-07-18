@@ -2,8 +2,16 @@
 
 // supabase/functions/create-youth/index.ts
 
-// @ts-ignore: Prevents React/Vite TypeScript from scanning this local alias module
 import { createClient } from "supabase";
+
+declare const Deno: {
+  env: {
+    get(name: string): string | undefined;
+  };
+  serve(
+    handler: (req: Request) => Response | Promise<Response>,
+  ): void;
+};
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -11,8 +19,26 @@ const corsHeaders = {
   "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type",
 };
 
+function validateDateOfBirth(value: unknown) {
+  if (!value) return null;
+  if (typeof value !== "string") {
+    throw new Error("Date of birth must be a valid date.");
+  }
 
-// @ts-ignore: Bypasses local editor warnings if Deno namespace isn't registering
+  const date = new Date(`${value}T00:00:00Z`);
+  if (Number.isNaN(date.getTime())) {
+    throw new Error("Date of birth must be a valid date.");
+  }
+
+  const today = new Date();
+  const todayOnly = new Date(Date.UTC(today.getUTCFullYear(), today.getUTCMonth(), today.getUTCDate()));
+  if (date > todayOnly) {
+    throw new Error("Date of birth cannot be in the future.");
+  }
+
+  return value;
+}
+
 Deno.serve(async (req) => {
   if (req.method === "OPTIONS") {
     return new Response("ok", { 
@@ -22,9 +48,7 @@ Deno.serve(async (req) => {
   }
 
   try {
-    // @ts-ignore
     const supabaseUrl = Deno.env.get("SUPABASE_URL");
-    // @ts-ignore
     const supabaseServiceKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY");
 
     if (!supabaseUrl || !supabaseServiceKey) {
@@ -33,6 +57,7 @@ Deno.serve(async (req) => {
 
     const supabaseAdmin = createClient(supabaseUrl, supabaseServiceKey);
     const { password, ...profileData } = await req.json();
+    const dateOfBirth = validateDateOfBirth(profileData.date_of_birth);
 
     const { data: authData, error: authError } = await supabaseAdmin.auth.admin.createUser({
       email: profileData.email,
@@ -56,6 +81,7 @@ Deno.serve(async (req) => {
         educational_status: profileData.educational_status,
         scholar_status: profileData.scholar_status,
         profile_image: profileData.profile_image || null,
+        date_of_birth: dateOfBirth,
       });
 
     if (profileError) throw profileError;
@@ -65,8 +91,9 @@ Deno.serve(async (req) => {
       status: 200,
     });
 
-  } catch (error: any) {
-    return new Response(JSON.stringify({ error: error.message || error }), {
+  } catch (error: unknown) {
+    const message = error instanceof Error ? error.message : String(error);
+    return new Response(JSON.stringify({ error: message }), {
       headers: { ...corsHeaders, "Content-Type": "application/json" },
       status: 400,
     });

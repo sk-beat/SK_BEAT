@@ -1,31 +1,54 @@
 import { supabase } from "../../../utils/supabase";
+import {
+  getLandingAssetUrl,
+  getPublicLandingPageSettings,
+} from "../../../services/LandingPageSettingsService";
 import { getVisibleAnnouncements, type Announcement } from "../../Admin/SurveysAnnouncements/AnnouncementsService";
 import { getYouthEvents, type YouthEvent } from "../Events/EventsService";
-import { getYouthSurveys, type YouthSurvey } from "../Surveys/SurveysService";
+import type { YouthHomePastEvent } from "./types";
 
 export type YouthHomeData = {
   announcements: Announcement[];
   events: YouthEvent[];
+  heroBackgroundUrl: string | null;
+  pastEvents: YouthHomePastEvent[];
   registeredEventIds: Set<number>;
-  surveys: YouthSurvey[];
 };
 
-export async function getYouthHomeData(userId: string) {
-  const [announcements, events, surveys] = await Promise.all([
-    getVisibleAnnouncements(3),
+export async function getYouthHomeData() {
+  const [announcements, events, pastEvents, landingSettings] = await Promise.all([
+    getVisibleAnnouncements(4),
     getYouthEvents(3),
-    getYouthSurveys(userId),
+    getYouthHomePastEvents(4),
+    getPublicLandingPageSettings(),
   ]);
 
   return {
     data: {
       announcements: announcements.data,
       events: events.data,
+      heroBackgroundUrl: getLandingAssetUrl(landingSettings.data.hero_background_path),
+      pastEvents: pastEvents.data,
       registeredEventIds: new Set(events.data.filter((event) => event.is_registered).map((event) => event.event_id)),
-      surveys: surveys.data.slice(0, 3),
     } as YouthHomeData,
-    error: announcements.error || events.error || surveys.error,
+    error: announcements.error || events.error || pastEvents.error || landingSettings.error,
   };
+}
+
+export async function getYouthHomePastEvents(limit = 4) {
+  const today = new Date().toISOString().slice(0, 10);
+  const { data, error } = await supabase
+    .from("events")
+    .select("event_id,event_name,category,event_date,event_time,location,cover_image,description")
+    .eq("status", "completed")
+    .not("event_date", "is", null)
+    .lt("event_date", today)
+    .order("event_date", { ascending: false })
+    .order("event_time", { ascending: false, nullsFirst: false })
+    .order("event_id", { ascending: false })
+    .limit(limit);
+
+  return { data: (data ?? []) as YouthHomePastEvent[], error };
 }
 
 export async function getYouthProfileName(userId: string) {

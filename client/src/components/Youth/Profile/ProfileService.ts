@@ -17,6 +17,7 @@ export type YouthProfileRecord = {
   scholar_status: string | null;
   educational_status: string | null;
   profile_image: string | null;
+  date_of_birth: string | null;
   created_at: string | null;
 };
 
@@ -29,13 +30,14 @@ export type UpdateYouthProfilePayload = {
   scholar_status: string | null;
   educational_status: string | null;
   profile_image: string | null;
+  date_of_birth?: string | null;
 };
 
 export async function getYouthProfile(profileId: string) {
   return supabase
     .from("kabataan_profiles")
     .select(
-      "profile_id, fullname, email, age, gender, purok, address_line, scholar_status, educational_status, profile_image, created_at",
+      "profile_id, fullname, email, age, gender, purok, address_line, scholar_status, educational_status, profile_image, date_of_birth, created_at",
     )
     .eq("profile_id", profileId)
     .maybeSingle<YouthProfileRecord>();
@@ -45,6 +47,19 @@ export async function updateYouthProfile(
   profileId: string,
   payload: UpdateYouthProfilePayload,
 ) {
+  if (payload.date_of_birth) {
+    const dateOfBirth = new Date(`${payload.date_of_birth}T00:00:00`);
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+
+    if (Number.isNaN(dateOfBirth.getTime()) || dateOfBirth > today) {
+      return {
+        data: null,
+        error: new Error("Date of birth cannot be in the future."),
+      };
+    }
+  }
+
   return supabase
     .from("kabataan_profiles")
     .update(payload)

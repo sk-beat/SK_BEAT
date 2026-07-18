@@ -1,6 +1,5 @@
 import { useEffect, useState } from "react";
 import { useAuth } from "../../../auth/useAuth";
-import HomeHeader from "./HomeHeader";
 import HomeSections from "./HomeSections";
 import { getYouthHomeData, type YouthHomeData } from "./YouthHomeService";
 
@@ -17,7 +16,7 @@ export default function Home() {
       if (!user?.id) return;
       setIsLoading(true);
       setErrorMessage(null);
-      const { data, error } = await getYouthHomeData(user.id);
+      const { data, error } = await getYouthHomeData();
       if (!isMounted) return;
       if (error) setErrorMessage(error.message);
       setHomeData(data);
@@ -33,10 +32,10 @@ export default function Home() {
 
   return (
     <div className="min-h-screen bg-slate-100 font-sans text-slate-900">
-      <HomeHeader fullname={user?.fullname ?? "Kabataan"} />
       <HomeSections
         data={homeData}
         errorMessage={errorMessage}
+        fullname={user?.fullname ?? "Kabataan"}
         isLoading={isLoading}
       />
     </div>

@@ -11,6 +11,11 @@ import type {
   ActivityRecommendation,
   CompletedEventPerformance,
 } from "./ActivitiesService";
+import { useDecisionInsightActions } from "../../../hooks/useDecisionInsightActions";
+import {
+  canRunDecisionInsightAction,
+} from "../../../hooks/useDecisionInsightActions";
+import type { DecisionInsight } from "../../../services/DecisionInsightsService";
 
 const pageSize = 6;
 
@@ -93,6 +98,7 @@ type ActivitiesSectionActions = {
   onEditCatalogEvent: (activity: ActivityEvent) => void;
   onCreateFromRecommendation: (recommendation: ActivityRecommendation) => void;
   onOpenPastFeedbackQr: (event: ActivityEvent) => void;
+  onOpenPerformance: (eventId: number) => void;
   onOpenRegistrations: (event: ActivityEvent) => void;
   onSelectDate: (date: string) => void;
   onScheduleEvent: (date?: string) => void;
@@ -355,8 +361,28 @@ function DayEventsPanel({
 function EventInsightsPanel({
   completedEventPerformance,
   events,
+  onCreateFromRecommendation,
+  onEditCatalogEvent,
+  onOpenRegistrations,
+  onOpenPerformance,
   recommendations,
-}: Pick<ActivitiesSectionsProps, "completedEventPerformance" | "events" | "recommendations">) {
+}: Pick<
+  ActivitiesSectionsProps,
+  | "completedEventPerformance"
+  | "events"
+  | "onCreateFromRecommendation"
+  | "onEditCatalogEvent"
+  | "onOpenPerformance"
+  | "onOpenRegistrations"
+  | "recommendations"
+>) {
+  const { runInsightAction } = useDecisionInsightActions({
+    findEvent: (eventId) => events.find((event) => event.event_id === eventId) ?? null,
+    onCreateEvent: onCreateFromRecommendation,
+    onOpenEvent: onEditCatalogEvent,
+    onOpenPerformance,
+    onOpenRegistrations,
+  });
   const topRecommendation = recommendations.find(
     (recommendation) => !recommendation.is_already_planned && recommendation.response_count >= 3,
   );
@@ -380,38 +406,105 @@ function EventInsightsPanel({
   const overBudgetEvent = completedEventPerformance.find(
     (event) => (event.budget_utilization_percentage ?? 0) > 100,
   );
-  const insights = [
+  const insights: DecisionInsight[] = [
     topRecommendation
       ? {
+          actionLabel: "Create Event",
+          actionType: "create_event",
+          category: "survey",
+          dataSource: "Survey event preference results",
           description: `${topRecommendation.event_name} averages ${topRecommendation.average_rating}/5 from ${topRecommendation.total_respondent_count ?? topRecommendation.response_count} respondent(s): ${topRecommendation.authenticated_respondent_count ?? 0} registered Youth and ${topRecommendation.guest_respondent_count ?? 0} guest(s).`,
+          id: `activity-top-recommendation-${topRecommendation.event_name}`,
+          priority: 6,
+          recommendedAction: "Create a draft event for admin review.",
+          recommendedEventCategory: topRecommendation.event_category,
+          recommendedEventName: topRecommendation.event_name,
+          severity: "opportunity",
+          supportingValue: `${topRecommendation.average_rating}/5 average`,
           title: "Highest-rated unscheduled recommendation",
+          type: "unscheduled_recommendation",
         }
       : {
+          actionType: "none",
+          category: "survey",
+          dataSource: "Survey event preference results",
           description: "Not enough data. At least 3 distinct Youth respondents are needed for a recommendation.",
+          id: "activity-survey-insufficient-data",
+          priority: 99,
+          severity: "info",
+          supportingValue: "Minimum 3 respondents required",
           title: "Survey recommendation",
+          type: "insufficient_survey_data",
         },
     lowRegistrationEvent
       ? {
+          actionLabel: "View Registrations",
+          actionType: "view_event_registrations",
+          category: "registration",
+          dataSource: "Events and event registrations",
           description: `${lowRegistrationEvent.event_name} has ${lowRegistrationEvent.event_registrations?.length ?? 0} registration(s) out of ${lowRegistrationEvent.expected_attendees ?? 0} expected attendee(s).`,
+          eventId: lowRegistrationEvent.event_id,
+          id: `activity-low-registration-${lowRegistrationEvent.event_id}`,
+          priority: 3,
+          recommendedAction: "Review registered Youth and outreach needs.",
+          severity: "warning",
+          supportingValue: `${lowRegistrationEvent.event_registrations?.length ?? 0} registered`,
           title: "Scheduled event with low registration",
+          type: "low_registration",
         }
       : {
+          actionType: "none",
+          category: "registration",
+          dataSource: "Events and event registrations",
           description: "Not enough data or no scheduled event is below the 30% registration-fill threshold.",
+          id: "activity-registration-attention-none",
+          priority: 99,
+          severity: "info",
           title: "Registration attention",
+          type: "registration_attention",
         },
     strongCompletedEvent
       ? {
+          actionLabel: "View Performance",
+          actionType: "view_event_performance",
+          category: "event",
+          dataSource: "Completed event performance",
           description: `${strongCompletedEvent.event_name} had ${strongCompletedEvent.attendance_count} attended out of ${strongCompletedEvent.registration_count} registration(s) and ${strongCompletedEvent.average_feedback_rating}/5 feedback.`,
+          eventId: strongCompletedEvent.event_id,
+          id: `activity-strong-performance-${strongCompletedEvent.event_id}`,
+          priority: 7,
+          recommendedAction: "Use this as a reference for future planning.",
+          severity: "opportunity",
+          supportingValue: `${strongCompletedEvent.attendance_rate}% attendance`,
           title: "Strong completed event performance",
+          type: "strong_completed_event_performance",
         }
       : overBudgetEvent
         ? {
+            actionLabel: "View Financial Records",
+            actionType: "view_transactions",
+            category: "budget",
+            dataSource: "Completed event performance and financial transactions",
             description: `${overBudgetEvent.event_name} used ${overBudgetEvent.budget_utilization_percentage}% of allocation based on completed transactions only.`,
+            eventId: overBudgetEvent.event_id,
+            id: `activity-over-budget-${overBudgetEvent.event_id}`,
+            priority: 2,
+            recommendedAction: "Review completed financial records for this event.",
+            severity: "critical",
+            supportingValue: `${overBudgetEvent.budget_utilization_percentage}% utilization`,
             title: "Event exceeded allocation",
+            type: "completed_event_over_budget",
           }
         : {
+            actionType: "none",
+            category: "feedback",
+            dataSource: "Completed event performance",
             description: "Not enough data. Attendance comparisons need at least 3 registrations and feedback conclusions need 3 responses.",
+            id: "activity-completed-performance-insufficient-data",
+            priority: 99,
+            severity: "info",
             title: "Completed event performance",
+            type: "insufficient_performance_data",
           },
   ];
 
@@ -434,9 +527,15 @@ function EventInsightsPanel({
             <div>
               <h3 className="text-sm font-semibold text-slate-800">{insight.title}</h3>
               <p className="mt-1 text-xs leading-relaxed text-slate-500">{insight.description}</p>
-              <span className="mt-2 inline-flex items-center gap-1 text-xs font-semibold text-[#1e3a5f]">
-                Use for next event plan <ArrowRightIcon className="h-3.5 w-3.5" />
-              </span>
+              {canRunDecisionInsightAction(insight) ? (
+                <button
+                  className="mt-2 inline-flex items-center gap-1 text-xs font-semibold text-[#1e3a5f] hover:underline"
+                  onClick={() => runInsightAction(insight)}
+                  type="button"
+                >
+                  {insight.actionLabel} <ArrowRightIcon className="h-3.5 w-3.5" />
+                </button>
+              ) : null}
             </div>
           </article>
         ))}
@@ -744,6 +843,7 @@ export default function ActivitiesSections({
   onEditCatalogEvent,
   onCreateFromRecommendation,
   onOpenPastFeedbackQr,
+  onOpenPerformance,
   onOpenRegistrations,
   onSelectDate,
   onScheduleEvent,
@@ -766,6 +866,10 @@ export default function ActivitiesSections({
           <EventInsightsPanel
             completedEventPerformance={completedEventPerformance}
             events={events}
+            onCreateFromRecommendation={onCreateFromRecommendation}
+            onEditCatalogEvent={onEditCatalogEvent}
+            onOpenPerformance={onOpenPerformance}
+            onOpenRegistrations={onOpenRegistrations}
             recommendations={recommendations}
           />
           <UpcomingEventsPanel events={events} />

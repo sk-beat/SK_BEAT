@@ -14,6 +14,7 @@ import UnauthorizedPage from "./pages/UnauthorizedPage";
 import LandingPage from "./pages/LandingPage";
 import EventFeedbackPage from "./pages/EventFeedbackPage";
 import AdminEventsPage from "./pages/Admin/AdminEventsPage";
+import AdminInsightsPage from "./pages/Admin/AdminInsightsPage";
 import AdminLayout from "./pages/Admin/AdminLayout";
 import AdminOfficialsPage from "./pages/Admin/AdminOfficialsPage";
 import AdminPortalPage from "./pages/Admin/AdminPortalPage";
@@ -146,6 +147,16 @@ function App() {
               <ProtectedRoute allowedRoles={["admin"] as const}>
                 <PageTitle title="Youth Records">
                   <YouthRecord />
+                </PageTitle>
+              </ProtectedRoute>
+            }
+          />
+          <Route
+            path="/insights"
+            element={
+              <ProtectedRoute allowedRoles={["admin"] as const}>
+                <PageTitle title="Decision Support Insights">
+                  <AdminInsightsPage />
                 </PageTitle>
               </ProtectedRoute>
             }

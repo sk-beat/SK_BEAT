@@ -1,4 +1,5 @@
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
+import { useSearchParams } from "react-router-dom";
 import { useAuth } from "../../../auth/useAuth";
 import Sidebar from "../../Sidebar/Sidebar";
 import ActivitiesHeader from "./ActivitiesHeader";
@@ -31,6 +32,7 @@ export default function Activities() {
     null,
   );
   const [selectedPastEvent, setSelectedPastEvent] = useState<ActivityEvent | null>(null);
+  const [selectedPerformanceEventId, setSelectedPerformanceEventId] = useState<number | null>(null);
   const [events, setEvents] = useState<ActivityEvent[]>([]);
   const [completedEventPerformance, setCompletedEventPerformance] = useState<CompletedEventPerformance[]>([]);
   const [recommendations, setRecommendations] = useState<ActivityRecommendation[]>([]);
@@ -41,6 +43,31 @@ export default function Activities() {
   const [selectedScheduleDate, setSelectedScheduleDate] = useState(
     toDateInputValue(new Date()),
   );
+  const [searchParams, setSearchParams] = useSearchParams();
+
+  const recommendationToDraftEvent = useCallback((
+    eventName: string,
+    eventCategory: string,
+  ): ActivityEvent => {
+    return {
+      allocated_budget: 0,
+      budget_items: [],
+      budget_year_id: budgetYearId,
+      category: eventCategory || "Sports",
+      cover_image: null,
+      created_at: null,
+      created_by: null,
+      description: null,
+      event_date: null,
+      event_expenses: [],
+      event_id: 0,
+      event_name: eventName,
+      event_time: null,
+      expected_attendees: null,
+      location: null,
+      status: "draft",
+    };
+  }, [budgetYearId]);
 
   async function loadActivities() {
     setIsLoading(true);
@@ -113,12 +140,61 @@ export default function Activities() {
     setModalMode(null);
     setSelectedActivity(null);
     setSelectedPastEvent(null);
+    setSelectedPerformanceEventId(null);
+    setSearchParams((current) => {
+      const next = new URLSearchParams(current);
+      next.delete("action");
+      next.delete("category");
+      next.delete("eventId");
+      next.delete("name");
+      next.delete("panel");
+      return next;
+    }, { replace: true });
   }
 
   useEffect(() => {
     // eslint-disable-next-line react-hooks/set-state-in-effect
     loadActivities();
   }, []);
+
+  useEffect(() => {
+    if (isLoading) return;
+
+    void Promise.resolve().then(() => {
+      const action = searchParams.get("action");
+      const panel = searchParams.get("panel");
+      const eventId = Number(searchParams.get("eventId"));
+
+      if (action === "create-event") {
+        const eventName = searchParams.get("name")?.trim();
+        const eventCategory = searchParams.get("category")?.trim();
+        if (!eventName || !eventCategory) return;
+        setSelectedActivity(recommendationToDraftEvent(eventName, eventCategory));
+        setModalMode("catalog");
+        return;
+      }
+
+      if (!Number.isFinite(eventId) || eventId <= 0) return;
+      const event = events.find((item) => item.event_id === eventId);
+
+      if (panel === "performance") {
+        setSelectedPerformanceEventId(eventId);
+        setModalMode("performance");
+        return;
+      }
+
+      if (!event) return;
+
+      if (panel === "registrations") {
+        setSelectedActivity(event);
+        setModalMode("registrations");
+        return;
+      }
+
+      setSelectedActivity(event);
+      setModalMode("catalog");
+    });
+  }, [events, isLoading, recommendationToDraftEvent, searchParams]);
 
   return (
     <div className="flex min-h-screen bg-slate-100 font-sans text-slate-900">
@@ -134,27 +210,12 @@ export default function Activities() {
           selectedDate={selectedScheduleDate}
           onAddCatalogEvent={() => setModalMode("catalog")}
           onCreateFromRecommendation={(recommendation) => {
-            setSelectedActivity({
-              allocated_budget: 0,
-              budget_items: [],
-              budget_year_id: budgetYearId,
-              category:
-                recommendation.event_category === "Uncategorized"
-                  ? "Sports"
-                  : recommendation.event_category,
-              cover_image: null,
-              created_at: null,
-              created_by: null,
-              description: `Survey-based recommendation with ${recommendation.average_rating}/5 average rating from ${recommendation.response_count} Youth respondent(s).`,
-              event_date: null,
-              event_expenses: [],
-              event_id: 0,
-              event_name: recommendation.event_name,
-              event_time: null,
-              expected_attendees: recommendation.response_count,
-              location: null,
-              status: "draft",
-            });
+            setSelectedActivity(recommendationToDraftEvent(
+              recommendation.event_name,
+              recommendation.event_category === "Uncategorized"
+                ? "Sports"
+                : recommendation.event_category,
+            ));
             setModalMode("catalog");
           }}
           onEditCatalogEvent={(activity) => {
@@ -165,6 +226,10 @@ export default function Activities() {
           onOpenPastFeedbackQr={(event) => {
             setSelectedPastEvent(event);
             setModalMode("feedback-qr");
+          }}
+          onOpenPerformance={(eventId) => {
+            setSelectedPerformanceEventId(eventId);
+            setModalMode("performance");
           }}
           onOpenRegistrations={(event) => {
             setSelectedActivity(event);
@@ -188,8 +253,10 @@ export default function Activities() {
         budgetYearId={budgetYearId}
         isSaving={isSaving}
         scheduleDate={selectedScheduleDate}
+        completedEventPerformance={completedEventPerformance}
         selectedActivity={selectedActivity}
         selectedPastEvent={selectedPastEvent}
+        selectedPerformanceEventId={selectedPerformanceEventId}
       />
     </div>
   );

@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { Link } from "react-router-dom";
+import { Link, useSearchParams } from "react-router-dom";
 import {
   deleteAnnouncement,
   getAdminAnnouncements,
@@ -195,6 +195,7 @@ export function KabataanSuggestionsSection() {
 }
 
 export function SurveyResponsesSection() {
+  const [searchParams] = useSearchParams();
   const [responses, setResponses] = useState<AdminSurveyResponseDetail[]>([]);
   const [preferredTypes, setPreferredTypes] = useState<PreferredActivityType[]>([]);
   const [suggestedEvents, setSuggestedEvents] = useState<TopSuggestedEvent[]>([]);
@@ -230,6 +231,13 @@ export function SurveyResponsesSection() {
     };
   }, [search]);
 
+  useEffect(() => {
+    const section = searchParams.get("section");
+    if (!section) return;
+    const element = document.getElementById(section);
+    element?.scrollIntoView({ behavior: "smooth", block: "start" });
+  }, [searchParams]);
+
   const answerRows = responses.flatMap((response) =>
     response.answers.map((answer, index) => ({
       answer:
@@ -264,13 +272,29 @@ export function SurveyResponsesSection() {
           </Link>
         </div>
         <div className="mt-4 grid gap-4 md:grid-cols-2">
-          <div className="rounded-xl border border-slate-200 bg-slate-50 p-5">
+          <div
+            className={[
+              "scroll-mt-8 rounded-xl border bg-slate-50 p-5",
+              searchParams.get("section") === "preferred-activity-types"
+                ? "border-[#1e3a5f] ring-2 ring-[#1e3a5f]/15"
+                : "border-slate-200",
+            ].join(" ")}
+            id="preferred-activity-types"
+          >
             <h3 className="text-sm font-semibold uppercase tracking-[0.1em] text-slate-500">
               Preferred activity types
             </h3>
             <PreferredActivityPieChart rows={preferredTypes} />
           </div>
-          <div className="rounded-xl border border-slate-200 bg-slate-50 p-5">
+          <div
+            className={[
+              "scroll-mt-8 rounded-xl border bg-slate-50 p-5",
+              searchParams.get("section") === "top-suggested-events"
+                ? "border-[#1e3a5f] ring-2 ring-[#1e3a5f]/15"
+                : "border-slate-200",
+            ].join(" ")}
+            id="top-suggested-events"
+          >
             <h3 className="text-sm font-semibold uppercase tracking-[0.1em] text-slate-500">
               Top suggested events
             </h3>

@@ -6,12 +6,13 @@ import type {
   ActivityCalculationType,
   ActivityEvent,
   ActivityEventStatus,
+  CompletedEventPerformance,
   ActivityExpense,
   SaveActivityEventPayload,
 } from "./ActivitiesService";
 import { getAdminEventRegistrations } from "./ActivitiesService";
 
-export type ActivitiesModalMode = "catalog" | "schedule" | "feedback-qr" | "registrations" | null;
+export type ActivitiesModalMode = "catalog" | "schedule" | "feedback-qr" | "registrations" | "performance" | null;
 
 type ActivitiesModalsProps = {
   budgetYearId: number | null;
@@ -21,6 +22,8 @@ type ActivitiesModalsProps = {
   onClose: () => void;
   onSave: (payload: SaveActivityEventPayload) => Promise<void>;
   scheduleDate: string;
+  completedEventPerformance: CompletedEventPerformance[];
+  selectedPerformanceEventId: number | null;
   selectedActivity: ActivityEvent | null;
   selectedPastEvent: ActivityEvent | null;
 };
@@ -1111,6 +1114,85 @@ function RegistrationsModal({
   );
 }
 
+function EventPerformanceDialog({
+  completedEventPerformance,
+  onClose,
+  selectedPerformanceEventId,
+}: Pick<
+  ActivitiesModalsProps,
+  "completedEventPerformance" | "onClose" | "selectedPerformanceEventId"
+>) {
+  const performance = completedEventPerformance.find(
+    (event) => event.event_id === selectedPerformanceEventId,
+  );
+  const costPerAttendee =
+    performance && performance.attendance_count > 0
+      ? performance.completed_spending / performance.attendance_count
+      : null;
+
+  return (
+    <AdminModal
+      footer={
+        <button
+          className="rounded-lg bg-[#1e3a5f] px-4 py-2 text-sm font-medium text-white hover:bg-[#2a4a6f]"
+          onClick={onClose}
+          type="button"
+        >
+          Done
+        </button>
+      }
+      maxWidthClass="max-w-4xl"
+      onClose={onClose}
+      open
+      title={performance ? `Performance - ${performance.event_name}` : "Event Performance"}
+    >
+      {!performance ? (
+        <div className="rounded-lg border border-dashed border-slate-300 bg-slate-50 p-5 text-sm text-slate-500">
+          Performance record was not found for this event.
+        </div>
+      ) : (
+        <div>
+          <div className="mb-4">
+            <h3 className="text-lg font-semibold text-slate-900">
+              {performance.event_name}
+            </h3>
+            <p className="text-sm text-slate-500">
+              {performance.category} - {performance.event_date || "No date"}
+            </p>
+          </div>
+          <div className="grid gap-3 md:grid-cols-3">
+            {[
+              ["Expected Attendees", performance.expected_attendees ?? "Not set"],
+              ["Registrations", performance.registration_count],
+              ["Attendance Count", performance.attendance_count],
+              ["Attendance Rate", performance.attendance_rate === null ? "Not available" : `${performance.attendance_rate}%`],
+              ["Registration Fill", performance.registration_fill_rate === null ? "Not available" : `${performance.registration_fill_rate}%`],
+              ["Feedback Count", performance.feedback_count],
+              ["Average Feedback", performance.average_feedback_rating === null ? "Not available" : `${performance.average_feedback_rating}/5`],
+              ["Allocated Budget", formatPeso(performance.allocated_budget)],
+              ["Completed Spending", formatPeso(performance.completed_spending)],
+              ["Budget Utilization", performance.budget_utilization_percentage === null ? "Not available" : `${performance.budget_utilization_percentage}%`],
+              ["Cost per Attendee", costPerAttendee === null ? "Not available" : formatPeso(costPerAttendee)],
+            ].map(([label, value]) => (
+              <div
+                className="rounded-lg border border-slate-200 bg-slate-50 p-3"
+                key={label}
+              >
+                <p className="text-xs font-semibold uppercase tracking-[0.08em] text-slate-400">
+                  {label}
+                </p>
+                <p className="mt-1 text-sm font-semibold text-slate-900">
+                  {value}
+                </p>
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
+    </AdminModal>
+  );
+}
+
 export default function ActivitiesModals({
   budgetYearId,
   events,
@@ -1119,6 +1201,8 @@ export default function ActivitiesModals({
   onClose,
   onSave,
   scheduleDate,
+  completedEventPerformance,
+  selectedPerformanceEventId,
   selectedActivity,
   selectedPastEvent,
 }: ActivitiesModalsProps) {
@@ -1157,6 +1241,14 @@ export default function ActivitiesModals({
         <RegistrationsModal
           onClose={onClose}
           selectedActivity={selectedActivity}
+        />
+      ) : null}
+
+      {mode === "performance" ? (
+        <EventPerformanceDialog
+          completedEventPerformance={completedEventPerformance}
+          onClose={onClose}
+          selectedPerformanceEventId={selectedPerformanceEventId}
         />
       ) : null}
 

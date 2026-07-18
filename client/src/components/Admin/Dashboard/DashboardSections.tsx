@@ -1,4 +1,5 @@
 import { useEffect, useState } from "react";
+import { Link } from "react-router-dom";
 import {
   iconToneClasses,
   insightToneClasses,
@@ -6,6 +7,7 @@ import {
 } from "./dashboardData";
 import { AlertIcon, ArrowRightIcon, BanknoteIcon, CalendarIcon, ClipboardIcon, DollarIcon, LineChartIcon, TrendingIcon, UserRoundIcon, UsersIcon } from "./icons";
 import { getDashboardData, type DashboardData } from "./DashboardService";
+import { canRunDecisionInsightAction } from "../../../hooks/useDecisionInsightActions";
 
 function SummaryCardItem({ card }: { card: SummaryCard }) {
   const Icon = card.icon;
@@ -173,24 +175,37 @@ function CategoryCard({ data }: { data: DashboardData }) {
 function InsightsPanel({ data }: { data: DashboardData }) {
   const insights = data.decisionInsights.length
     ? data.decisionInsights.map((insight) => ({
-        action: "Review Details",
+        actionLabel: insight.actionLabel,
+        actionType: insight.actionType,
+        categoryName: insight.categoryName,
         description: insight.description,
-        icon: insight.tone === "warning" ? AlertIcon : insight.tone === "success" ? LineChartIcon : BanknoteIcon,
+        eventId: insight.eventId,
+        icon: insight.severity === "warning" || insight.severity === "critical" ? AlertIcon : insight.severity === "opportunity" ? LineChartIcon : BanknoteIcon,
+        insight,
+        matchingEventId: insight.matchingEventId,
+        recommendedEventCategory: insight.recommendedEventCategory,
+        recommendedEventName: insight.recommendedEventName,
         title: insight.title,
-        tone: insight.tone,
+        tone: (insight.severity === "critical"
+          ? "warning"
+          : insight.severity === "opportunity"
+            ? "success"
+            : insight.severity) as "warning" | "success" | "info",
       }))
     : [
         {
-          action: "Review Details",
+          actionLabel: undefined,
+          actionType: "none",
           description: "Not enough data. Publish event-interest surveys, collect registrations, and record completed-event feedback to show decision-support insights.",
           icon: AlertIcon,
           title: "Decision support",
           tone: "info" as const,
         },
       ];
+  const visibleInsights = insights.slice(0, 3);
 
   return (
-    <section className="mb-8 rounded-xl border border-slate-200 bg-white p-6 shadow-sm">
+    <section className="mb-8 rounded-xl border border-slate-200 bg-white p-6 shadow-sm" id="insights">
       <div className="mb-4 flex items-center justify-between gap-4">
         <div>
           <h2 className="m-0 text-base font-semibold text-slate-800">
@@ -200,16 +215,17 @@ function InsightsPanel({ data }: { data: DashboardData }) {
             Survey-based and live operational signals
           </p>
         </div>
-        <a
+        <Link
           className="inline-flex items-center gap-1 text-sm font-medium text-[#1e3a5f] hover:underline"
-          href="#insights"
+          to="/insights"
         >
-          View All Insights <ArrowRightIcon className="h-4 w-4" />
-        </a>
+          View All Insights{" "}
+          <ArrowRightIcon className="h-4 w-4" />
+        </Link>
       </div>
 
       <div className="grid gap-4 xl:grid-cols-3">
-        {insights.map((insight) => {
+        {visibleInsights.map((insight) => {
           const Icon = insight.icon;
           const tone = insightToneClasses[insight.tone];
 
@@ -236,12 +252,14 @@ function InsightsPanel({ data }: { data: DashboardData }) {
                 <p className="mt-2 text-xs leading-relaxed text-slate-500">
                   {insight.description}
                 </p>
-                <a
-                  className="mt-3 inline-flex items-center gap-1 text-xs font-semibold text-[#1e3a5f] hover:underline"
-                  href="#action"
-                >
-                  {insight.action} <ArrowRightIcon className="h-3.5 w-3.5" />
-                </a>
+                {"insight" in insight && canRunDecisionInsightAction(insight.insight) ? (
+                  <Link
+                    className="mt-3 inline-flex items-center gap-1 text-xs font-semibold text-[#1e3a5f] hover:underline"
+                    to={getInsightPath(insight.insight)}
+                  >
+                    {insight.actionLabel} <ArrowRightIcon className="h-3.5 w-3.5" />
+                  </Link>
+                ) : null}
               </div>
             </article>
           );
@@ -366,6 +384,39 @@ function UpcomingEvents({ data }: { data: DashboardData }) {
       </div>
     </section>
   );
+}
+
+function getInsightPath(insight: DashboardData["decisionInsights"][number]) {
+  switch (insight.actionType) {
+    case "create_event": {
+      const params = new URLSearchParams({
+        action: "create-event",
+        category: insight.recommendedEventCategory || "",
+        name: insight.recommendedEventName || "",
+      });
+      return `/activities?${params.toString()}`;
+    }
+    case "view_event":
+      return `/activities?eventId=${insight.eventId ?? insight.matchingEventId}`;
+    case "view_event_registrations":
+      return `/activities?eventId=${insight.eventId}&panel=registrations`;
+    case "view_event_performance":
+    case "view_event_feedback":
+      return `/activities?eventId=${insight.eventId}&panel=performance`;
+    case "view_survey_results": {
+      const params = new URLSearchParams();
+      if (insight.categoryName) params.set("section", insight.categoryName);
+      if (insight.surveyId) params.set("surveyId", String(insight.surveyId));
+      return `/survey-responses?${params.toString()}`;
+    }
+    case "view_budget":
+      return insight.budgetYearId ? `/financial?budgetYearId=${insight.budgetYearId}` : "/financial";
+    case "view_transactions":
+      return insight.eventId ? `/financial?eventId=${insight.eventId}` : "/financial";
+    case "view_notifications":
+    case "none":
+      return "/insights";
+  }
 }
 
 export default function DashboardSections() {

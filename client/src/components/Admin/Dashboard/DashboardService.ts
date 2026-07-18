@@ -5,6 +5,10 @@ import {
   type PreferredActivityType,
   type TopSuggestedEvent,
 } from "../SurveysAnnouncements/SurveyInsightsService";
+import {
+  getDecisionInsights,
+  type DecisionInsight,
+} from "../../../services/DecisionInsightsService";
 
 export type DashboardEvent = {
   event_id: number;
@@ -43,16 +47,9 @@ export type DashboardData = {
   surveyResponsesCount: number;
   publishedAnnouncementsCount: number;
   recentEvents: DashboardEvent[];
-  decisionInsights: DashboardInsight[];
+  decisionInsights: DecisionInsight[];
   preferredActivityTypes: PreferredActivityType[];
   topSuggestedEvents: TopSuggestedEvent[];
-};
-
-export type DashboardInsight = {
-  title: string;
-  description: string;
-  tone: "success" | "info" | "warning";
-  basis?: Record<string, unknown>;
 };
 
 type EventRow = Omit<DashboardEvent, "registered_count"> & {
@@ -91,6 +88,7 @@ export async function getDashboardData(): Promise<{
     announcements,
     preferred,
     suggested,
+    decisionInsights,
   ] = await Promise.all([
     supabase.from("kabataan_profiles").select("profile_id,gender,purok"),
     supabase.rpc("get_admin_dashboard_decision_support"),
@@ -110,6 +108,7 @@ export async function getDashboardData(): Promise<{
       .eq("is_published", true),
     getPreferredActivityTypes(),
     getTopSuggestedEvents(),
+    getDecisionInsights(),
   ]);
 
   const firstError =
@@ -119,9 +118,10 @@ export async function getDashboardData(): Promise<{
     surveys.error ||
     responses.error ||
     announcements.error;
+  const decisionError = decisionInsights.error;
 
-  if (firstError) {
-    return { data: null, error: firstError };
+  if (firstError || decisionError) {
+    return { data: null, error: firstError || decisionError };
   }
 
   const profileRows = (profiles.data ?? []) as Array<{
@@ -142,7 +142,6 @@ export async function getDashboardData(): Promise<{
   const summary = dashboardSummary.data as {
     budget_year?: { fiscal_year?: number | null };
     metrics?: Record<string, number | null>;
-    insights?: DashboardInsight[];
   } | null;
   const metrics = summary?.metrics ?? {};
 
@@ -153,7 +152,7 @@ export async function getDashboardData(): Promise<{
       availableToSpend: Number(metrics.available_to_spend ?? 0),
       completedEventsCount: Number(metrics.completed_events ?? 0),
       completedSpending: Number(metrics.total_completed_spending ?? 0),
-      decisionInsights: summary?.insights ?? [],
+      decisionInsights: decisionInsights.data?.insights ?? [],
       fiscalYear: summary?.budget_year?.fiscal_year ?? null,
       genderGroups: countByValue(profileRows, (profile) => profile.gender),
       ongoingEventsCount: Number(metrics.ongoing_events ?? 0),

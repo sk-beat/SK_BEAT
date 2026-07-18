@@ -45,7 +45,7 @@ export type ActivityEvent = {
   created_by: string | null;
   created_at: string | null;
   event_expenses: ActivityExpense[];
-  event_registrations?: { registration_id: number }[];
+  event_registrations?: { registration_id: number; attendance_status?: string | null }[];
 };
 
 export type SaveActivityEventPayload = {

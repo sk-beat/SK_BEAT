@@ -1,5 +1,6 @@
 import { useEffect, useState } from "react";
 import AdminModal from "../shared/AdminModal";
+import BirthdayPicker from "../../shared/BirthdayPicker";
 import type { CreateYouthRecord, UpdateYouthRecord, YouthRecord } from "./youthRecordData";
 import {
   buildYouthProfileImagePath,
@@ -438,12 +439,10 @@ export default function YouthRecordModals({
               value={name}
             />
           </div>
-          <Field
+          <BirthdayPicker
             disabled={loading}
             error={errors.birthday}
-            label="Birthday"
-            onChange={(event) => setBirthday(event.target.value)}
-            type="date"
+            onChange={setBirthday}
             value={birthday}
           />
           <Field

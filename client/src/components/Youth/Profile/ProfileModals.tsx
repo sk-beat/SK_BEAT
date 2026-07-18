@@ -1,5 +1,6 @@
 import { useEffect, useState } from "react";
 import AdminModal from "../../Admin/shared/AdminModal";
+import BirthdayPicker from "../../shared/BirthdayPicker";
 import {
   buildYouthProfileImagePath,
   deleteProfileImage,
@@ -217,11 +218,9 @@ export default function ProfileModals({
             value={fullname}
           />
         </div>
-        <Field
+        <BirthdayPicker
           disabled={isSaving}
-          label="Birthday"
-          onChange={(event) => setBirthday(event.target.value)}
-          type="date"
+          onChange={setBirthday}
           value={birthday}
         />
         <Field

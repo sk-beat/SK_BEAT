@@ -1,61 +1,5 @@
+import { Eye, Pencil, Trash2 } from "lucide-react";
 import type { YouthRecord } from "./youthRecordData";
-
-function EyeIcon({ className }: { className?: string }) {
-  return (
-    <svg
-      className={className}
-      viewBox="0 0 24 24"
-      fill="none"
-      stroke="currentColor"
-      strokeWidth="2"
-      strokeLinecap="round"
-      strokeLinejoin="round"
-      aria-hidden="true"
-    >
-      <path d="M2.1 12S5.5 5 12 5s9.9 7 9.9 7-3.4 7-9.9 7-9.9-7-9.9-7Z" />
-      <circle cx="12" cy="12" r="3" />
-    </svg>
-  );
-}
-
-function PencilIcon({ className }: { className?: string }) {
-  return (
-    <svg
-      className={className}
-      viewBox="0 0 24 24"
-      fill="none"
-      stroke="currentColor"
-      strokeWidth="2"
-      strokeLinecap="round"
-      strokeLinejoin="round"
-      aria-hidden="true"
-    >
-      <path d="M12 20h9" />
-      <path d="M16.5 3.5a2.1 2.1 0 0 1 3 3L7 19l-4 1 1-4Z" />
-    </svg>
-  );
-}
-
-function TrashIcon({ className }: { className?: string }) {
-  return (
-    <svg
-      className={className}
-      viewBox="0 0 24 24"
-      fill="none"
-      stroke="currentColor"
-      strokeWidth="2"
-      strokeLinecap="round"
-      strokeLinejoin="round"
-      aria-hidden="true"
-    >
-      <path d="M3 6h18" />
-      <path d="M8 6V4h8v2" />
-      <path d="M19 6l-1 14H6L5 6" />
-      <path d="M10 11v6" />
-      <path d="M14 11v6" />
-    </svg>
-  );
-}
 
 function initials(name: string) {
   return name
@@ -88,8 +32,9 @@ export default function YouthRecordTable({
               "Name",
               "Gender",
               "Scholar Status",
-              "Account Status",
-              "Education",
+              "Educational Status",
+              "Age",
+              "Birthday",
               "Purok",
               "Actions",
             ].map((heading) => (
@@ -125,22 +70,15 @@ export default function YouthRecordTable({
                 {record.scholar_status}
               </td>
               <td className="border-t border-slate-200 px-5 py-4 text-center">
-                <span
-                  className={[
-                    "inline-flex items-center gap-1 rounded-md px-3 py-1.5 text-xs font-semibold",
-                    record.status === "active"
-                      ? "bg-emerald-500/10 text-emerald-500"
-                      : "bg-slate-200 text-slate-500",
-                  ].join(" ")}
-                >
-                  {record.status === "active" ? "✓" : null}
-                  {record.status === "active" ? "Active" : "Inactive"}
-                </span>
-              </td>
-              <td className="border-t border-slate-200 px-5 py-4 text-center">
                 <span className="inline-flex items-center gap-1 rounded-md bg-slate-100 px-3 py-1.5 text-xs font-semibold text-slate-600">
                   {record.educational_status}
                 </span>
+              </td>
+              <td className="border-t border-slate-200 px-5 py-4 text-center">
+                {record.age ?? "-"}
+              </td>
+              <td className="border-t border-slate-200 px-5 py-4 text-center">
+                {record.date_of_birth ?? "-"}
               </td>
               <td className="border-t border-slate-200 px-5 py-4 text-center">
                 {record.purok}
@@ -153,7 +91,7 @@ export default function YouthRecordTable({
                     type="button"
                     title="View"
                   >
-                    <EyeIcon className="h-4 w-4" />
+                    <Eye className="h-4 w-4" />
                   </button>
                   <button
                     className="flex h-8 w-8 items-center justify-center rounded-md text-slate-500 hover:bg-slate-200 hover:text-slate-900"
@@ -161,7 +99,7 @@ export default function YouthRecordTable({
                     type="button"
                     title="Edit"
                   >
-                    <PencilIcon className="h-4 w-4" />
+                    <Pencil className="h-4 w-4" />
                   </button>
                   <button
                     className="flex h-8 w-8 items-center justify-center rounded-md text-slate-500 hover:bg-red-100 hover:text-red-600"
@@ -169,7 +107,7 @@ export default function YouthRecordTable({
                     type="button"
                     title="Delete"
                   >
-                    <TrashIcon className="h-4 w-4" />
+                    <Trash2 className="h-4 w-4" />
                   </button>
                 </div>
               </td>

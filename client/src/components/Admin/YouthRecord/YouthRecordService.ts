@@ -1,5 +1,5 @@
 import { supabase } from "../../../utils/supabase";
-import type { YouthRecord, UpdateYouthRecord } from "./youthRecordData";
+import type { CreateYouthRecord, UpdateYouthRecord } from "./youthRecordData";
 
 
 export async function getYouthRecords() {
@@ -11,9 +11,7 @@ export async function getYouthRecords() {
 
 
 export async function addYouth(
-  data: Omit<YouthRecord, "profile_id" | "created_at"> & {
-    password: string;
-  }
+  data: CreateYouthRecord
 ) {
   console.log("Sending data to Edge Function for secure processing...");
 
@@ -49,39 +47,21 @@ export async function updateYouth(
   profile_id: string,
   data: UpdateYouthRecord
 ) {
-
-  const { data: existing, error: selectError } = await supabase
-  .from("kabataan_profiles")
-  .select("profile_id, fullname")
-  .eq("profile_id", profile_id);
-
-console.log("Existing:", existing);
-console.log("Select error:", selectError);
-
-  const { data: updatedData, error } = await supabase
-  .from("kabataan_profiles")
-  .update({
-    fullname: data.fullname,
-    status: data.status,
-    age: data.age,
-    gender: data.gender,
-    address_line: data.address_line,
-    purok: data.purok,
-    contact_number: data.contact_number,
-    educational_status: data.educational_status,
-    scholar_status: data.scholar_status,
-    profile_image: data.profile_image,
-  })
-  .eq("profile_id", profile_id)
-  .select("*");
-
-console.log("Update payload:", {
-  profile_id,
-  data,
-});
-
-console.log("Updated:", updatedData);
-console.log("Error:", error);
+  const { data: updatedData, error } = await supabase.rpc(
+    "save_admin_youth_profile",
+    {
+      p_address_line: data.address_line,
+      p_contact_number: data.contact_number,
+      p_date_of_birth: data.date_of_birth,
+      p_educational_status: data.educational_status,
+      p_fullname: data.fullname,
+      p_gender: data.gender,
+      p_profile_id: profile_id,
+      p_profile_image: data.profile_image || null,
+      p_purok: data.purok,
+      p_scholar_status: data.scholar_status,
+    },
+  );
 
   if (error) throw error;
 
@@ -93,8 +73,9 @@ console.log("Error:", error);
 
 
 export async function deleteYouth(profile_id: string) {
-  return await supabase
-    .from("kabataan_profiles")
-    .delete()
-    .eq("profile_id", profile_id);
+  const { data, error } = await supabase.rpc("delete_admin_youth_profile", {
+    p_profile_id: profile_id,
+  });
+
+  return { data, error };
 }

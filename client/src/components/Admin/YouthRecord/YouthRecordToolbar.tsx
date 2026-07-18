@@ -1,57 +1,4 @@
-function SearchIcon({ className }: { className?: string }) {
-  return (
-    <svg
-      className={className}
-      viewBox="0 0 24 24"
-      fill="none"
-      stroke="currentColor"
-      strokeWidth="2"
-      strokeLinecap="round"
-      strokeLinejoin="round"
-      aria-hidden="true"
-    >
-      <circle cx="11" cy="11" r="8" />
-      <path d="m21 21-4.3-4.3" />
-    </svg>
-  );
-}
-
-function DownloadIcon({ className }: { className?: string }) {
-  return (
-    <svg
-      className={className}
-      viewBox="0 0 24 24"
-      fill="none"
-      stroke="currentColor"
-      strokeWidth="2"
-      strokeLinecap="round"
-      strokeLinejoin="round"
-      aria-hidden="true"
-    >
-      <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4" />
-      <polyline points="7 10 12 15 17 10" />
-      <line x1="12" x2="12" y1="15" y2="3" />
-    </svg>
-  );
-}
-
-function PlusIcon({ className }: { className?: string }) {
-  return (
-    <svg
-      className={className}
-      viewBox="0 0 24 24"
-      fill="none"
-      stroke="currentColor"
-      strokeWidth="2"
-      strokeLinecap="round"
-      strokeLinejoin="round"
-      aria-hidden="true"
-    >
-      <path d="M5 12h14" />
-      <path d="M12 5v14" />
-    </svg>
-  );
-}
+import { Download, Plus, Search } from "lucide-react";
 
 type YouthRecordToolbarProps = {
   onAdd: () => void;
@@ -64,8 +11,6 @@ type YouthRecordToolbarProps = {
   setScholarFilter: (value: string) => void;
   educationFilter: string;
   setEducationFilter: (value: string) => void;
-  statusFilter: string;
-  setStatusFilter: (value: string) => void;
 };
 
 export default function YouthRecordToolbar({
@@ -77,55 +22,42 @@ export default function YouthRecordToolbar({
   setSearch,
   scholarFilter,
   setScholarFilter,
-  educationFilter,        
+  educationFilter,
   setEducationFilter,
-  statusFilter,
-  setStatusFilter
-}: YouthRecordToolbarProps)  {
+}: YouthRecordToolbarProps) {
   return (
     <>
-      <div className="mb-4 flex gap-4 max-lg:flex-col -">
+      <div className="mb-4 flex gap-4 max-lg:flex-col">
         <label className="flex flex-1 items-center gap-3 rounded-lg border border-slate-200 bg-white px-4 py-3 shadow-sm">
-          <SearchIcon className="h-4.5 w-4.5 text-slate-500" />
-  <input
-  className="flex-1 border-none bg-transparent text-sm outline-none placeholder:text-slate-500"
-  type="text"
-  placeholder="Search by name or purok..."
-  value={search}
-  onChange={(e) => setSearch(e.target.value)}
-/>
+          <Search className="h-4.5 w-4.5 text-slate-500" />
+          <input
+            className="flex-1 border-none bg-transparent text-sm outline-none placeholder:text-slate-500"
+            type="text"
+            placeholder="Search by name or purok..."
+            value={search}
+            onChange={(event) => setSearch(event.target.value)}
+          />
         </label>
 
         <div className="flex gap-3 max-sm:flex-col">
           <select
-  value={statusFilter}
-  onChange={(e) => setStatusFilter(e.target.value)}
-  className="cursor-pointer rounded-lg border border-slate-200 bg-white px-4 py-3 pr-8 text-sm font-medium text-slate-700 shadow-sm"
->
-  <option value="">All Account Status</option>
-  <option value="active">Active</option>
-  <option value="inactive">Inactive</option>
-</select>
+            value={educationFilter}
+            onChange={(event) => setEducationFilter(event.target.value)}
+            className="cursor-pointer rounded-lg border border-slate-200 bg-white px-4 py-3 pr-8 text-sm font-medium text-slate-700 shadow-sm"
+          >
+            <option value="">All Educational Status</option>
+            <option value="Active">Active</option>
+            <option value="Inactive">Inactive</option>
+          </select>
           <select
-  value={educationFilter}
-  onChange={(e) => setEducationFilter(e.target.value)}
-  className="cursor-pointer rounded-lg border border-slate-200 bg-white px-4 py-3 pr-8 text-sm font-medium text-slate-700 shadow-sm"
->
-  <option value="">All Educational Status</option>
-  <option value="Active">Active</option>
-  <option value="Inactive">Inactive</option>
-  <option value="Student">Student</option>
-  <option value="Out of School Youth">Out of School Youth</option>
-</select>
-         <select
-  value={scholarFilter}
-  onChange={(e) => setScholarFilter(e.target.value)}
-  className="cursor-pointer rounded-lg border border-slate-200 bg-white px-4 py-3 pr-8 text-sm font-medium text-slate-700 shadow-sm"
->
-  <option value="">All Scholar Status</option>
-  <option value="Scholar">Scholar</option>
-  <option value="Non-Scholar">Non-Scholar</option>
-</select>
+            value={scholarFilter}
+            onChange={(event) => setScholarFilter(event.target.value)}
+            className="cursor-pointer rounded-lg border border-slate-200 bg-white px-4 py-3 pr-8 text-sm font-medium text-slate-700 shadow-sm"
+          >
+            <option value="">All Scholar Status</option>
+            <option value="Scholar">Scholar</option>
+            <option value="Non-Scholar">Non-Scholar</option>
+          </select>
         </div>
       </div>
 
@@ -139,7 +71,7 @@ export default function YouthRecordToolbar({
             onClick={onExport}
             type="button"
           >
-            <DownloadIcon className="h-4 w-4" />
+            <Download className="h-4 w-4" />
             Export Data
           </button>
           <button
@@ -147,7 +79,7 @@ export default function YouthRecordToolbar({
             onClick={onAdd}
             type="button"
           >
-            <PlusIcon className="h-4.5 w-4.5"  />
+            <Plus className="h-4.5 w-4.5" />
             Add New
           </button>
         </div>

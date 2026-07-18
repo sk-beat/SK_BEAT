@@ -61,6 +61,15 @@ function formatJoinedDate(value?: string | null) {
   }).format(new Date(value));
 }
 
+function formatBirthday(value?: string | null) {
+  if (!value) return "Not set";
+  return new Intl.DateTimeFormat("en", {
+    month: "long",
+    day: "numeric",
+    year: "numeric",
+  }).format(new Date(`${value}T00:00:00`));
+}
+
 function PasswordField({
   disabled,
   isVisible,
@@ -133,6 +142,11 @@ export default function ProfileSections({
   const fullName = profile?.fullname ?? "Youth Member";
   const profileImageUrl = getProfileImageUrl(profile?.profile_image ?? null);
   const profileDetails = [
+    {
+      label: "Birthday",
+      value: formatBirthday(profile?.date_of_birth),
+      icon: CalendarDays,
+    },
     {
       label: "Age",
       value: profile?.age ? `${profile.age} Years Old` : "Not set",

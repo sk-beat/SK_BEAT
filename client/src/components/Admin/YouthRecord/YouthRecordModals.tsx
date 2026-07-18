@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react";
 import AdminModal from "../shared/AdminModal";
-import type { CreateYouthRecord, YouthRecord } from "./youthRecordData";
+import type { CreateYouthRecord, UpdateYouthRecord, YouthRecord } from "./youthRecordData";
 import {
   buildYouthProfileImagePath,
   deleteProfileImage,
@@ -16,7 +16,7 @@ type YouthRecordModalsProps = {
   onClose: () => void;
   record: YouthRecord | null;
   onCreate: (data: CreateYouthRecord) => Promise<string | null>;
-  onUpdate: (profile_id: string, data: CreateYouthRecord) => Promise<void>;
+  onUpdate: (profile_id: string, data: UpdateYouthRecord) => Promise<void>;
   onDelete: (profile_id: string) => Promise<void>;
 };
 
@@ -26,18 +26,15 @@ const inputClass =
 const educationalStatusOptions = [
   "Active",
   "Inactive",
-  "Student",
-  "Out of School Youth",
 ] as const;
 
 const scholarStatusOptions = ["Scholar", "Non-Scholar"] as const;
 const genderOptions = ["Male", "Female"] as const;
-const accountStatusOptions = ["active", "inactive"] as const;
 
 type FormErrors = Partial<
   Record<
     | "fullname"
-    | "age"
+    | "birthday"
     | "gender"
     | "address"
     | "purok"
@@ -45,7 +42,6 @@ type FormErrors = Partial<
     | "password"
     | "education"
     | "scholar"
-    | "status"
     | "profileImage",
     string
   >
@@ -153,6 +149,29 @@ function isValidEmail(value: string) {
   return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(value);
 }
 
+function calculateAge(dateOfBirth: string) {
+  if (!dateOfBirth) return null;
+  const [year, month, day] = dateOfBirth.split("-").map(Number);
+  if (!year || !month || !day) return null;
+  const today = new Date();
+  let age = today.getFullYear() - year;
+  const hasBirthdayPassed =
+    today.getMonth() + 1 > month ||
+    (today.getMonth() + 1 === month && today.getDate() >= day);
+  if (!hasBirthdayPassed) age -= 1;
+  return age;
+}
+
+function validateBirthday(value: string) {
+  if (!value) return "Birthday is required.";
+  if (value < "1900-01-01") return "Birthday must be on or after January 1, 1900.";
+  const today = new Date().toISOString().slice(0, 10);
+  if (value > today) return "Birthday cannot be in the future.";
+  const age = calculateAge(value);
+  if (age !== null && age > 31) return "Youth must be 31 years old or younger.";
+  return null;
+}
+
 export default function YouthRecordModals({
   mode,
   onClose,
@@ -167,7 +186,7 @@ export default function YouthRecordModals({
   const isDeleteMode = mode === "delete";
 
   const [name, setName] = useState("");
-  const [age, setAge] = useState<number | "">("");
+  const [birthday, setBirthday] = useState("");
   const [gender, setGender] = useState<"Male" | "Female" | "">("");
   const [address, setAddress] = useState("");
   const [purok, setPurok] = useState("");
@@ -178,7 +197,6 @@ export default function YouthRecordModals({
     YouthRecord["educational_status"] | ""
   >("");
   const [scholar, setScholar] = useState<"Scholar" | "Non-Scholar" | "">("");
-  const [accountStatus, setAccountStatus] = useState<YouthRecord["status"]>("active");
   const [profileImage, setProfileImage] = useState("");
   const [profileImageFile, setProfileImageFile] = useState<File | null>(null);
   const [profileImagePreview, setProfileImagePreview] = useState<string | null>(null);
@@ -189,7 +207,7 @@ export default function YouthRecordModals({
     if (record) {
       // eslint-disable-next-line react-hooks/set-state-in-effect
       setName(record.fullname ?? "");
-      setAge(record.age ?? "");
+      setBirthday(record.date_of_birth ?? "");
       setGender(record.gender ?? "");
       setAddress(record.address_line ?? "");
       setPurok(record.purok ?? "");
@@ -197,14 +215,13 @@ export default function YouthRecordModals({
       setEmail(record.email ?? "");
       setEducation(record.educational_status ?? "");
       setScholar(record.scholar_status ?? "");
-      setAccountStatus(record.status ?? "active");
       setProfileImage(record.profile_image ?? "");
       setProfileImageFile(null);
       setProfileImagePreview(null);
       setPassword("");
     } else {
       setName("");
-      setAge("");
+      setBirthday("");
       setGender("");
       setAddress("");
       setPurok("");
@@ -212,7 +229,6 @@ export default function YouthRecordModals({
       setEmail("");
       setEducation("");
       setScholar("");
-      setAccountStatus("active");
       setProfileImage("");
       setProfileImageFile(null);
       setProfileImagePreview(null);
@@ -234,11 +250,8 @@ export default function YouthRecordModals({
       nextErrors.fullname = "Full name is required.";
     }
 
-    if (age === "") {
-      nextErrors.age = "Age is required.";
-    } else if (age < 15 || age > 30) {
-      nextErrors.age = "Age must be between 15 and 30.";
-    }
+    const birthdayError = validateBirthday(birthday);
+    if (birthdayError) nextErrors.birthday = birthdayError;
 
     if (!gender) {
       nextErrors.gender = "Gender is required.";
@@ -270,10 +283,6 @@ export default function YouthRecordModals({
       nextErrors.scholar = "Scholar status is required.";
     }
 
-    if (!accountStatus) {
-      nextErrors.status = "Account status is required.";
-    }
-
     if (profileImageFile) {
       const imageError = validateProfileImageFile(profileImageFile);
       if (imageError) nextErrors.profileImage = imageError;
@@ -290,13 +299,12 @@ export default function YouthRecordModals({
 
     const youth: CreateYouthRecord = {
       fullname: name.trim(),
-      age: age === "" ? 0 : age,
+      date_of_birth: birthday,
       gender: gender as "Male" | "Female",
       address_line: address.trim(),
       purok: purok.trim(),
       contact_number: contact.trim(),
       email: email.trim(),
-      status: accountStatus,
       educational_status: education as YouthRecord["educational_status"],
       scholar_status: scholar as "Scholar" | "Non-Scholar",
       profile_image: profileImage.trim() || "",
@@ -315,7 +323,17 @@ export default function YouthRecordModals({
           if (uploadError) throw uploadError;
           nextProfileImage = uploadedPath;
         }
-        await onUpdate(record.profile_id, { ...youth, profile_image: nextProfileImage });
+        await onUpdate(record.profile_id, {
+          address_line: youth.address_line,
+          contact_number: youth.contact_number,
+          date_of_birth: youth.date_of_birth,
+          educational_status: youth.educational_status,
+          fullname: youth.fullname,
+          gender: youth.gender,
+          profile_image: nextProfileImage,
+          purok: youth.purok,
+          scholar_status: youth.scholar_status,
+        });
         if (uploadedPath && record.profile_image && record.profile_image !== uploadedPath) {
           await deleteProfileImage(record.profile_image);
         }
@@ -327,7 +345,17 @@ export default function YouthRecordModals({
           if (uploadError) {
             window.alert("Youth account was created, but image upload failed. You can add the image later.");
           } else {
-            await onUpdate(profileId, { ...youth, profile_image: uploadedPath });
+            await onUpdate(profileId, {
+              address_line: youth.address_line,
+              contact_number: youth.contact_number,
+              date_of_birth: youth.date_of_birth,
+              educational_status: youth.educational_status,
+              fullname: youth.fullname,
+              gender: youth.gender,
+              profile_image: uploadedPath,
+              purok: youth.purok,
+              scholar_status: youth.scholar_status,
+            });
           }
         }
       }
@@ -412,14 +440,17 @@ export default function YouthRecordModals({
           </div>
           <Field
             disabled={loading}
-            error={errors.age}
-            label="Age"
-            onChange={(event) =>
-              setAge(event.target.value === "" ? "" : Number(event.target.value))
-            }
-            placeholder="Enter age"
-            type="number"
-            value={age}
+            error={errors.birthday}
+            label="Birthday"
+            onChange={(event) => setBirthday(event.target.value)}
+            type="date"
+            value={birthday}
+          />
+          <Field
+            disabled
+            label="Calculated Age"
+            onChange={() => undefined}
+            value={calculateAge(birthday) ?? ""}
           />
           <SelectField
             disabled={loading}
@@ -487,16 +518,6 @@ export default function YouthRecordModals({
               value={address}
             />
           </div>
-          <SelectField
-            disabled={loading}
-            error={errors.status}
-            label="Account Status"
-            onChange={(event) =>
-              setAccountStatus(event.target.value as YouthRecord["status"])
-            }
-            options={accountStatusOptions}
-            value={accountStatus}
-          />
           <SelectField
             disabled={loading}
             error={errors.education}
@@ -576,13 +597,10 @@ export default function YouthRecordModals({
           <div className="sm:col-span-2">
             <Detail label="Full Name" value={name} />
           </div>
-          <Detail label="Age" value={age} />
+          <Detail label="Birthday" value={birthday} />
+          <Detail label="Age" value={calculateAge(birthday) ?? undefined} />
           <Detail label="Gender" value={gender} />
           <Detail label="Email" value={email} />
-          <Detail
-            label="Account Status"
-            value={accountStatus === "active" ? "Active" : "Inactive"}
-          />
           <Detail label="Contact" value={contact} />
           <Detail label="Purok" value={purok} />
           <Detail label="Address" value={address} />

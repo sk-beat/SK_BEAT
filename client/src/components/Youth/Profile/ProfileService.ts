@@ -10,6 +10,7 @@ export type YouthProfileRecord = {
   profile_id: string;
   fullname: string;
   email: string;
+  contact_number: string | null;
   age: number | null;
   gender: string | null;
   purok: string | null;
@@ -23,21 +24,20 @@ export type YouthProfileRecord = {
 
 export type UpdateYouthProfilePayload = {
   fullname: string;
-  age: number | null;
   gender: string | null;
   purok: string | null;
+  contact_number: string | null;
   address_line: string | null;
   scholar_status: string | null;
-  educational_status: string | null;
   profile_image: string | null;
-  date_of_birth?: string | null;
+  date_of_birth: string | null;
 };
 
 export async function getYouthProfile(profileId: string) {
   return supabase
     .from("kabataan_profiles")
     .select(
-      "profile_id, fullname, email, age, gender, purok, address_line, scholar_status, educational_status, profile_image, date_of_birth, created_at",
+      "profile_id, fullname, email, contact_number, age, gender, purok, address_line, scholar_status, educational_status, profile_image, date_of_birth, created_at",
     )
     .eq("profile_id", profileId)
     .maybeSingle<YouthProfileRecord>();
@@ -60,10 +60,17 @@ export async function updateYouthProfile(
     }
   }
 
-  return supabase
-    .from("kabataan_profiles")
-    .update(payload)
-    .eq("profile_id", profileId);
+  void profileId;
+  return supabase.rpc("update_my_youth_profile", {
+    p_address_line: payload.address_line,
+    p_contact_number: payload.contact_number,
+    p_date_of_birth: payload.date_of_birth,
+    p_fullname: payload.fullname,
+    p_gender: payload.gender,
+    p_profile_image: payload.profile_image,
+    p_purok: payload.purok,
+    p_scholar_status: payload.scholar_status,
+  });
 }
 
 function getFriendlyAuthErrorMessage(message: string) {

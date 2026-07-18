@@ -96,6 +96,19 @@ function SelectField({
   );
 }
 
+function calculateAge(dateOfBirth: string) {
+  if (!dateOfBirth) return null;
+  const [year, month, day] = dateOfBirth.split("-").map(Number);
+  if (!year || !month || !day) return null;
+  const today = new Date();
+  let age = today.getFullYear() - year;
+  const hasBirthdayPassed =
+    today.getMonth() + 1 > month ||
+    (today.getMonth() + 1 === month && today.getDate() >= day);
+  if (!hasBirthdayPassed) age -= 1;
+  return age;
+}
+
 export default function ProfileModals({
   isSaving,
   mode,
@@ -104,11 +117,11 @@ export default function ProfileModals({
   profile,
 }: ProfileModalsProps) {
   const [fullname, setFullname] = useState("");
-  const [age, setAge] = useState<number | "">("");
+  const [birthday, setBirthday] = useState("");
   const [gender, setGender] = useState("");
   const [purok, setPurok] = useState("");
+  const [contactNumber, setContactNumber] = useState("");
   const [address, setAddress] = useState("");
-  const [educationalStatus, setEducationalStatus] = useState("");
   const [scholarStatus, setScholarStatus] = useState("");
   const [profileImage, setProfileImage] = useState("");
   const [profileImageFile, setProfileImageFile] = useState<File | null>(null);
@@ -118,11 +131,11 @@ export default function ProfileModals({
   useEffect(() => {
     // eslint-disable-next-line react-hooks/set-state-in-effect
     setFullname(profile?.fullname ?? "");
-    setAge(profile?.age ?? "");
+    setBirthday(profile?.date_of_birth ?? "");
     setGender(profile?.gender ?? "");
     setPurok(profile?.purok ?? "");
+    setContactNumber(profile?.contact_number ?? "");
     setAddress(profile?.address_line ?? "");
-    setEducationalStatus(profile?.educational_status ?? "");
     setScholarStatus(profile?.scholar_status ?? "");
     setProfileImage(profile?.profile_image ?? "");
     setProfileImageFile(null);
@@ -153,13 +166,13 @@ export default function ProfileModals({
 
     await onSave({
       fullname,
-      age: age === "" ? null : age,
       gender: gender || null,
       purok: purok || null,
+      contact_number: contactNumber || null,
       address_line: address || null,
       scholar_status: scholarStatus || null,
-      educational_status: educationalStatus || null,
       profile_image: nextProfileImage,
+      date_of_birth: birthday || null,
     });
 
     if (uploadedPath && profile.profile_image && profile.profile_image !== uploadedPath) {
@@ -206,13 +219,16 @@ export default function ProfileModals({
         </div>
         <Field
           disabled={isSaving}
-          label="Age"
-          onChange={(event) =>
-            setAge(event.target.value === "" ? "" : Number(event.target.value))
-          }
-          placeholder="Enter age"
-          type="number"
-          value={age}
+          label="Birthday"
+          onChange={(event) => setBirthday(event.target.value)}
+          type="date"
+          value={birthday}
+        />
+        <Field
+          disabled
+          label="Calculated Age"
+          onChange={() => undefined}
+          value={calculateAge(birthday) ?? ""}
         />
         <SelectField
           disabled={isSaving}
@@ -221,6 +237,13 @@ export default function ProfileModals({
           options={["Male", "Female"]}
           placeholder="Select gender"
           value={gender}
+        />
+        <Field
+          disabled={isSaving}
+          label="Contact Number"
+          onChange={(event) => setContactNumber(event.target.value)}
+          placeholder="Optional contact number"
+          value={contactNumber}
         />
         <Field
           disabled={isSaving}
@@ -236,13 +259,11 @@ export default function ProfileModals({
           placeholder="Street, village"
           value={address}
         />
-        <SelectField
-          disabled={isSaving}
+        <Field
+          disabled
           label="Educational Status"
-          onChange={(event) => setEducationalStatus(event.target.value)}
-          options={["Active", "Inactive", "Student", "Out of School Youth"]}
-          placeholder="Select educational status"
-          value={educationalStatus}
+          onChange={() => undefined}
+          value={profile?.educational_status ?? ""}
         />
         <SelectField
           disabled={isSaving}

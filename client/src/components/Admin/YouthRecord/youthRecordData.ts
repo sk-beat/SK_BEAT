@@ -3,22 +3,22 @@ export type YouthRecord = {
   fullname: string;
   email: string;
   contact_number: string;
-  status: "active" | "inactive";
-  age: number ;
+  age: number | null;
+  date_of_birth: string | null;
   gender: "Male" | "Female" ;
   purok: string ;
   address_line: string ;
   scholar_status: "Scholar" | "Non-Scholar" ;
-  educational_status: "Active" | "Inactive" | "Student" | "Out of School Youth";
+  educational_status: "Active" | "Inactive";
   profile_image: string | "";
   password: string | "";
   created_at: string | null;
 };
 
 
-export type CreateYouthRecord = Omit<YouthRecord, "profile_id" | "created_at">;
+export type CreateYouthRecord = Omit<YouthRecord, "profile_id" | "created_at" | "age">;
 
-export type UpdateYouthRecord = Omit<YouthRecord,"profile_id" | "created_at" | "email" | "password">;
+export type UpdateYouthRecord = Omit<YouthRecord,"profile_id" | "created_at" | "email" | "password" | "age">;
 
 
 export const youthRecords: YouthRecord[] = [];

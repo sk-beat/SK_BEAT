@@ -5,7 +5,7 @@ import YouthRecordHeader from "./YouthRecordHeader";
 import YouthRecordModals, { type YouthRecordModalMode } from "./YouthRecordModals";
 import YouthRecordTable from "./YouthRecordTable";
 import YouthRecordToolbar from "./YouthRecordToolbar";
-import { type YouthRecord as YouthRecordType } from "./youthRecordData";
+import { type CreateYouthRecord, type UpdateYouthRecord, type YouthRecord as YouthRecordType } from "./youthRecordData";
 import { addYouth, deleteYouth, getYouthRecords, updateYouth } from "./YouthRecordService";
 
 export default function YouthRecord() {
@@ -15,7 +15,6 @@ export default function YouthRecord() {
   const [search, setSearch] = useState("");
 const [scholarFilter, setScholarFilter] = useState("");
 const [educationFilter, setEducationFilter] = useState("");
-const [statusFilter, setStatusFilter] = useState("");
 
 const filteredRecords = records.filter((record) => {
   const searchValue = search.toLowerCase();
@@ -36,12 +35,7 @@ const filteredRecords = records.filter((record) => {
       ? true
       : record.educational_status === educationFilter;
 
-  const matchesStatus =
-    statusFilter === ""
-      ? true
-      : record.status === statusFilter;
-
-  return matchesSearch && matchesScholar && matchesEducation && matchesStatus;
+  return matchesSearch && matchesScholar && matchesEducation;
 });
 
 function escapeCsvCell(value: string | number | null | undefined) {
@@ -59,8 +53,8 @@ function exportYouthRecords() {
     "Profile ID",
     "Full Name",
     "Email",
-    "Account Status",
     "Age",
+    "Birthday",
     "Gender",
     "Purok",
     "Address",
@@ -74,8 +68,8 @@ function exportYouthRecords() {
     record.profile_id,
     record.fullname,
     record.email,
-    record.status === "active" ? "Active" : "Inactive",
-    record.age,
+    record.age ?? "",
+    record.date_of_birth ?? "",
     record.gender,
     record.purok,
     record.address_line,
@@ -135,7 +129,7 @@ async function loadRecords() {
     setRecords(data ?? []);
 }
 async function createYouth(
-  data: Omit<YouthRecordType, "profile_id" | "created_at">
+  data: CreateYouthRecord
 ){
   const { data: createdProfile, error } = await addYouth(data);
 
@@ -150,7 +144,7 @@ async function createYouth(
 
 async function editYouth(
   profile_id: string,
-  data: Omit<YouthRecordType, "profile_id" | "created_at">
+  data: UpdateYouthRecord
 ) {
   const { error } = await updateYouth(profile_id, data);
 
@@ -192,8 +186,6 @@ async function removeYouth(profile_id: string) {
   setScholarFilter={setScholarFilter}
   educationFilter={educationFilter}
   setEducationFilter={setEducationFilter}
-  statusFilter={statusFilter}
-  setStatusFilter={setStatusFilter}
 />
   
 

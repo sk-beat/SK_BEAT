@@ -20,7 +20,9 @@ const corsHeaders = {
 };
 
 function validateDateOfBirth(value: unknown) {
-  if (!value) return null;
+  if (!value) {
+    throw new Error("Birthday is required.");
+  }
   if (typeof value !== "string") {
     throw new Error("Date of birth must be a valid date.");
   }
@@ -36,6 +38,24 @@ function validateDateOfBirth(value: unknown) {
     throw new Error("Date of birth cannot be in the future.");
   }
 
+  const age = todayOnly.getUTCFullYear() - date.getUTCFullYear();
+  const hadBirthdayThisYear =
+    todayOnly.getUTCMonth() > date.getUTCMonth() ||
+    (todayOnly.getUTCMonth() === date.getUTCMonth() &&
+      todayOnly.getUTCDate() >= date.getUTCDate());
+  const calendarAge = hadBirthdayThisYear ? age : age - 1;
+  if (calendarAge > 31) {
+    throw new Error("Youth must be 31 years old or younger.");
+  }
+
+  return value;
+}
+
+function validateEducationalStatus(value: unknown) {
+  if (!value) return "Active";
+  if (value !== "Active" && value !== "Inactive") {
+    throw new Error("Educational Status must be Active or Inactive.");
+  }
   return value;
 }
 
@@ -58,6 +78,7 @@ Deno.serve(async (req) => {
     const supabaseAdmin = createClient(supabaseUrl, supabaseServiceKey);
     const { password, ...profileData } = await req.json();
     const dateOfBirth = validateDateOfBirth(profileData.date_of_birth);
+    const educationalStatus = validateEducationalStatus(profileData.educational_status);
 
     const { data: authData, error: authError } = await supabaseAdmin.auth.admin.createUser({
       email: profileData.email,
@@ -72,13 +93,12 @@ Deno.serve(async (req) => {
       .insert({
         profile_id: authData.user.id,
         fullname: profileData.fullname,
-        age: profileData.age,
         gender: profileData.gender,
         address_line: profileData.address_line,
         purok: profileData.purok,
         contact_number: profileData.contact_number,
         email: profileData.email,
-        educational_status: profileData.educational_status,
+        educational_status: educationalStatus,
         scholar_status: profileData.scholar_status,
         profile_image: profileData.profile_image || null,
         date_of_birth: dateOfBirth,

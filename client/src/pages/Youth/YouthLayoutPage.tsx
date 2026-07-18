@@ -1,11 +1,20 @@
 import { Megaphone, User } from "lucide-react";
-import { Link, NavLink, Outlet, useNavigate } from "react-router-dom";
+import { Link, NavLink, Navigate, Outlet, useLocation, useNavigate } from "react-router-dom";
+import { useAuth } from "../../auth/useAuth";
 import skLogo from "../../assets/sklogo.png";
 import BottomNav from "../../components/Youth/shared/BottomNav";
 import { youthAppNavItems } from "../../components/Youth/shared/youthNavigation";
 
 export default function YouthLayoutPage() {
+  const { loading, role, user } = useAuth();
+  const location = useLocation();
   const navigate = useNavigate();
+  const isFirstLoginYouth = role === "kabataan" && user?.mustChangePassword;
+  const isProfileRoute = location.pathname === "/youth/profile";
+
+  if (!loading && isFirstLoginYouth && !isProfileRoute) {
+    return <Navigate to="/youth/profile?changePassword=1" replace />;
+  }
 
   return (
     <div className="min-h-screen bg-slate-50 text-slate-900">

@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { useNavigate } from "react-router-dom";
+import { useNavigate, useSearchParams } from "react-router-dom";
 import { useAuth } from "../../../auth/useAuth";
 import ProfileHeader from "./ProfileHeader";
 import ProfileModals, { type ProfileModalMode } from "./ProfileModals";
@@ -8,6 +8,7 @@ import ProfileSections, {
 } from "./ProfileSections";
 import {
   changeYouthPassword,
+  completeYouthFirstPasswordChange,
   getYouthProfile,
   getYouthProfileStats,
   updateYouthProfile,
@@ -16,8 +17,9 @@ import {
 } from "./ProfileService";
 
 export default function Profile() {
-  const { logout, user } = useAuth();
+  const { logout, refreshUser, user } = useAuth();
   const navigate = useNavigate();
+  const [searchParams] = useSearchParams();
   const [profile, setProfile] = useState<YouthProfileRecord | null>(null);
   const [eventsCount, setEventsCount] = useState(0);
   const [surveysCount, setSurveysCount] = useState(0);
@@ -117,6 +119,10 @@ export default function Profile() {
       return "New password must be different from your current password.";
     }
 
+    if (user?.mustChangePassword && newPassword === "12345678") {
+      return "New password cannot be the temporary password.";
+    }
+
     return null;
   }
 
@@ -139,11 +145,17 @@ export default function Profile() {
     setChangePasswordError(null);
     setChangePasswordSuccess(null);
 
-    const result = await changeYouthPassword({
-      profileId: user.id,
-      currentPassword: values.currentPassword,
-      newPassword: values.newPassword,
-    });
+    const isFirstPasswordChange = Boolean(user.mustChangePassword);
+    const result = isFirstPasswordChange
+      ? await completeYouthFirstPasswordChange({
+          currentPassword: values.currentPassword,
+          newPassword: values.newPassword,
+        })
+      : await changeYouthPassword({
+          profileId: user.id,
+          currentPassword: values.currentPassword,
+          newPassword: values.newPassword,
+        });
 
     setIsChangingPassword(false);
 
@@ -165,6 +177,11 @@ export default function Profile() {
     }
 
     setChangePasswordSuccess("Password updated successfully.");
+    if (isFirstPasswordChange) {
+      await refreshUser();
+      await loadProfile();
+      navigate("/youth", { replace: true });
+    }
     return true;
   }
 
@@ -220,6 +237,10 @@ export default function Profile() {
         eventsCount={eventsCount}
         isChangingPassword={isChangingPassword}
         isLoading={isLoading}
+        isPasswordChangeRequired={
+          Boolean(user?.mustChangePassword) ||
+          searchParams.get("changePassword") === "1"
+        }
         onChangePassword={handleChangePassword}
         onEditProfile={() => setModalMode("edit")}
         onLogout={logout}

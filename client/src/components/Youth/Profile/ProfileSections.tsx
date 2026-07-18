@@ -29,6 +29,7 @@ type ProfileSectionsProps = {
   eventsCount: number;
   isChangingPassword: boolean;
   isLoading: boolean;
+  isPasswordChangeRequired?: boolean;
   onChangePassword: (values: ChangePasswordFormValues) => Promise<boolean>;
   onEditProfile: () => void;
   onLogout: () => void;
@@ -124,6 +125,7 @@ export default function ProfileSections({
   eventsCount,
   isChangingPassword,
   isLoading,
+  isPasswordChangeRequired = false,
   onChangePassword,
   onEditProfile,
   onLogout,
@@ -139,6 +141,7 @@ export default function ProfileSections({
     confirm: false,
   });
   const [isPasswordModalOpen, setIsPasswordModalOpen] = useState(false);
+  const isPasswordDialogOpen = isPasswordModalOpen || isPasswordChangeRequired;
   const fullName = profile?.fullname ?? "Youth Member";
   const profileImageUrl = getProfileImageUrl(profile?.profile_image ?? null);
   const profileDetails = [
@@ -202,7 +205,7 @@ export default function ProfileSections({
   }
 
   function closePasswordModal() {
-    if (isChangingPassword) {
+    if (isChangingPassword || isPasswordChangeRequired) {
       return;
     }
 
@@ -389,9 +392,9 @@ export default function ProfileSections({
       <AdminModal
         footer={
           <>
-            <button
-              className="rounded-lg border border-slate-200 px-4 py-2 text-sm font-medium text-slate-700 hover:bg-slate-50 disabled:cursor-not-allowed disabled:opacity-60"
-              disabled={isChangingPassword}
+          <button
+            className="rounded-lg border border-slate-200 px-4 py-2 text-sm font-medium text-slate-700 hover:bg-slate-50 disabled:cursor-not-allowed disabled:opacity-60"
+              disabled={isChangingPassword || isPasswordChangeRequired}
               onClick={closePasswordModal}
               type="button"
             >
@@ -409,9 +412,14 @@ export default function ProfileSections({
           </>
         }
         onClose={closePasswordModal}
-        open={isPasswordModalOpen}
-        title="Change Password"
+        open={isPasswordDialogOpen}
+        title={isPasswordChangeRequired ? "Change Temporary Password" : "Change Password"}
       >
+        {isPasswordChangeRequired ? (
+          <div className="mb-4 rounded-lg border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-800">
+            Please change your temporary password before using the Youth portal.
+          </div>
+        ) : null}
         {changePasswordError ? (
           <div className="mb-4 rounded-lg border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700">
             {changePasswordError}

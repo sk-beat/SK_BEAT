@@ -1,6 +1,13 @@
 import { supabase } from "../../../utils/supabase";
 import type { CreateYouthRecord, UpdateYouthRecord } from "./youthRecordData";
 
+export type CreateYouthResult = {
+  account_created: boolean;
+  email_error?: string | null;
+  email_sent: boolean;
+  profile_id: string;
+};
+
 
 export async function getYouthRecords() {
   return await supabase
@@ -12,21 +19,19 @@ export async function getYouthRecords() {
 
 export async function addYouth(
   data: CreateYouthRecord
-) {
-  console.log("Sending data to Edge Function for secure processing...");
-
+): Promise<{ data: CreateYouthResult | null; error: Error | null }> {
   // Bypasses browser restrictions securely via Supabase infrastructure
   const { data: responseData, error: functionError } = await supabase.functions.invoke("create-youth", {
     body: data,
   });
 
   if (functionError) {
-    throw functionError;
+    return { data: null, error: functionError };
   }
 
   const profileId = responseData?.profile_id;
   if (profileId) {
-    return { data: { profile_id: profileId }, error: null };
+    return { data: responseData as CreateYouthResult, error: null };
   }
 
   const { data: profile, error: profileLookupError } = await supabase
@@ -36,10 +41,28 @@ export async function addYouth(
     .maybeSingle();
 
   if (profileLookupError) {
-    throw profileLookupError;
+    return { data: null, error: profileLookupError };
   }
 
-  return { data: profile, error: null };
+  return {
+    data: profile
+      ? {
+          account_created: true,
+          email_sent: false,
+          profile_id: profile.profile_id,
+          email_error: "Unable to confirm welcome email delivery.",
+        }
+      : null,
+    error: null,
+  };
+}
+
+export async function resendYouthWelcomeEmail(profileId: string) {
+  const { data, error } = await supabase.functions.invoke("send-youth-welcome-email", {
+    body: { profile_id: profileId },
+  });
+
+  return { data, error };
 }
 
     

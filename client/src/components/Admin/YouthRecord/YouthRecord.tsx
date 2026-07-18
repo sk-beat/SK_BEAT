@@ -1,12 +1,79 @@
 import { useEffect, useState } from "react";
 import { useAuth } from "../../../auth/useAuth";
 import Sidebar from "../../Sidebar/Sidebar";
+import AdminModal from "../shared/AdminModal";
 import YouthRecordHeader from "./YouthRecordHeader";
 import YouthRecordModals, { type YouthRecordModalMode } from "./YouthRecordModals";
 import YouthRecordTable from "./YouthRecordTable";
 import YouthRecordToolbar from "./YouthRecordToolbar";
 import { type CreateYouthRecord, type UpdateYouthRecord, type YouthRecord as YouthRecordType } from "./youthRecordData";
-import { addYouth, deleteYouth, getYouthRecords, lockYouth, unlockYouth, updateYouth } from "./YouthRecordService";
+import { addYouth, deleteYouth, getYouthRecords, lockYouth, resendYouthWelcomeEmail, unlockYouth, updateYouth } from "./YouthRecordService";
+
+type AccountAction = "lock" | "unlock" | null;
+type ToastState = { message: string; tone: "success" | "error" } | null;
+
+function calculateAge(dateOfBirth: string | null) {
+  if (!dateOfBirth) return null;
+  const [year, month, day] = dateOfBirth.split("-").map(Number);
+  if (!year || !month || !day) return null;
+  const today = new Date();
+  let age = today.getFullYear() - year;
+  const hasBirthdayPassed =
+    today.getMonth() + 1 > month ||
+    (today.getMonth() + 1 === month && today.getDate() >= day);
+  if (!hasBirthdayPassed) age -= 1;
+  return age;
+}
+
+function formatDate(value: string | null) {
+  if (!value) return "-";
+  const date = new Date(`${value}T00:00:00`);
+  if (Number.isNaN(date.getTime())) return value;
+  return date.toLocaleDateString("en-US", {
+    day: "numeric",
+    month: "long",
+    year: "numeric",
+  });
+}
+
+function formatDateTime(value: string | null) {
+  if (!value) return "-";
+  const date = new Date(value);
+  if (Number.isNaN(date.getTime())) return value;
+  return date.toLocaleString("en-US", {
+    day: "numeric",
+    hour: "numeric",
+    minute: "2-digit",
+    month: "long",
+    year: "numeric",
+  });
+}
+
+function getAccountAccessLabel(record: YouthRecordType) {
+  if (record.status === "active") return "Active";
+  if (record.account_lock_reason === "age_limit") return "Locked - age limit";
+  if (record.account_lock_reason === "manual_admin") return "Locked - manual";
+  return "Locked";
+}
+
+function getLockReasonLabel(record: YouthRecordType) {
+  if (record.account_lock_reason === "age_limit") return "Age limit";
+  if (record.account_lock_reason === "manual_admin") return "Locked manually by Admin";
+  return "-";
+}
+
+function AccountDetail({ label, value }: { label: string; value: string | number | null | undefined }) {
+  return (
+    <div className="rounded-lg border border-slate-200 bg-slate-50 p-3">
+      <p className="text-xs font-semibold uppercase tracking-[0.08em] text-slate-400">
+        {label}
+      </p>
+      <p className="mt-1 break-words text-sm font-medium text-slate-800">
+        {value ?? "-"}
+      </p>
+    </div>
+  );
+}
 
 export default function YouthRecord() {
   const { logout } = useAuth();
@@ -107,6 +174,13 @@ function exportYouthRecords() {
   const [selectedRecord, setSelectedRecord] = useState<YouthRecordType | null>(
     null,
   );
+  const [accountAction, setAccountAction] = useState<AccountAction>(null);
+  const [accountActionRecord, setAccountActionRecord] =
+    useState<YouthRecordType | null>(null);
+  const [accountActionLoading, setAccountActionLoading] = useState(false);
+  const [toast, setToast] = useState<ToastState>(null);
+  const [welcomeEmailProfileId, setWelcomeEmailProfileId] = useState<string | null>(null);
+  const [isResendingWelcomeEmail, setIsResendingWelcomeEmail] = useState(false);
 
   function openModal(mode: Exclude<YouthRecordModalMode, null>, record?: YouthRecordType) {
     setSelectedRecord(record ?? null);
@@ -116,6 +190,23 @@ function exportYouthRecords() {
   function closeModal() {
     setModalMode(null);
     setSelectedRecord(null);
+  }
+
+  function showToast(message: string, tone: "success" | "error") {
+    setToast({ message, tone });
+    window.setTimeout(() => setToast(null), 4200);
+  }
+
+  function openAccountAction(action: Exclude<AccountAction, null>, record: YouthRecordType) {
+    if (accountActionLoading) return;
+    setAccountAction(action);
+    setAccountActionRecord(record);
+  }
+
+  function closeAccountAction() {
+    if (accountActionLoading) return;
+    setAccountAction(null);
+    setAccountActionRecord(null);
   }
 
   useEffect(() => {
@@ -138,12 +229,36 @@ async function createYouth(
   const { data: createdProfile, error } = await addYouth(data);
 
   if (error) {
-    console.error(error);
+    showToast(error.message, "error");
     return null;
   }
 
   await loadRecords();
+  if (createdProfile?.email_sent === false) {
+    setWelcomeEmailProfileId(createdProfile.profile_id);
+    showToast("Youth account created, but the welcome email could not be sent.", "error");
+  } else {
+    setWelcomeEmailProfileId(null);
+    showToast("Youth account created and welcome email sent.", "success");
+  }
   return createdProfile?.profile_id ?? null;
+}
+
+async function handleResendWelcomeEmail() {
+  if (!welcomeEmailProfileId || isResendingWelcomeEmail) return;
+
+  setIsResendingWelcomeEmail(true);
+  const { error } = await resendYouthWelcomeEmail(welcomeEmailProfileId);
+  setIsResendingWelcomeEmail(false);
+
+  if (error) {
+    showToast(error.message, "error");
+    return;
+  }
+
+  setWelcomeEmailProfileId(null);
+  await loadRecords();
+  showToast("Welcome email resent.", "success");
 }
 
 async function editYouth(
@@ -177,8 +292,7 @@ async function lockYouthAccount(profile_id: string) {
   const { error } = await lockYouth(profile_id);
 
   if (error) {
-    window.alert(error.message);
-    return;
+    throw error;
   }
 
   await loadRecords();
@@ -188,12 +302,43 @@ async function unlockYouthAccount(profile_id: string) {
   const { error } = await unlockYouth(profile_id);
 
   if (error) {
-    window.alert(error.message);
-    return;
+    throw error;
   }
 
   await loadRecords();
 }
+
+async function confirmAccountAction() {
+  if (!accountAction || !accountActionRecord || accountActionLoading) return;
+
+  try {
+    setAccountActionLoading(true);
+
+    if (accountAction === "lock") {
+      await lockYouthAccount(accountActionRecord.profile_id);
+      showToast("Kabataan account locked successfully.", "success");
+    } else {
+      await unlockYouthAccount(accountActionRecord.profile_id);
+      showToast("Kabataan account unlocked successfully.", "success");
+    }
+
+    setAccountAction(null);
+    setAccountActionRecord(null);
+  } catch (error) {
+    const message =
+      error instanceof Error
+        ? error.message
+        : "Account action failed. Please try again.";
+    showToast(message, "error");
+  } finally {
+    setAccountActionLoading(false);
+  }
+}
+
+const selectedAccountAge =
+  accountActionRecord?.age ?? calculateAge(accountActionRecord?.date_of_birth ?? null);
+const isOverAgeLimit = (selectedAccountAge ?? 0) >= 31;
+const isUnlockBlocked = accountAction === "unlock" && isOverAgeLimit;
 
   return (
     <div className="flex min-h-screen bg-slate-100 font-sans text-slate-900">
@@ -218,8 +363,8 @@ async function unlockYouthAccount(profile_id: string) {
         <YouthRecordTable
   onDelete={(record) => openModal("delete", record)}
   onEdit={(record) => openModal("edit", record)}
-  onLock={(record) => lockYouthAccount(record.profile_id)}
-  onUnlock={(record) => unlockYouthAccount(record.profile_id)}
+  onLock={(record) => openAccountAction("lock", record)}
+  onUnlock={(record) => openAccountAction("unlock", record)}
   onView={(record) => openModal("view", record)}
   records={filteredRecords}
 />
@@ -233,6 +378,108 @@ async function unlockYouthAccount(profile_id: string) {
         onUpdate={editYouth}
         onDelete={removeYouth}
     />
+      <AdminModal
+        footer={
+          <>
+            <button
+              className="rounded-lg border border-slate-200 px-4 py-2 text-sm font-medium text-slate-700 hover:bg-slate-50 disabled:cursor-not-allowed disabled:opacity-50"
+              disabled={accountActionLoading}
+              onClick={closeAccountAction}
+              type="button"
+            >
+              Cancel
+            </button>
+            <button
+              className={[
+                "rounded-lg px-4 py-2 text-sm font-medium text-white disabled:cursor-not-allowed disabled:opacity-50",
+                accountAction === "lock"
+                  ? "bg-red-600 hover:bg-red-700"
+                  : "bg-[#1e3a5f] hover:bg-[#2a4a6f]",
+              ].join(" ")}
+              disabled={accountActionLoading || isUnlockBlocked}
+              onClick={confirmAccountAction}
+              type="button"
+            >
+              {accountActionLoading
+                ? accountAction === "lock"
+                  ? "Locking..."
+                  : "Unlocking..."
+                : accountAction === "lock"
+                  ? "Lock Account"
+                  : "Unlock Account"}
+            </button>
+          </>
+        }
+        onClose={closeAccountAction}
+        open={accountAction !== null && accountActionRecord !== null}
+        title={accountAction === "lock" ? "Lock Kabataan Account?" : "Unlock Kabataan Account?"}
+      >
+        {accountActionRecord ? (
+          <div className="space-y-4">
+            <p className="text-sm leading-6 text-slate-600">
+              {accountAction === "lock"
+                ? "This user will no longer be able to access the Youth portal until an administrator unlocks the account."
+                : "This user will regain access to the Youth portal if they are still within the allowed age limit."}
+            </p>
+            {isUnlockBlocked ? (
+              <p className="rounded-lg border border-red-200 bg-red-50 px-4 py-3 text-sm font-medium text-red-700">
+                This account cannot be unlocked because the Kabataan is over the age limit.
+              </p>
+            ) : null}
+            <div className="grid gap-3 sm:grid-cols-2">
+              <div className="sm:col-span-2">
+                <AccountDetail label="Full name" value={accountActionRecord.fullname} />
+              </div>
+              <AccountDetail label="Email" value={accountActionRecord.email} />
+              <AccountDetail label="Calculated age" value={selectedAccountAge ?? "-"} />
+              {accountAction === "lock" ? (
+                <AccountDetail
+                  label="Current account access"
+                  value={getAccountAccessLabel(accountActionRecord)}
+                />
+              ) : (
+                <>
+                  <AccountDetail
+                    label="Birthday"
+                    value={formatDate(accountActionRecord.date_of_birth)}
+                  />
+                  <AccountDetail
+                    label="Lock reason"
+                    value={getLockReasonLabel(accountActionRecord)}
+                  />
+                  <AccountDetail
+                    label="Locked date"
+                    value={formatDateTime(accountActionRecord.account_locked_at)}
+                  />
+                </>
+              )}
+            </div>
+          </div>
+        ) : null}
+      </AdminModal>
+      {toast ? (
+        <div
+          className={[
+            "fixed bottom-5 right-5 z-1100 max-w-sm rounded-lg px-4 py-3 text-sm font-medium text-white shadow-lg",
+            toast.tone === "success" ? "bg-emerald-600" : "bg-red-600",
+          ].join(" ")}
+          role="status"
+        >
+          <div className="flex items-center gap-3">
+            <span>{toast.message}</span>
+            {welcomeEmailProfileId && toast.tone === "error" ? (
+              <button
+                className="rounded-md bg-white/15 px-2 py-1 text-xs font-semibold hover:bg-white/25 disabled:cursor-not-allowed disabled:opacity-60"
+                disabled={isResendingWelcomeEmail}
+                onClick={handleResendWelcomeEmail}
+                type="button"
+              >
+                {isResendingWelcomeEmail ? "Resending..." : "Resend Welcome Email"}
+              </button>
+            ) : null}
+          </div>
+        </div>
+      ) : null}
     </div>
   );
 }

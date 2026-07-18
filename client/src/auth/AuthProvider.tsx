@@ -57,7 +57,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     // Kabataan Check
     const { data: kabataan, error } = await supabase
       .from("kabataan_profiles")
-      .select("fullname,email")
+      .select("fullname,email,must_change_password,onboarding_status")
       .eq("profile_id", authUser.id)
       .eq("status", "active")
       .maybeSingle();
@@ -71,6 +71,9 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         id: authUser.id,
         email: kabataan.email,
         fullname: kabataan.fullname,
+        mustChangePassword:
+          Boolean(kabataan.must_change_password) ||
+          kabataan.onboarding_status === "temporary_password_active",
       });
 
       setRole("kabataan");
@@ -83,10 +86,10 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   }
 
   useEffect(() => {
-    loadUser();
+    void Promise.resolve().then(loadUser);
 
     const { data: listener } = supabase.auth.onAuthStateChange(() => {
-      loadUser();
+      void loadUser();
     });
 
     return () => {
@@ -121,6 +124,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     loading,
     login,
     logout,
+    refreshUser: loadUser,
   };
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;

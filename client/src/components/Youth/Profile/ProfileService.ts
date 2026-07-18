@@ -183,6 +183,42 @@ export async function changeYouthPassword({
   };
 }
 
+export async function completeYouthFirstPasswordChange({
+  currentPassword,
+  newPassword,
+}: Omit<ChangeYouthPasswordPayload, "profileId">) {
+  const { error } = await supabase.functions.invoke("complete-youth-first-password-change", {
+    body: {
+      current_password: currentPassword,
+      new_password: newPassword,
+    },
+  });
+
+  if (error) {
+    return {
+      error: getFriendlyAuthErrorMessage(error.message),
+      sessionValid: true,
+    };
+  }
+
+  const { error: refreshError } = await supabase.auth.refreshSession();
+  if (refreshError) {
+    return {
+      error: getFriendlyAuthErrorMessage(refreshError.message),
+      sessionValid: false,
+    };
+  }
+
+  const {
+    data: { session },
+  } = await supabase.auth.getSession();
+
+  return {
+    error: null,
+    sessionValid: Boolean(session),
+  };
+}
+
 export async function getYouthProfileStats(profileId: string) {
   const [eventRegistrations, surveyVotes] = await Promise.all([
     supabase

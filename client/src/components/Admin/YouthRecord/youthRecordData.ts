@@ -14,7 +14,12 @@ export type YouthRecord = {
   scholar_status: "Scholar" | "Non-Scholar" ;
   educational_status: "Active" | "Inactive";
   profile_image: string | "";
-  password: string | "";
+  must_change_password?: boolean;
+  onboarding_status?: "temporary_password_active" | "completed" | null;
+  welcome_email_sent_at?: string | null;
+  welcome_email_last_attempt_at?: string | null;
+  welcome_email_last_error?: string | null;
+  welcome_email_attempt_count?: number;
   created_at: string | null;
 };
 
@@ -27,6 +32,12 @@ export type CreateYouthRecord = Omit<
   | "status"
   | "account_lock_reason"
   | "account_locked_at"
+  | "must_change_password"
+  | "onboarding_status"
+  | "welcome_email_sent_at"
+  | "welcome_email_last_attempt_at"
+  | "welcome_email_last_error"
+  | "welcome_email_attempt_count"
 >;
 
 export type UpdateYouthRecord = Omit<
@@ -34,11 +45,16 @@ export type UpdateYouthRecord = Omit<
   | "profile_id"
   | "created_at"
   | "email"
-  | "password"
   | "age"
   | "status"
   | "account_lock_reason"
   | "account_locked_at"
+  | "must_change_password"
+  | "onboarding_status"
+  | "welcome_email_sent_at"
+  | "welcome_email_last_attempt_at"
+  | "welcome_email_last_error"
+  | "welcome_email_attempt_count"
 >;
 
 

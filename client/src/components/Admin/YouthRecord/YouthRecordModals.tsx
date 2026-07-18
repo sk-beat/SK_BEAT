@@ -40,7 +40,6 @@ type FormErrors = Partial<
     | "address"
     | "purok"
     | "email"
-    | "password"
     | "education"
     | "scholar"
     | "profileImage",
@@ -202,7 +201,6 @@ export default function YouthRecordModals({
   const [purok, setPurok] = useState("");
   const [contact, setContact] = useState("");
   const [email, setEmail] = useState("");
-  const [password, setPassword] = useState("");
   const [education, setEducation] = useState<
     YouthRecord["educational_status"] | ""
   >("");
@@ -228,7 +226,6 @@ export default function YouthRecordModals({
       setProfileImage(record.profile_image ?? "");
       setProfileImageFile(null);
       setProfileImagePreview(null);
-      setPassword("");
     } else {
       setName("");
       setBirthday("");
@@ -242,7 +239,6 @@ export default function YouthRecordModals({
       setProfileImage("");
       setProfileImageFile(null);
       setProfileImagePreview(null);
-      setPassword("");
     }
 
     setErrors({});
@@ -254,7 +250,6 @@ export default function YouthRecordModals({
     const trimmedAddress = address.trim();
     const trimmedPurok = purok.trim();
     const trimmedEmail = email.trim();
-    const trimmedPassword = password.trim();
 
     if (!trimmedName) {
       nextErrors.fullname = "Full name is required.";
@@ -271,10 +266,6 @@ export default function YouthRecordModals({
       nextErrors.email = "Email is required.";
     } else if (!isValidEmail(trimmedEmail)) {
       nextErrors.email = "Enter a valid email address.";
-    }
-
-    if (!isEdit && trimmedPassword.length < 6) {
-      nextErrors.password = "Password must be at least 6 characters.";
     }
 
     if (!trimmedPurok) {
@@ -318,7 +309,6 @@ export default function YouthRecordModals({
       educational_status: education as YouthRecord["educational_status"],
       scholar_status: scholar as "Scholar" | "Non-Scholar",
       profile_image: profileImage.trim() || "",
-      password,
     };
 
     try {
@@ -481,15 +471,12 @@ export default function YouthRecordModals({
             value={email}
           />
           {!isEdit ? (
-            <Field
-              disabled={loading}
-              error={errors.password}
-              label="Account Password"
-              onChange={(event) => setPassword(event.target.value)}
-              placeholder="Assign user password"
-              type="password"
-              value={password}
-            />
+            <div className="rounded-lg border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-900">
+              <p className="font-semibold">Temporary Password: 12345678</p>
+              <p className="mt-1">
+                The Youth will be required to change this password after their first login.
+              </p>
+            </div>
           ) : (
             <Field
               disabled={loading}

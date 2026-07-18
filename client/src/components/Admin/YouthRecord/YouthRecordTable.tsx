@@ -11,6 +11,17 @@ function initials(name: string) {
     .toUpperCase();
 }
 
+function formatBirthday(value: string | null) {
+  if (!value) return "-";
+  const date = new Date(`${value}T00:00:00`);
+  if (Number.isNaN(date.getTime())) return value;
+  return date.toLocaleDateString("en-US", {
+    day: "numeric",
+    month: "long",
+    year: "numeric",
+  });
+}
+
 export default function YouthRecordTable({
   onDelete,
   onEdit,
@@ -26,6 +37,13 @@ export default function YouthRecordTable({
   onView: (record: YouthRecord) => void;
   records: YouthRecord[];
 }) {
+  function getHeadingClass(heading: string) {
+    return [
+      "bg-slate-50 px-5 py-4 text-center text-[0.6875rem] font-semibold uppercase tracking-[0.08em] text-slate-400",
+      heading === "Birthday" ? "min-w-[150px] whitespace-nowrap" : "",
+    ].join(" ");
+  }
+
   return (
     <div className="overflow-hidden overflow-x-auto rounded-[14px] border border-slate-200 bg-white shadow-sm">
       <table className="w-full min-w-230 border-collapse text-sm">
@@ -44,7 +62,7 @@ export default function YouthRecordTable({
               "Actions",
             ].map((heading) => (
               <th
-                className="bg-slate-50 px-5 py-4 text-center text-[0.6875rem] font-semibold uppercase tracking-[0.08em] text-slate-400"
+                className={getHeadingClass(heading)}
                 key={heading}
               >
                 {heading}
@@ -82,8 +100,8 @@ export default function YouthRecordTable({
               <td className="border-t border-slate-200 px-5 py-4 text-center">
                 {record.age ?? "-"}
               </td>
-              <td className="border-t border-slate-200 px-5 py-4 text-center">
-                {record.date_of_birth ?? "-"}
+              <td className="min-w-[150px] whitespace-nowrap border-t border-slate-200 px-5 py-4 text-center">
+                {formatBirthday(record.date_of_birth)}
               </td>
               <td className="border-t border-slate-200 px-5 py-4 text-center">
                 <span

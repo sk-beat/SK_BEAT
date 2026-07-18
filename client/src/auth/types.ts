@@ -4,6 +4,7 @@ export type AuthUser = {
   id: string;
   email: string;
   fullname?: string;
+  mustChangePassword?: boolean;
 };
 
 export type LoginPayload = {
@@ -18,4 +19,5 @@ export type AuthContextValue = {
   loading: boolean;
   login(payload: LoginPayload): Promise<void>;
   logout(): Promise<void>;
+  refreshUser(): Promise<void>;
 };

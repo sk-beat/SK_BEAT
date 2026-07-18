@@ -18,7 +18,7 @@ const MONTHS = [
 
 const WEEKDAYS = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];
 const MIN_DATE = "1900-01-01";
-const MAX_AGE = 31;
+const DEFAULT_VIEW_AGE = 30;
 
 type BirthdayPickerProps = {
   disabled?: boolean;
@@ -63,46 +63,17 @@ function formatReadableDate(value: string) {
   }).format(date);
 }
 
-function calculateAge(value: string) {
-  const date = parseDate(value);
-  if (!date) return null;
-  const today = new Date();
-  let age = today.getFullYear() - date.getFullYear();
-  const hasBirthdayPassed =
-    today.getMonth() > date.getMonth() ||
-    (today.getMonth() === date.getMonth() && today.getDate() >= date.getDate());
-  if (!hasBirthdayPassed) age -= 1;
-  return age;
-}
-
-function addDays(date: Date, days: number) {
-  const next = new Date(date);
-  next.setDate(next.getDate() + days);
-  return next;
-}
-
-function addYears(date: Date, years: number) {
-  const next = new Date(date);
-  next.setFullYear(next.getFullYear() + years);
-  return next;
-}
-
 function getTodayString() {
   const today = new Date();
   return toDateString(today.getFullYear(), today.getMonth(), today.getDate());
 }
 
 function getMinimumAllowedDate() {
-  const today = new Date();
-  const oldestAllowed = addDays(addYears(today, -(MAX_AGE + 1)), 1);
-  const minDate = parseDate(MIN_DATE) ?? oldestAllowed;
-  return oldestAllowed > minDate ? oldestAllowed : minDate;
+  return parseDate(MIN_DATE) ?? new Date(1900, 0, 1);
 }
 
 function isAllowedDate(value: string) {
-  if (!value || value < MIN_DATE || value > getTodayString()) return false;
-  const age = calculateAge(value);
-  return age !== null && age <= MAX_AGE;
+  return Boolean(value && value >= MIN_DATE && value <= getTodayString());
 }
 
 function getInitialViewDate(value: string) {
@@ -110,7 +81,7 @@ function getInitialViewDate(value: string) {
   if (selected) return selected;
 
   const today = new Date();
-  const defaultYear = Math.max(today.getFullYear() - MAX_AGE, 1900);
+  const defaultYear = Math.max(today.getFullYear() - DEFAULT_VIEW_AGE, 1900);
   return new Date(defaultYear, today.getMonth(), 1);
 }
 

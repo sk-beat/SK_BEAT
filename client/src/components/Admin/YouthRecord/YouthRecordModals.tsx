@@ -150,6 +150,17 @@ function isValidEmail(value: string) {
   return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(value);
 }
 
+function getLockReasonLabel(record: YouthRecord | null) {
+  if (!record || record.status === "active") return "Active";
+  if (record.account_lock_reason === "age_limit") {
+    return "Locked automatically: age limit";
+  }
+  if (record.account_lock_reason === "manual_admin") {
+    return "Locked manually by Admin";
+  }
+  return "Locked";
+}
+
 function calculateAge(dateOfBirth: string) {
   if (!dateOfBirth) return null;
   const [year, month, day] = dateOfBirth.split("-").map(Number);
@@ -168,8 +179,6 @@ function validateBirthday(value: string) {
   if (value < "1900-01-01") return "Birthday must be on or after January 1, 1900.";
   const today = new Date().toISOString().slice(0, 10);
   if (value > today) return "Birthday cannot be in the future.";
-  const age = calculateAge(value);
-  if (age !== null && age > 31) return "Youth must be 31 years old or younger.";
   return null;
 }
 
@@ -600,6 +609,8 @@ export default function YouthRecordModals({
           <Detail label="Age" value={calculateAge(birthday) ?? undefined} />
           <Detail label="Gender" value={gender} />
           <Detail label="Email" value={email} />
+          <Detail label="Account Access" value={getLockReasonLabel(record)} />
+          <Detail label="Locked At" value={record?.account_locked_at ?? undefined} />
           <Detail label="Contact" value={contact} />
           <Detail label="Purok" value={purok} />
           <Detail label="Address" value={address} />

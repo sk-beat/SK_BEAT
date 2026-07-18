@@ -3,6 +3,9 @@ export type YouthRecord = {
   fullname: string;
   email: string;
   contact_number: string;
+  status: "active" | "inactive";
+  account_lock_reason: "age_limit" | "manual_admin" | null;
+  account_locked_at: string | null;
   age: number | null;
   date_of_birth: string | null;
   gender: "Male" | "Female" ;
@@ -16,9 +19,27 @@ export type YouthRecord = {
 };
 
 
-export type CreateYouthRecord = Omit<YouthRecord, "profile_id" | "created_at" | "age">;
+export type CreateYouthRecord = Omit<
+  YouthRecord,
+  | "profile_id"
+  | "created_at"
+  | "age"
+  | "status"
+  | "account_lock_reason"
+  | "account_locked_at"
+>;
 
-export type UpdateYouthRecord = Omit<YouthRecord,"profile_id" | "created_at" | "email" | "password" | "age">;
+export type UpdateYouthRecord = Omit<
+  YouthRecord,
+  | "profile_id"
+  | "created_at"
+  | "email"
+  | "password"
+  | "age"
+  | "status"
+  | "account_lock_reason"
+  | "account_locked_at"
+>;
 
 
 export const youthRecords: YouthRecord[] = [];

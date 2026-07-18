@@ -52,11 +52,14 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       return;
     }
 
+    await supabase.rpc("refresh_my_kabataan_account_lock");
+
     // Kabataan Check
     const { data: kabataan, error } = await supabase
       .from("kabataan_profiles")
       .select("fullname,email")
       .eq("profile_id", authUser.id)
+      .eq("status", "active")
       .maybeSingle();
 
     if (error) {

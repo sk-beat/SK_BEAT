@@ -38,16 +38,6 @@ function validateDateOfBirth(value: unknown) {
     throw new Error("Date of birth cannot be in the future.");
   }
 
-  const age = todayOnly.getUTCFullYear() - date.getUTCFullYear();
-  const hadBirthdayThisYear =
-    todayOnly.getUTCMonth() > date.getUTCMonth() ||
-    (todayOnly.getUTCMonth() === date.getUTCMonth() &&
-      todayOnly.getUTCDate() >= date.getUTCDate());
-  const calendarAge = hadBirthdayThisYear ? age : age - 1;
-  if (calendarAge > 31) {
-    throw new Error("Youth must be 31 years old or younger.");
-  }
-
   return value;
 }
 

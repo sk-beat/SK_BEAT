@@ -6,7 +6,7 @@ import YouthRecordModals, { type YouthRecordModalMode } from "./YouthRecordModal
 import YouthRecordTable from "./YouthRecordTable";
 import YouthRecordToolbar from "./YouthRecordToolbar";
 import { type CreateYouthRecord, type UpdateYouthRecord, type YouthRecord as YouthRecordType } from "./youthRecordData";
-import { addYouth, deleteYouth, getYouthRecords, updateYouth } from "./YouthRecordService";
+import { addYouth, deleteYouth, getYouthRecords, lockYouth, unlockYouth, updateYouth } from "./YouthRecordService";
 
 export default function YouthRecord() {
   const { logout } = useAuth();
@@ -59,6 +59,8 @@ function exportYouthRecords() {
     "Purok",
     "Address",
     "Educational Status",
+    "Account Access",
+    "Lock Reason",
     "Scholar Status",
     "Contact Number",
     "Created At",
@@ -74,6 +76,8 @@ function exportYouthRecords() {
     record.purok,
     record.address_line,
     record.educational_status,
+    record.status === "active" ? "Active" : "Locked",
+    record.account_lock_reason ?? "",
     record.scholar_status,
     record.contact_number,
     record.created_at,
@@ -169,6 +173,28 @@ async function removeYouth(profile_id: string) {
   closeModal();
 }
 
+async function lockYouthAccount(profile_id: string) {
+  const { error } = await lockYouth(profile_id);
+
+  if (error) {
+    window.alert(error.message);
+    return;
+  }
+
+  await loadRecords();
+}
+
+async function unlockYouthAccount(profile_id: string) {
+  const { error } = await unlockYouth(profile_id);
+
+  if (error) {
+    window.alert(error.message);
+    return;
+  }
+
+  await loadRecords();
+}
+
   return (
     <div className="flex min-h-screen bg-slate-100 font-sans text-slate-900">
       <Sidebar onLogout={logout} />
@@ -192,6 +218,8 @@ async function removeYouth(profile_id: string) {
         <YouthRecordTable
   onDelete={(record) => openModal("delete", record)}
   onEdit={(record) => openModal("edit", record)}
+  onLock={(record) => lockYouthAccount(record.profile_id)}
+  onUnlock={(record) => unlockYouthAccount(record.profile_id)}
   onView={(record) => openModal("view", record)}
   records={filteredRecords}
 />

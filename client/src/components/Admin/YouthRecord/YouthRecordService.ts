@@ -68,6 +68,23 @@ export async function updateYouth(
   return { data: updatedData, error: null };
 }
 
+export async function lockYouth(profile_id: string) {
+  const { data, error } = await supabase.rpc("lock_admin_youth_account", {
+    p_profile_id: profile_id,
+    p_reason: "manual_admin",
+  });
+
+  return { data, error };
+}
+
+export async function unlockYouth(profile_id: string) {
+  const { data, error } = await supabase.rpc("unlock_admin_youth_account", {
+    p_profile_id: profile_id,
+  });
+
+  return { data, error };
+}
+
 
 
 

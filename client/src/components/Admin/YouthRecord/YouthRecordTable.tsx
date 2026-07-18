@@ -1,4 +1,4 @@
-import { Eye, Pencil, Trash2 } from "lucide-react";
+import { Eye, Lock, LockOpen, Pencil, Trash2 } from "lucide-react";
 import type { YouthRecord } from "./youthRecordData";
 
 function initials(name: string) {
@@ -14,11 +14,15 @@ function initials(name: string) {
 export default function YouthRecordTable({
   onDelete,
   onEdit,
+  onLock,
+  onUnlock,
   onView,
   records,
 }: {
   onDelete: (record: YouthRecord) => void;
   onEdit: (record: YouthRecord) => void;
+  onLock: (record: YouthRecord) => void;
+  onUnlock: (record: YouthRecord) => void;
   onView: (record: YouthRecord) => void;
   records: YouthRecord[];
 }) {
@@ -35,6 +39,7 @@ export default function YouthRecordTable({
               "Educational Status",
               "Age",
               "Birthday",
+              "Account Access",
               "Purok",
               "Actions",
             ].map((heading) => (
@@ -81,6 +86,32 @@ export default function YouthRecordTable({
                 {record.date_of_birth ?? "-"}
               </td>
               <td className="border-t border-slate-200 px-5 py-4 text-center">
+                <span
+                  className={[
+                    "inline-flex items-center gap-1 rounded-md px-3 py-1.5 text-xs font-semibold",
+                    record.status === "active"
+                      ? "bg-emerald-500/10 text-emerald-600"
+                      : "bg-red-500/10 text-red-600",
+                  ].join(" ")}
+                  title={
+                    record.account_lock_reason === "age_limit"
+                      ? "Locked automatically because the Youth is 31 or older."
+                      : record.account_lock_reason === "manual_admin"
+                        ? "Locked manually by Admin."
+                        : "Account is active."
+                  }
+                >
+                  {record.status === "active" ? "Active" : "Locked"}
+                </span>
+                {record.account_lock_reason ? (
+                  <p className="mt-1 text-xs text-slate-400">
+                    {record.account_lock_reason === "age_limit"
+                      ? "Age limit"
+                      : "Manual"}
+                  </p>
+                ) : null}
+              </td>
+              <td className="border-t border-slate-200 px-5 py-4 text-center">
                 {record.purok}
               </td>
               <td className="border-t border-slate-200 px-5 py-4">
@@ -101,6 +132,30 @@ export default function YouthRecordTable({
                   >
                     <Pencil className="h-4 w-4" />
                   </button>
+                  {record.status === "active" ? (
+                    <button
+                      className="flex h-8 w-8 items-center justify-center rounded-md text-slate-500 hover:bg-amber-100 hover:text-amber-700"
+                      onClick={() => onLock(record)}
+                      type="button"
+                      title="Lock account"
+                    >
+                      <Lock className="h-4 w-4" />
+                    </button>
+                  ) : (
+                    <button
+                      className="flex h-8 w-8 items-center justify-center rounded-md text-slate-500 hover:bg-emerald-100 hover:text-emerald-700 disabled:cursor-not-allowed disabled:opacity-40"
+                      disabled={record.account_lock_reason === "age_limit"}
+                      onClick={() => onUnlock(record)}
+                      type="button"
+                      title={
+                        record.account_lock_reason === "age_limit"
+                          ? "Age-locked accounts cannot be unlocked"
+                          : "Unlock account"
+                      }
+                    >
+                      <LockOpen className="h-4 w-4" />
+                    </button>
+                  )}
                   <button
                     className="flex h-8 w-8 items-center justify-center rounded-md text-slate-500 hover:bg-red-100 hover:text-red-600"
                     onClick={() => onDelete(record)}

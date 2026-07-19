@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import AdminModal from "../shared/AdminModal";
 import BirthdayPicker from "../../shared/BirthdayPicker";
 import type { CreateYouthRecord, UpdateYouthRecord, YouthRecord } from "./youthRecordData";
@@ -211,38 +211,37 @@ export default function YouthRecordModals({
   const [loading, setLoading] = useState(false);
   const [errors, setErrors] = useState<FormErrors>({});
 
-  useEffect(() => {
-    if (record) {
-      // eslint-disable-next-line react-hooks/set-state-in-effect
-      setName(record.fullname ?? "");
-      setBirthday(record.date_of_birth ?? "");
-      setGender(record.gender ?? "");
-      setAddress(record.address_line ?? "");
-      setPurok(record.purok ?? "");
-      setContact(record.contact_number ?? "");
-      setEmail(record.email ?? "");
-      setEducation(record.educational_status ?? "");
-      setScholar(record.scholar_status ?? "");
-      setProfileImage(record.profile_image ?? "");
-      setProfileImageFile(null);
-      setProfileImagePreview(null);
-    } else {
-      setName("");
-      setBirthday("");
-      setGender("");
-      setAddress("");
-      setPurok("");
-      setContact("");
-      setEmail("");
-      setEducation("");
-      setScholar("");
-      setProfileImage("");
-      setProfileImageFile(null);
-      setProfileImagePreview(null);
-    }
+  const clearProfileImagePreview = useCallback(() => {
+    setProfileImagePreview((current) => {
+      if (current) {
+        URL.revokeObjectURL(current);
+      }
 
+      return null;
+    });
+  }, []);
+
+  const resetFormState = useCallback((nextRecord: YouthRecord | null = null) => {
+    setName(nextRecord?.fullname ?? "");
+    setBirthday(nextRecord?.date_of_birth ?? "");
+    setGender(nextRecord?.gender ?? "");
+    setAddress(nextRecord?.address_line ?? "");
+    setPurok(nextRecord?.purok ?? "");
+    setContact(nextRecord?.contact_number ?? "");
+    setEmail(nextRecord?.email ?? "");
+    setEducation(nextRecord?.educational_status ?? "");
+    setScholar(nextRecord?.scholar_status ?? "");
+    setProfileImage(nextRecord?.profile_image ?? "");
+    setProfileImageFile(null);
+    clearProfileImagePreview();
     setErrors({});
-  }, [record, mode]);
+  }, [clearProfileImagePreview]);
+
+  useEffect(() => {
+    // Reset the modal state whenever a different Youth record/mode opens.
+    // eslint-disable-next-line react-hooks/set-state-in-effect
+    resetFormState(record);
+  }, [mode, record, resetFormState]);
 
   function validateForm() {
     const nextErrors: FormErrors = {};
@@ -364,6 +363,7 @@ export default function YouthRecordModals({
         }
       }
 
+      resetFormState(null);
       onClose();
     } catch (error) {
       const message =
@@ -563,7 +563,13 @@ export default function YouthRecordModals({
                   onChange={(event) => {
                     const file = event.target.files?.[0] ?? null;
                     setProfileImageFile(file);
-                    setProfileImagePreview(file ? URL.createObjectURL(file) : null);
+                    setProfileImagePreview((current) => {
+                      if (current) {
+                        URL.revokeObjectURL(current);
+                      }
+
+                      return file ? URL.createObjectURL(file) : null;
+                    });
                   }}
                   type="file"
                 />

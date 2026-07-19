@@ -273,7 +273,7 @@ async function createYouth(
       password: createdProfile.temporary_password,
       profileId: createdProfile.profile_id,
     });
-    showToast("Youth account created successfully, but the welcome email could not be sent.", "error");
+    showToast("Youth account created successfully, but the welcome email could not be sent.", "success");
   }
 
   return createdProfile?.profile_id ?? null;
@@ -517,7 +517,7 @@ const isUnlockBlocked = accountAction === "unlock" && isOverAgeLimit;
         >
           <div className="flex items-center gap-3">
             <span>{toast.message}</span>
-            {pendingWelcomeEmail && toast.tone === "error" ? (
+            {pendingWelcomeEmail ? (
               <button
                 className="rounded-md bg-white/15 px-2 py-1 text-xs font-semibold hover:bg-white/25 disabled:cursor-not-allowed disabled:opacity-60"
                 disabled={isRetryingWelcomeEmail}

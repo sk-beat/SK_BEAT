@@ -90,7 +90,27 @@ function validateDateOfBirth(value: unknown) {
     throw new PublicFunctionError("Date of birth cannot be in the future.", 400, "future_birthday");
   }
 
+  const age = calculateAgeFromBirthdate(value);
+  if (age < 15 || age > 30) {
+    throw new PublicFunctionError(
+      "Youth account creation is only allowed for ages 15 to 30.",
+      400,
+      "age_not_allowed",
+    );
+  }
+
   return value;
+}
+
+function calculateAgeFromBirthdate(value: string) {
+  const [year, month, day] = value.split("-").map(Number);
+  const today = new Date();
+  let age = today.getUTCFullYear() - year;
+  const hasBirthdayPassed =
+    today.getUTCMonth() + 1 > month ||
+    (today.getUTCMonth() + 1 === month && today.getUTCDate() >= day);
+  if (!hasBirthdayPassed) age -= 1;
+  return age;
 }
 
 function validateEducationalStatus(value: unknown) {

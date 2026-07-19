@@ -132,7 +132,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   }, [loadUser]);
 
   async function login({ username, password }: LoginPayload) {
-    const { error } = await supabase.auth.signInWithPassword({
+    const { data, error } = await supabase.auth.signInWithPassword({
       email: username,
       password,
     });
@@ -142,7 +142,52 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       throw error;
     }
 
-    loadUser();
+    const authUser = data.user;
+
+    if (!authUser) {
+      throw new Error("Login failed.");
+    }
+
+    const { data: admin } = await supabase
+      .from("admins")
+      .select("admin_id")
+      .eq("admin_id", authUser.id)
+      .eq("status", "active")
+      .maybeSingle();
+
+    if (admin) {
+      await loadUser();
+      return;
+    }
+
+    await supabase.rpc("refresh_my_kabataan_account_lock");
+
+    const { data: kabataan, error: youthError } = await supabase
+      .from("kabataan_profiles")
+      .select("status,account_lock_reason")
+      .eq("profile_id", authUser.id)
+      .maybeSingle();
+
+    if (youthError) {
+      await supabase.auth.signOut({ scope: "local" });
+      throw youthError;
+    }
+
+    if (!kabataan) {
+      await supabase.auth.signOut({ scope: "local" });
+      throw new Error("Account is not authorized for this portal.");
+    }
+
+    if (kabataan.status !== "active") {
+      await supabase.auth.signOut({ scope: "local" });
+      throw new Error(
+        kabataan.account_lock_reason === "age_limit"
+          ? "Your Youth account is locked because you reached the age limit."
+          : "Your Youth account is locked. Please contact an administrator.",
+      );
+    }
+
+    await loadUser();
   }
 
   async function logout() {

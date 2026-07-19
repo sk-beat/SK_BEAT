@@ -174,11 +174,15 @@ function calculateAge(dateOfBirth: string) {
   return age;
 }
 
-function validateBirthday(value: string) {
+function validateBirthday(value: string, enforceCreationAgeLimit = false) {
   if (!value) return "Birthday is required.";
   if (value < "1900-01-01") return "Birthday must be on or after January 1, 1900.";
   const today = new Date().toISOString().slice(0, 10);
   if (value > today) return "Birthday cannot be in the future.";
+  const age = calculateAge(value);
+  if (enforceCreationAgeLimit && (age === null || age < 15 || age > 30)) {
+    return "Youth account creation is only allowed for ages 15 to 30.";
+  }
   return null;
 }
 
@@ -255,7 +259,7 @@ export default function YouthRecordModals({
       nextErrors.fullname = "Full name is required.";
     }
 
-    const birthdayError = validateBirthday(birthday);
+    const birthdayError = validateBirthday(birthday, !isEdit);
     if (birthdayError) nextErrors.birthday = birthdayError;
 
     if (!gender) {

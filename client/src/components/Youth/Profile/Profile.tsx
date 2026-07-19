@@ -6,6 +6,7 @@ import ProfileModals, { type ProfileModalMode } from "./ProfileModals";
 import ProfileSections, {
   type ChangePasswordFormValues,
 } from "./ProfileSections";
+import { validatePasswordChange } from "../../../utils/passwordValidation";
 import {
   changeYouthPassword,
   completeYouthFirstPasswordChange,
@@ -87,39 +88,11 @@ export default function Profile() {
     newPassword,
     confirmPassword,
   }: ChangePasswordFormValues) {
-    if (!currentPassword) {
-      return "Current password is required.";
-    }
-
-    if (!newPassword) {
-      return "New password is required.";
-    }
-
-    if (!confirmPassword) {
-      return "Please confirm your new password.";
-    }
-
-    if (
-      currentPassword.trim() !== currentPassword ||
-      newPassword.trim() !== newPassword ||
-      confirmPassword.trim() !== confirmPassword
-    ) {
-      return "Passwords cannot start or end with spaces.";
-    }
-
-    if (newPassword.length < 8) {
-      return "New password must be at least 8 characters.";
-    }
-
-    if (newPassword !== confirmPassword) {
-      return "New password and confirmation do not match.";
-    }
-
-    if (newPassword === currentPassword) {
-      return "New password must be different from your current password.";
-    }
-
-    return null;
+    return validatePasswordChange({
+      confirmPassword,
+      currentPassword,
+      newPassword,
+    });
   }
 
   async function handleChangePassword(values: ChangePasswordFormValues) {

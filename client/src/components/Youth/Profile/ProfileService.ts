@@ -4,6 +4,7 @@ import {
   supabase,
 } from "@/lib/supabase";
 import { getSupabaseFunctionErrorMessage } from "../../../utils/supabaseFunctions";
+import { getPasswordChangeErrorMessage } from "../../../utils/passwordValidation";
 
 export type ChangeYouthPasswordPayload = {
   profileId: string;
@@ -78,7 +79,65 @@ export async function updateYouthProfile(
   });
 }
 
-function getFriendlyAuthErrorMessage(message: string) {
+function logPasswordChangeFailure({
+  code,
+  message,
+  status,
+}: {
+  code?: string;
+  message: string;
+  status?: number;
+}) {
+  console.error("[Password Change] Failed", {
+    message,
+    code,
+    status,
+  });
+}
+
+async function getSupabaseFunctionErrorDetails(error: unknown, fallback: string) {
+  let code: string | undefined;
+  let status: number | undefined;
+
+  if (error && typeof error === "object" && "context" in error) {
+    const response = (error as { context?: unknown }).context;
+
+    if (response instanceof Response) {
+      status = response.status;
+
+      try {
+        const body = await response.clone().json();
+
+        if (body && typeof body === "object") {
+          if ("code" in body && typeof body.code === "string") {
+            code = body.code;
+          }
+
+          if ("message" in body && typeof body.message === "string") {
+            return { code, message: body.message, status };
+          }
+
+          if ("error" in body && typeof body.error === "string") {
+            return { code, message: body.error, status };
+          }
+        }
+      } catch {
+        // Fall back to the shared parser below.
+      }
+    }
+  }
+
+  const message = await getSupabaseFunctionErrorMessage(error, fallback);
+  const authError = error as { code?: unknown; status?: unknown } | null;
+
+  return {
+    code: code ?? (typeof authError?.code === "string" ? authError.code : undefined),
+    message,
+    status: status ?? (typeof authError?.status === "number" ? authError.status : undefined),
+  };
+}
+
+function getFriendlyAuthErrorMessage(message: string, code?: string) {
   const normalizedMessage = message.toLowerCase();
 
   if (
@@ -90,9 +149,11 @@ function getFriendlyAuthErrorMessage(message: string) {
 
   if (
     normalizedMessage.includes("weak password") ||
-    normalizedMessage.includes("password should be")
+    normalizedMessage.includes("password should be") ||
+    normalizedMessage.includes("password is too common") ||
+    normalizedMessage.includes("compromised")
   ) {
-    return "New password is too weak. Please choose a stronger password.";
+    return getPasswordChangeErrorMessage(message, code);
   }
 
   if (
@@ -114,7 +175,7 @@ function getFriendlyAuthErrorMessage(message: string) {
     return "Network error. Please check your connection and try again.";
   }
 
-  return message || "Unable to change password. Please try again.";
+  return getPasswordChangeErrorMessage(message, code);
 }
 
 export async function changeYouthPassword({
@@ -128,8 +189,14 @@ export async function changeYouthPassword({
   } = await supabase.auth.getUser();
 
   if (userError) {
+    logPasswordChangeFailure({
+      code: userError.code,
+      message: userError.message,
+      status: userError.status,
+    });
+
     return {
-      error: getFriendlyAuthErrorMessage(userError.message),
+      error: getFriendlyAuthErrorMessage(userError.message, userError.code),
       sessionValid: false,
     };
   }
@@ -161,6 +228,12 @@ export async function changeYouthPassword({
   });
 
   if (reauthError) {
+    logPasswordChangeFailure({
+      code: reauthError.code,
+      message: reauthError.message,
+      status: reauthError.status,
+    });
+
     return {
       error: "Current password is incorrect.",
       sessionValid: true,
@@ -172,8 +245,14 @@ export async function changeYouthPassword({
   });
 
   if (updateError) {
+    logPasswordChangeFailure({
+      code: updateError.code,
+      message: updateError.message,
+      status: updateError.status,
+    });
+
     return {
-      error: getFriendlyAuthErrorMessage(updateError.message),
+      error: getFriendlyAuthErrorMessage(updateError.message, updateError.code),
       sessionValid: true,
     };
   }
@@ -203,7 +282,7 @@ export async function completeYouthFirstPasswordChange({
     }
 
     return {
-      error: getFriendlyAuthErrorMessage(userError.message),
+      error: getFriendlyAuthErrorMessage(userError.message, userError.code),
       sessionValid: false,
     };
   }
@@ -223,13 +302,14 @@ export async function completeYouthFirstPasswordChange({
   });
 
   if (error) {
-    const message = await getSupabaseFunctionErrorMessage(
+    const errorDetails = await getSupabaseFunctionErrorDetails(
       error,
       "Unable to change password. Please try again.",
     );
+    logPasswordChangeFailure(errorDetails);
 
     return {
-      error: getFriendlyAuthErrorMessage(message),
+      error: getFriendlyAuthErrorMessage(errorDetails.message, errorDetails.code),
       sessionValid: true,
     };
   }
@@ -241,9 +321,14 @@ export async function completeYouthFirstPasswordChange({
 
   if (signInError) {
     logSafeAuthError("first_password_change_reauth", signInError);
+    logPasswordChangeFailure({
+      code: signInError.code,
+      message: signInError.message,
+      status: signInError.status,
+    });
 
     return {
-      error: getFriendlyAuthErrorMessage(signInError.message),
+      error: getFriendlyAuthErrorMessage(signInError.message, signInError.code),
       sessionValid: false,
     };
   }

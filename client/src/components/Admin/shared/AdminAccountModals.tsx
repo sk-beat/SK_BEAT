@@ -74,7 +74,6 @@ export default function AdminAccountModals({
       .eq("admin_id", user?.id)
       .single();
 
-    console.log(data.email);
     setAdminName(data.fullname);
     setPosition(data.position);
     setEmail(data.email);
@@ -90,12 +89,6 @@ export default function AdminAccountModals({
   }, []);
 
   async function handleAddAdminSubmit() {
-    console.log("Adding admin with details:", {
-      AdminName,
-      position,
-      email,
-      password,
-    });
     if (!email || !email.includes("@") || !email.includes(".")) {
       alert("Please enter a valid email address.");
       return;

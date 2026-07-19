@@ -1,6 +1,7 @@
 import { useEffect, useState } from "react";
 import AdminModal from "../shared/AdminModal";
 import BirthdayPicker from "../../shared/BirthdayPicker";
+import { YOUTH_TEMPORARY_PASSWORD } from "../../../services/emailService";
 import type { CreateYouthRecord, UpdateYouthRecord, YouthRecord } from "./youthRecordData";
 import {
   buildYouthProfileImagePath,
@@ -339,7 +340,11 @@ export default function YouthRecordModals({
         }
       } else {
         const profileId = await onCreate({ ...youth, profile_image: "" });
-        if (profileId && profileImageFile) {
+        if (!profileId) {
+          return;
+        }
+
+        if (profileImageFile) {
           const uploadedPath = buildYouthProfileImagePath(profileId, profileImageFile);
           const { error: uploadError } = await uploadProfileImage(uploadedPath, profileImageFile);
           if (uploadError) {
@@ -472,7 +477,7 @@ export default function YouthRecordModals({
           />
           {!isEdit ? (
             <div className="rounded-lg border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-900">
-              <p className="font-semibold">Temporary Password: 12345678</p>
+              <p className="font-semibold">Temporary Password: {YOUTH_TEMPORARY_PASSWORD}</p>
               <p className="mt-1">
                 The Youth will be required to change this password after their first login.
               </p>

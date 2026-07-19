@@ -1,11 +1,23 @@
 import { supabase } from "../../../utils/supabase";
+import { getSupabaseFunctionErrorMessage } from "../../../utils/supabaseFunctions";
 import type { CreateYouthRecord, UpdateYouthRecord } from "./youthRecordData";
 
 export type CreateYouthResult = {
+  success: true;
   account_created: boolean;
-  email_error?: string | null;
-  email_sent: boolean;
+  email: string;
+  message: string;
   profile_id: string;
+};
+
+type CreateYouthFunctionResponse = {
+  account_created?: boolean;
+  code?: string;
+  email?: string;
+  error?: string;
+  message?: string;
+  profile_id?: string;
+  success?: boolean;
 };
 
 
@@ -26,43 +38,50 @@ export async function addYouth(
   });
 
   if (functionError) {
-    return { data: null, error: functionError };
+    const message = await getSupabaseFunctionErrorMessage(
+      functionError,
+      "Unable to create Youth account.",
+    );
+    return { data: null, error: new Error(message) };
   }
 
-  const profileId = responseData?.profile_id;
-  if (profileId) {
-    return { data: responseData as CreateYouthResult, error: null };
-  }
+  const response = responseData as CreateYouthFunctionResponse | null;
 
-  const { data: profile, error: profileLookupError } = await supabase
-    .from("kabataan_profiles")
-    .select("profile_id")
-    .eq("email", data.email)
-    .maybeSingle();
-
-  if (profileLookupError) {
-    return { data: null, error: profileLookupError };
+  if (response?.success === true && response.account_created === true && response.profile_id) {
+    return {
+      data: {
+        success: true,
+        account_created: true,
+        email: response.email ?? data.email,
+        message: response.message ?? "Youth account created successfully.",
+        profile_id: response.profile_id,
+      },
+      error: null,
+    };
   }
 
   return {
-    data: profile
-      ? {
-          account_created: true,
-          email_sent: false,
-          profile_id: profile.profile_id,
-          email_error: "Unable to confirm welcome email delivery.",
-        }
-      : null,
-    error: null,
+    data: null,
+    error: new Error(
+      response?.message ?? response?.error ?? "Youth account was not created.",
+    ),
   };
 }
 
-export async function resendYouthWelcomeEmail(profileId: string) {
-  const { data, error } = await supabase.functions.invoke("send-youth-welcome-email", {
-    body: { profile_id: profileId },
+export async function recordYouthWelcomeEmailResult({
+  errorMessage,
+  profileId,
+  sent,
+}: {
+  errorMessage?: string | null;
+  profileId: string;
+  sent: boolean;
+}) {
+  return supabase.rpc("record_admin_youth_welcome_email_result", {
+    p_error: errorMessage ?? null,
+    p_profile_id: profileId,
+    p_sent: sent,
   });
-
-  return { data, error };
 }
 
     

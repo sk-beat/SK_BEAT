@@ -17,6 +17,18 @@ const corsHeaders = {
   "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type",
 };
 
+class PublicFunctionError extends Error {
+  status: number;
+  code: string;
+
+  constructor(message: string, status = 400, code = "bad_request") {
+    super(message);
+    this.name = "PublicFunctionError";
+    this.status = status;
+    this.code = code;
+  }
+}
+
 type CreateYouthPayload = {
   fullname?: string;
   email?: string;
@@ -30,9 +42,9 @@ type CreateYouthPayload = {
   date_of_birth?: string | null;
 };
 
-function jsonResponse(body: unknown, status = 200) {
+function jsonResponse(body: unknown, status = 200, headers: Record<string, string> = {}) {
   return new Response(JSON.stringify(body), {
-    headers: { ...corsHeaders, "Content-Type": "application/json" },
+    headers: { ...corsHeaders, ...headers, "Content-Type": "application/json" },
     status,
   });
 }
@@ -41,7 +53,7 @@ function getBearerToken(req: Request) {
   const authorization = req.headers.get("Authorization") ?? "";
   const [scheme, token] = authorization.split(" ");
   if (scheme !== "Bearer" || !token) {
-    throw new Error("Missing authenticated admin session.");
+    throw new PublicFunctionError("Missing authenticated admin session.", 401, "missing_auth_token");
   }
   return token;
 }
@@ -49,28 +61,28 @@ function getBearerToken(req: Request) {
 function requireEnv(name: string) {
   const value = Deno.env.get(name);
   if (!value) {
-    throw new Error(`Missing ${name} environment variable.`);
+    throw new PublicFunctionError("Server configuration is incomplete.", 500, `missing_env_${name}`);
   }
   return value;
 }
 
 function validateDateOfBirth(value: unknown) {
   if (!value) {
-    throw new Error("Birthday is required.");
+    throw new PublicFunctionError("Birthday is required.", 400, "missing_birthday");
   }
   if (typeof value !== "string") {
-    throw new Error("Date of birth must be a valid date.");
+    throw new PublicFunctionError("Date of birth must be a valid date.", 400, "invalid_birthday");
   }
 
   const date = new Date(`${value}T00:00:00Z`);
   if (Number.isNaN(date.getTime())) {
-    throw new Error("Date of birth must be a valid date.");
+    throw new PublicFunctionError("Date of birth must be a valid date.", 400, "invalid_birthday");
   }
 
   const today = new Date();
   const todayOnly = new Date(Date.UTC(today.getUTCFullYear(), today.getUTCMonth(), today.getUTCDate()));
   if (date > todayOnly) {
-    throw new Error("Date of birth cannot be in the future.");
+    throw new PublicFunctionError("Date of birth cannot be in the future.", 400, "future_birthday");
   }
 
   return value;
@@ -79,94 +91,44 @@ function validateDateOfBirth(value: unknown) {
 function validateEducationalStatus(value: unknown) {
   if (!value) return "Active";
   if (value !== "Active" && value !== "Inactive") {
-    throw new Error("Educational Status must be Active or Inactive.");
+    throw new PublicFunctionError("Educational Status must be Active or Inactive.", 400, "invalid_educational_status");
   }
   return value;
 }
 
 function normalizeEmail(value: unknown) {
   if (typeof value !== "string") {
-    throw new Error("Email is required.");
+    throw new PublicFunctionError("Youth email is required.", 400, "missing_email");
   }
 
   const email = value.trim().toLowerCase();
   if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
-    throw new Error("Enter a valid email address.");
+    throw new PublicFunctionError("Enter a valid email address.", 400, "invalid_email");
   }
   return email;
 }
 
-function escapeHtml(value: string) {
-  return value
-    .replace(/&/g, "&amp;")
-    .replace(/</g, "&lt;")
-    .replace(/>/g, "&gt;")
-    .replace(/"/g, "&quot;")
-    .replace(/'/g, "&#039;");
+function optionalText(value: unknown) {
+  if (typeof value !== "string") return null;
+  const trimmed = value.trim();
+  return trimmed ? trimmed : null;
 }
 
-function getLoginUrl() {
-  const appBaseUrl = requireEnv("APP_BASE_URL").trim();
-  const parsed = new URL(appBaseUrl);
-  if (parsed.protocol !== "https:" && !parsed.hostname.includes("localhost")) {
-    throw new Error("APP_BASE_URL must be HTTPS in production.");
-  }
-  return new URL("/login", parsed).toString();
-}
+function safeLog(stage: string, error: unknown) {
+  const code =
+    error instanceof PublicFunctionError
+      ? error.code
+      : typeof error === "object" && error && "code" in error
+        ? String((error as { code?: unknown }).code)
+        : "unexpected";
+  const message =
+    error instanceof PublicFunctionError
+      ? error.message
+      : error instanceof Error
+        ? error.message
+        : "Unexpected error";
 
-async function sendWelcomeEmail(args: {
-  fullName: string;
-  email: string;
-}) {
-  const apiKey = requireEnv("RESEND_API_KEY");
-  const from = requireEnv("WELCOME_EMAIL_FROM");
-  const loginUrl = getLoginUrl();
-  const escapedName = escapeHtml(args.fullName);
-  const escapedEmail = escapeHtml(args.email);
-  const escapedLoginUrl = escapeHtml(loginUrl);
-
-  const text = [
-    `Hello ${args.fullName},`,
-    "",
-    "Welcome to the SK Kabataan Portal.",
-    "",
-    `Login email: ${args.email}`,
-    `Temporary password: ${temporaryPassword}`,
-    `Portal link: ${loginUrl}`,
-    "",
-    "You must change this temporary password after your first login.",
-    "Do not share your login credentials with anyone.",
-  ].join("\n");
-
-  const html = `
-    <p>Hello ${escapedName},</p>
-    <p>Welcome to the SK Kabataan Portal.</p>
-    <p><strong>Login email:</strong> ${escapedEmail}<br />
-    <strong>Temporary password:</strong> ${temporaryPassword}<br />
-    <strong>Portal link:</strong> <a href="${escapedLoginUrl}">${escapedLoginUrl}</a></p>
-    <p>You must change this temporary password after your first login.</p>
-    <p>Do not share your login credentials with anyone.</p>
-  `;
-
-  const response = await fetch("https://api.resend.com/emails", {
-    method: "POST",
-    headers: {
-      Authorization: `Bearer ${apiKey}`,
-      "Content-Type": "application/json",
-    },
-    body: JSON.stringify({
-      from,
-      to: [args.email],
-      subject: "Welcome to the SK Kabataan Portal",
-      text,
-      html,
-    }),
-  });
-
-  if (!response.ok) {
-    const message = await response.text();
-    throw new Error(message || "Email provider rejected the welcome email.");
-  }
+  console.error("create-youth", { stage, code, message });
 }
 
 Deno.serve(async (req) => {
@@ -175,10 +137,17 @@ Deno.serve(async (req) => {
   }
 
   if (req.method !== "POST") {
-    return jsonResponse({ error: "Method not allowed." }, 405);
+    return jsonResponse(
+      {
+        success: false,
+        code: "METHOD_NOT_ALLOWED",
+        message: "Method not allowed.",
+        error: "Method not allowed.",
+      },
+      405,
+      { Allow: "POST, OPTIONS" },
+    );
   }
-
-  let authUserId: string | null = null;
 
   try {
     const token = getBearerToken(req);
@@ -197,7 +166,7 @@ Deno.serve(async (req) => {
     } = await userClient.auth.getUser(token);
 
     if (callerError || !caller) {
-      throw new Error("Invalid authenticated admin session.");
+      throw new PublicFunctionError("Invalid authenticated admin session.", 401, "invalid_auth_token");
     }
 
     const { data: admin, error: adminError } = await userClient
@@ -207,24 +176,49 @@ Deno.serve(async (req) => {
       .eq("status", "active")
       .maybeSingle();
 
-    if (adminError) throw adminError;
-    if (!admin) throw new Error("Active admin required.");
+    if (adminError) {
+      safeLog("admin_lookup", adminError);
+      throw new PublicFunctionError("Unable to verify admin access.", 500, "admin_lookup_failed");
+    }
+    if (!admin) throw new PublicFunctionError("Active admin required.", 403, "active_admin_required");
 
-    const profileData = (await req.json()) as CreateYouthPayload;
+    let profileData: CreateYouthPayload;
+    try {
+      profileData = (await req.json()) as CreateYouthPayload;
+    } catch (parseError) {
+      safeLog("parse_json", parseError);
+      throw new PublicFunctionError("Request body must be valid JSON.", 400, "invalid_json");
+    }
+
     const email = normalizeEmail(profileData.email);
     const fullName = String(profileData.fullname ?? "").trim();
-    if (!fullName) throw new Error("Full name is required.");
+    if (!fullName) throw new PublicFunctionError("Full name is required.", 400, "missing_fullname");
 
     const dateOfBirth = validateDateOfBirth(profileData.date_of_birth);
     const educationalStatus = validateEducationalStatus(profileData.educational_status);
+    const gender = optionalText(profileData.gender);
+    const addressLine = optionalText(profileData.address_line);
+    const purok = optionalText(profileData.purok);
+    const scholarStatus = optionalText(profileData.scholar_status);
+    const profileImage = optionalText(profileData.profile_image);
+    const contactNumber = optionalText(profileData.contact_number) ?? "";
 
     const { data: existingProfile, error: existingProfileError } = await supabaseAdmin
       .from("kabataan_profiles")
       .select("profile_id")
       .eq("email", email)
       .maybeSingle();
-    if (existingProfileError) throw existingProfileError;
-    if (existingProfile) throw new Error("A Youth profile with this email already exists.");
+    if (existingProfileError) {
+      safeLog("profile_duplicate_check", existingProfileError);
+      throw new PublicFunctionError("Unable to check existing Youth profiles.", 500, "profile_duplicate_check_failed");
+    }
+    if (existingProfile) {
+      throw new PublicFunctionError(
+        "A Youth account with this email already exists.",
+        409,
+        "YOUTH_ALREADY_EXISTS",
+      );
+    }
 
     const { data: authData, error: authError } = await supabaseAdmin.auth.admin.createUser({
       email,
@@ -233,73 +227,93 @@ Deno.serve(async (req) => {
       user_metadata: { must_change_password: true },
     });
 
-    if (authError) throw authError;
-    if (!authData.user) throw new Error("Unable to create Youth account.");
-    authUserId = authData.user.id;
+    if (authError) {
+      const duplicateAuth =
+        authError.message.toLowerCase().includes("already") ||
+        authError.message.toLowerCase().includes("registered") ||
+        authError.message.toLowerCase().includes("exists");
+      safeLog("auth_create_user", {
+        code: duplicateAuth ? "duplicate_auth_email" : "auth_create_failed",
+        message: authError.message,
+      });
+      throw new PublicFunctionError(
+        duplicateAuth ? "A Youth account with this email already exists." : "Unable to create Youth account.",
+        duplicateAuth ? 409 : 500,
+        duplicateAuth ? "YOUTH_ALREADY_EXISTS" : "auth_create_failed",
+      );
+    }
+    if (!authData.user) {
+      throw new PublicFunctionError("Unable to create Youth account.", 500, "auth_create_missing_user");
+    }
+    const authUserId = authData.user.id;
 
     const { error: profileError } = await supabaseAdmin
       .from("kabataan_profiles")
       .insert({
         profile_id: authUserId,
         fullname: fullName,
-        gender: profileData.gender,
-        address_line: profileData.address_line,
-        purok: profileData.purok,
-        contact_number: profileData.contact_number ?? "",
+        gender,
+        address_line: addressLine,
+        purok,
+        contact_number: contactNumber,
         email,
         educational_status: educationalStatus,
-        scholar_status: profileData.scholar_status,
-        profile_image: profileData.profile_image || null,
+        scholar_status: scholarStatus,
+        profile_image: profileImage,
         date_of_birth: dateOfBirth,
         must_change_password: true,
         onboarding_status: "temporary_password_active",
-        welcome_email_attempt_count: 1,
-        welcome_email_last_attempt_at: new Date().toISOString(),
       });
 
     if (profileError) {
       const { error: cleanupError } = await supabaseAdmin.auth.admin.deleteUser(authUserId);
+      safeLog("profile_insert", {
+        code: profileError.code ?? "profile_insert_failed",
+        message: profileError.message,
+      });
       return jsonResponse(
         {
-          error: profileError.message,
+          success: false,
+          code: "profile_insert_failed",
+          message: "Youth Auth account was created, but profile creation failed.",
+          error: "Youth Auth account was created, but profile creation failed.",
           auth_cleanup_succeeded: !cleanupError,
-          auth_cleanup_error: cleanupError?.message ?? null,
+          auth_cleanup_error: cleanupError ? "Auth cleanup failed." : null,
         },
-        400,
+        500,
       );
     }
 
-    try {
-      await sendWelcomeEmail({ fullName, email });
-      await supabaseAdmin
-        .from("kabataan_profiles")
-        .update({
-          welcome_email_sent_at: new Date().toISOString(),
-          welcome_email_last_error: null,
-        })
-        .eq("profile_id", authUserId);
-
-      return jsonResponse({
-        account_created: true,
-        email_sent: true,
-        profile_id: authUserId,
-      });
-    } catch (emailError) {
-      const message = emailError instanceof Error ? emailError.message : "Email delivery failed.";
-      await supabaseAdmin
-        .from("kabataan_profiles")
-        .update({ welcome_email_last_error: message.slice(0, 500) })
-        .eq("profile_id", authUserId);
-
-      return jsonResponse({
-        account_created: true,
-        email_sent: false,
-        email_error: "Welcome email could not be sent.",
-        profile_id: authUserId,
-      });
-    }
+    return jsonResponse({
+      success: true,
+      account_created: true,
+      message: "Youth account created successfully.",
+      email,
+      profile_id: authUserId,
+    });
   } catch (error: unknown) {
-    const message = error instanceof Error ? error.message : String(error);
-    return jsonResponse({ error: message }, 400);
+    if (error instanceof PublicFunctionError) {
+      safeLog("request", error);
+      return jsonResponse(
+        {
+          success: false,
+          code: error.code,
+          message: error.message,
+          error: error.message,
+        },
+        error.status,
+      );
+    }
+
+    safeLog("unexpected", error);
+    return jsonResponse(
+      {
+        success: false,
+        code: "CREATE_YOUTH_FAILED",
+        message: "Unable to create Youth account.",
+        error: "Unable to create Youth account.",
+      },
+      500,
+    );
   }
 });

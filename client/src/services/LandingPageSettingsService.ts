@@ -12,6 +12,7 @@ function sanitizeFilename(name: string) {
 
 export function getLandingAssetUrl(path: string | null) {
   if (!path) return null;
+  if (/^https?:\/\//i.test(path) || path.startsWith("/")) return path;
   return supabase.storage.from(LANDING_ASSETS_BUCKET).getPublicUrl(path).data.publicUrl;
 }
 

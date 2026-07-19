@@ -520,7 +520,7 @@ function EventInsightsPanel({
       </div>
       <div className="flex flex-col gap-3">
         {insights.map((insight) => (
-          <article className="flex gap-3 rounded-xl border border-slate-200 bg-amber-100/40 p-4 shadow-sm" key={insight.title}>
+          <article className="flex gap-3 rounded-xl border border-slate-200 bg-amber-100/40 p-4 shadow-sm" key={insight.id}>
             <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg bg-amber-100 text-amber-700">
               <AlertIcon className="h-5 w-5" />
             </div>

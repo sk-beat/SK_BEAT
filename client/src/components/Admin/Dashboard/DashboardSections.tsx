@@ -225,7 +225,7 @@ function InsightsPanel({ data }: { data: DashboardData }) {
       </div>
 
       <div className="grid gap-4 xl:grid-cols-3">
-        {visibleInsights.map((insight) => {
+        {visibleInsights.map((insight, index) => {
           const Icon = insight.icon;
           const tone = insightToneClasses[insight.tone];
 
@@ -235,7 +235,7 @@ function InsightsPanel({ data }: { data: DashboardData }) {
                 "flex items-center gap-4 rounded-[14px] p-5 shadow-sm",
                 tone.card,
               ].join(" ")}
-              key={insight.title}
+              key={"insight" in insight ? insight.insight.id : `${insight.title}-${index}`}
             >
               <div
                 className={[

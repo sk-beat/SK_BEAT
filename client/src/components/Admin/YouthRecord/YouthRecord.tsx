@@ -7,10 +7,16 @@ import YouthRecordModals, { type YouthRecordModalMode } from "./YouthRecordModal
 import YouthRecordTable from "./YouthRecordTable";
 import YouthRecordToolbar from "./YouthRecordToolbar";
 import { type CreateYouthRecord, type UpdateYouthRecord, type YouthRecord as YouthRecordType } from "./youthRecordData";
-import { addYouth, deleteYouth, getYouthRecords, lockYouth, resendYouthWelcomeEmail, unlockYouth, updateYouth } from "./YouthRecordService";
+import { YOUTH_TEMPORARY_PASSWORD, sendWelcomeEmail } from "../../../services/emailService";
+import { addYouth, deleteYouth, getYouthRecords, lockYouth, recordYouthWelcomeEmailResult, unlockYouth, updateYouth } from "./YouthRecordService";
 
 type AccountAction = "lock" | "unlock" | null;
 type ToastState = { message: string; tone: "success" | "error" } | null;
+type PendingWelcomeEmail = {
+  email: string;
+  name: string;
+  profileId: string;
+} | null;
 
 function calculateAge(dateOfBirth: string | null) {
   if (!dateOfBirth) return null;
@@ -179,8 +185,8 @@ function exportYouthRecords() {
     useState<YouthRecordType | null>(null);
   const [accountActionLoading, setAccountActionLoading] = useState(false);
   const [toast, setToast] = useState<ToastState>(null);
-  const [welcomeEmailProfileId, setWelcomeEmailProfileId] = useState<string | null>(null);
-  const [isResendingWelcomeEmail, setIsResendingWelcomeEmail] = useState(false);
+  const [pendingWelcomeEmail, setPendingWelcomeEmail] = useState<PendingWelcomeEmail>(null);
+  const [isRetryingWelcomeEmail, setIsRetryingWelcomeEmail] = useState(false);
 
   function openModal(mode: Exclude<YouthRecordModalMode, null>, record?: YouthRecordType) {
     setSelectedRecord(record ?? null);
@@ -229,36 +235,78 @@ async function createYouth(
   const { data: createdProfile, error } = await addYouth(data);
 
   if (error) {
+    setPendingWelcomeEmail(null);
     showToast(error.message, "error");
     return null;
   }
 
   await loadRecords();
-  if (createdProfile?.email_sent === false) {
-    setWelcomeEmailProfileId(createdProfile.profile_id);
-    showToast("Youth account created, but the welcome email could not be sent.", "error");
-  } else {
-    setWelcomeEmailProfileId(null);
-    showToast("Youth account created and welcome email sent.", "success");
+
+  if (!createdProfile?.profile_id) {
+    showToast("Youth account was not created.", "error");
+    return null;
   }
+
+  try {
+    await sendWelcomeEmail({
+      email: data.email,
+      name: data.fullname,
+      password: YOUTH_TEMPORARY_PASSWORD,
+    });
+    await recordYouthWelcomeEmailResult({
+      profileId: createdProfile.profile_id,
+      sent: true,
+    });
+    setPendingWelcomeEmail(null);
+    showToast("Youth account created successfully and welcome email sent.", "success");
+  } catch (emailError) {
+    await recordYouthWelcomeEmailResult({
+      errorMessage:
+        emailError instanceof Error ? emailError.message : "EmailJS delivery failed.",
+      profileId: createdProfile.profile_id,
+      sent: false,
+    });
+    setPendingWelcomeEmail({
+      email: data.email,
+      name: data.fullname,
+      profileId: createdProfile.profile_id,
+    });
+    showToast("Youth account created successfully, but the welcome email could not be sent.", "error");
+  }
+
   return createdProfile?.profile_id ?? null;
 }
 
-async function handleResendWelcomeEmail() {
-  if (!welcomeEmailProfileId || isResendingWelcomeEmail) return;
+async function handleRetryWelcomeEmail() {
+  if (!pendingWelcomeEmail || isRetryingWelcomeEmail) return;
 
-  setIsResendingWelcomeEmail(true);
-  const { error } = await resendYouthWelcomeEmail(welcomeEmailProfileId);
-  setIsResendingWelcomeEmail(false);
+  setIsRetryingWelcomeEmail(true);
 
-  if (error) {
-    showToast(error.message, "error");
-    return;
+  try {
+    await sendWelcomeEmail({
+      email: pendingWelcomeEmail.email,
+      name: pendingWelcomeEmail.name,
+      password: YOUTH_TEMPORARY_PASSWORD,
+    });
+    await recordYouthWelcomeEmailResult({
+      profileId: pendingWelcomeEmail.profileId,
+      sent: true,
+    });
+
+    setPendingWelcomeEmail(null);
+    await loadRecords();
+    showToast("Welcome email sent.", "success");
+  } catch (emailError) {
+    await recordYouthWelcomeEmailResult({
+      errorMessage:
+        emailError instanceof Error ? emailError.message : "EmailJS delivery failed.",
+      profileId: pendingWelcomeEmail.profileId,
+      sent: false,
+    });
+    showToast("Welcome email could not be sent.", "error");
+  } finally {
+    setIsRetryingWelcomeEmail(false);
   }
-
-  setWelcomeEmailProfileId(null);
-  await loadRecords();
-  showToast("Welcome email resent.", "success");
 }
 
 async function editYouth(
@@ -467,14 +515,14 @@ const isUnlockBlocked = accountAction === "unlock" && isOverAgeLimit;
         >
           <div className="flex items-center gap-3">
             <span>{toast.message}</span>
-            {welcomeEmailProfileId && toast.tone === "error" ? (
+            {pendingWelcomeEmail && toast.tone === "error" ? (
               <button
                 className="rounded-md bg-white/15 px-2 py-1 text-xs font-semibold hover:bg-white/25 disabled:cursor-not-allowed disabled:opacity-60"
-                disabled={isResendingWelcomeEmail}
-                onClick={handleResendWelcomeEmail}
+                disabled={isRetryingWelcomeEmail}
+                onClick={handleRetryWelcomeEmail}
                 type="button"
               >
-                {isResendingWelcomeEmail ? "Resending..." : "Resend Welcome Email"}
+                {isRetryingWelcomeEmail ? "Sending..." : "Retry Welcome Email"}
               </button>
             ) : null}
           </div>

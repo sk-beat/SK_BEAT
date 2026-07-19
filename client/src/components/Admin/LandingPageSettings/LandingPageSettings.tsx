@@ -33,6 +33,7 @@ export default function LandingPageSettings() {
   }, []);
 
   function handleFile(file: File | null) {
+    if (previewUrl) URL.revokeObjectURL(previewUrl);
     setSelectedFile(file);
     setPreviewUrl(file ? URL.createObjectURL(file) : null);
     setMessage("");
@@ -51,11 +52,9 @@ export default function LandingPageSettings() {
       }
       const { error } = await saveAdminLandingPageSettings(newPath);
       if (error) throw error;
-      if (selectedFile && currentPath && currentPath !== newPath) {
-        await removeLandingHeroImage(currentPath);
-      }
       setCurrentPath(newPath);
       setSelectedFile(null);
+      if (previewUrl) URL.revokeObjectURL(previewUrl);
       setPreviewUrl(null);
       setMessage("Landing page hero background updated.");
     } catch (error) {

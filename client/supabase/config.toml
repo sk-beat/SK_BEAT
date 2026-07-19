@@ -10,12 +10,6 @@ entrypoint = "./functions/create-youth/index.ts"
 # For example, if you want to serve static HTML pages in your function:
 # static_files = [ "./functions/create-youth/*.html" ]
 
-[functions.send-youth-welcome-email]
-enabled = true
-verify_jwt = false
-import_map = "./functions/send-youth-welcome-email/deno.json"
-entrypoint = "./functions/send-youth-welcome-email/index.ts"
-
 [functions.complete-youth-first-password-change]
 enabled = true
 verify_jwt = false

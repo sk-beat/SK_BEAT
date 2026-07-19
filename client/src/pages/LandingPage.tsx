@@ -13,6 +13,7 @@ export default function LandingPage() {
   const [officialsCount, setOfficialsCount] = useState(0);
   const [scheduledEvents, setScheduledEvents] = useState<PublicScheduledEvent[]>([]);
   const [heroBackgroundPath, setHeroBackgroundPath] = useState<string | null>(null);
+  const [isLandingDataLoading, setIsLandingDataLoading] = useState(true);
 
   useEffect(() => {
     let isMounted = true;
@@ -27,15 +28,28 @@ export default function LandingPage() {
         setOfficialsCount(officials.data.length);
         setScheduledEvents(events.data);
         setHeroBackgroundPath(settings.data.hero_background_path);
+        setIsLandingDataLoading(false);
       }
     }
 
-    loadLandingData();
+    loadLandingData().catch(() => {
+      if (isMounted) setIsLandingDataLoading(false);
+    });
 
     return () => {
       isMounted = false;
     };
   }, []);
+
+  if (isLandingDataLoading) {
+    return (
+      <main className="flex min-h-screen items-center justify-center bg-[#0b1f3b] px-6 text-white">
+        <p className="text-sm font-semibold uppercase tracking-[0.16em] text-white/70">
+          Loading...
+        </p>
+      </main>
+    );
+  }
 
   const heroBackgroundUrl = getLandingAssetUrl(heroBackgroundPath) || youthImages.galas;
 

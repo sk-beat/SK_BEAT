@@ -215,6 +215,9 @@ export default function YouthRecordModals({
   const [profileImagePreview, setProfileImagePreview] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
   const [errors, setErrors] = useState<FormErrors>({});
+  const calculatedAge = calculateAge(birthday);
+  const isCreationAgeAllowed =
+    isEdit || (calculatedAge !== null && calculatedAge >= 15 && calculatedAge <= 30);
 
   const clearProfileImagePreview = useCallback(() => {
     setProfileImagePreview((current) => {
@@ -247,6 +250,8 @@ export default function YouthRecordModals({
     // eslint-disable-next-line react-hooks/set-state-in-effect
     resetFormState(record);
   }, [mode, record, resetFormState]);
+
+  const liveBirthdayError = birthday ? validateBirthday(birthday, !isEdit) : null;
 
   function validateForm() {
     const nextErrors: FormErrors = {};
@@ -450,16 +455,38 @@ export default function YouthRecordModals({
           </div>
           <BirthdayPicker
             disabled={loading}
-            error={errors.birthday}
-            onChange={setBirthday}
+            error={errors.birthday ?? liveBirthdayError ?? undefined}
+            onChange={(value) => {
+              setBirthday(value);
+              setErrors((current) => ({
+                ...current,
+                birthday: value
+                  ? validateBirthday(value, !isEdit) ?? undefined
+                  : current.birthday,
+              }));
+            }}
             value={birthday}
           />
-          <Field
-            disabled
-            label="Calculated Age"
-            onChange={() => undefined}
-            value={calculateAge(birthday) ?? ""}
-          />
+          <div>
+            <Field
+              disabled
+              label="Calculated Age"
+              onChange={() => undefined}
+              value={calculatedAge ?? ""}
+            />
+            {!isEdit && birthday && calculatedAge !== null ? (
+              <p
+                className={[
+                  "mt-1 text-xs font-medium",
+                  isCreationAgeAllowed ? "text-emerald-600" : "text-red-600",
+                ].join(" ")}
+              >
+                {isCreationAgeAllowed
+                  ? "Allowed for Youth account creation."
+                  : "Youth account creation is only allowed for ages 15 to 30."}
+              </p>
+            ) : null}
+          </div>
           <SelectField
             disabled={loading}
             error={errors.gender}

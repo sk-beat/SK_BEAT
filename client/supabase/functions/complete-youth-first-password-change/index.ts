@@ -7,8 +7,6 @@ declare const Deno: {
   serve(handler: (req: Request) => Response | Promise<Response>): void;
 };
 
-const temporaryPassword = "12345678";
-
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
   "Access-Control-Allow-Methods": "POST, OPTIONS",
@@ -22,6 +20,16 @@ function jsonResponse(body: unknown, status = 200) {
   });
 }
 
+class PublicFunctionError extends Error {
+  status: number;
+
+  constructor(message: string, status = 400) {
+    super(message);
+    this.name = "PublicFunctionError";
+    this.status = status;
+  }
+}
+
 function requireEnv(name: string) {
   const value = Deno.env.get(name);
   if (!value) throw new Error(`Missing ${name} environment variable.`);
@@ -32,7 +40,7 @@ function getBearerToken(req: Request) {
   const authorization = req.headers.get("Authorization") ?? "";
   const [scheme, token] = authorization.split(" ");
   if (scheme !== "Bearer" || !token) {
-    throw new Error("Missing authenticated Youth session.");
+    throw new PublicFunctionError("Missing authenticated Youth session.", 401);
   }
   return token;
 }
@@ -42,7 +50,10 @@ Deno.serve(async (req) => {
     return new Response("ok", { status: 200, headers: corsHeaders });
   }
   if (req.method !== "POST") {
-    return jsonResponse({ error: "Method not allowed." }, 405);
+    return jsonResponse(
+      { success: false, message: "Method not allowed.", error: "Method not allowed." },
+      405,
+    );
   }
 
   try {
@@ -60,30 +71,27 @@ Deno.serve(async (req) => {
       error: userError,
     } = await userClient.auth.getUser(token);
     if (userError || !user) {
-      throw new Error("Invalid authenticated Youth session.");
+      throw new PublicFunctionError("Invalid authenticated Youth session.", 401);
     }
 
     const { current_password: currentPassword, new_password: newPassword } = await req.json();
     if (typeof currentPassword !== "string" || !currentPassword) {
-      throw new Error("Current password is required.");
+      throw new PublicFunctionError("Current password is required.");
     }
     if (typeof newPassword !== "string" || !newPassword) {
-      throw new Error("New password is required.");
+      throw new PublicFunctionError("New password is required.");
     }
     if (currentPassword.trim() !== currentPassword || newPassword.trim() !== newPassword) {
-      throw new Error("Passwords cannot start or end with spaces.");
+      throw new PublicFunctionError("Passwords cannot start or end with spaces.");
     }
     if (newPassword.length < 8) {
-      throw new Error("New password must be at least 8 characters.");
+      throw new PublicFunctionError("New password must be at least 8 characters.");
     }
     if (newPassword === currentPassword) {
-      throw new Error("New password must be different from your current password.");
-    }
-    if (newPassword === temporaryPassword) {
-      throw new Error("New password cannot be the temporary password.");
+      throw new PublicFunctionError("New password must be different from your current password.");
     }
     if (!user.email) {
-      throw new Error("Your account does not have an email address for verification.");
+      throw new PublicFunctionError("Your account does not have an email address for verification.");
     }
 
     const { data: profile, error: profileError } = await userClient
@@ -92,10 +100,10 @@ Deno.serve(async (req) => {
       .eq("profile_id", user.id)
       .maybeSingle();
     if (profileError) throw profileError;
-    if (!profile) throw new Error("Youth profile not found.");
-    if (profile.status !== "active") throw new Error("Youth account is not active.");
+    if (!profile) throw new PublicFunctionError("Youth profile not found.", 404);
+    if (profile.status !== "active") throw new PublicFunctionError("Youth account is not active.", 403);
     if (!profile.must_change_password || profile.onboarding_status !== "temporary_password_active") {
-      throw new Error("Temporary password change is not required for this account.");
+      throw new PublicFunctionError("Temporary password change is not required for this account.");
     }
 
     const verifier = createClient(supabaseUrl, supabaseAnonKey);
@@ -104,7 +112,7 @@ Deno.serve(async (req) => {
       password: currentPassword,
     });
     if (verifyError) {
-      throw new Error("Current password is incorrect.");
+      throw new PublicFunctionError("Current password is incorrect.");
     }
 
     const { error: updatePasswordError } = await supabaseAdmin.auth.admin.updateUserById(user.id, {
@@ -133,9 +141,12 @@ Deno.serve(async (req) => {
       );
     }
 
-    return jsonResponse({ success: true });
+    return jsonResponse({ success: true, message: "Password updated successfully." });
   } catch (error) {
     const message = error instanceof Error ? error.message : String(error);
-    return jsonResponse({ error: message }, 400);
+    return jsonResponse(
+      { success: false, message, error: message },
+      error instanceof PublicFunctionError ? error.status : 500,
+    );
   }
 });

@@ -1,7 +1,5 @@
 import emailjs from "@emailjs/browser";
 
-export const YOUTH_TEMPORARY_PASSWORD = "12345678";
-
 type WelcomeEmailPayload = {
   email: string;
   name: string;

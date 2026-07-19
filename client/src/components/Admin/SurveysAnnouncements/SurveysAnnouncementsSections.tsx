@@ -1,5 +1,6 @@
 import { useEffect, useState } from "react";
 import { Link, useSearchParams } from "react-router-dom";
+import AdminModal from "../shared/AdminModal";
 import {
   deleteAnnouncement,
   getAdminAnnouncements,
@@ -380,7 +381,9 @@ export function AnnouncementsSection({
   onEditAnnouncement: (announcement: Announcement) => void;
 }) {
   const [announcements, setAnnouncements] = useState<Announcement[]>([]);
+  const [deleteTarget, setDeleteTarget] = useState<Announcement | null>(null);
   const [isLoading, setIsLoading] = useState(true);
+  const [isDeleting, setIsDeleting] = useState(false);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
 
   async function loadAnnouncements() {
@@ -392,13 +395,19 @@ export function AnnouncementsSection({
     setIsLoading(false);
   }
 
-  async function handleDelete(announcementId: number) {
-    if (!window.confirm("Delete this announcement?")) return;
-    const { error } = await deleteAnnouncement(announcementId);
+  async function handleDelete() {
+    if (!deleteTarget) return;
+
+    setIsDeleting(true);
+    const { error } = await deleteAnnouncement(deleteTarget.announcement_id);
+    setIsDeleting(false);
+
     if (error) {
       setErrorMessage(error.message);
       return;
     }
+
+    setDeleteTarget(null);
     await loadAnnouncements();
   }
 
@@ -463,6 +472,13 @@ export function AnnouncementsSection({
               <h3 className="mt-1 font-semibold text-slate-800">
                 {announcement.title}
               </h3>
+              {announcement.image_path ? (
+                <img
+                  alt=""
+                  className="mt-3 h-40 w-full rounded-xl object-cover"
+                  src={announcement.image_path}
+                />
+              ) : null}
               <p className="mt-2 text-sm text-slate-500">
                 {announcement.content}
               </p>
@@ -476,7 +492,7 @@ export function AnnouncementsSection({
                 </button>
                 <button
                   className="rounded-lg border border-red-200 bg-white px-3 py-2 text-sm text-red-600 hover:bg-red-50"
-                  onClick={() => handleDelete(announcement.announcement_id)}
+                  onClick={() => setDeleteTarget(announcement)}
                   type="button"
                 >
                   Delete
@@ -486,6 +502,36 @@ export function AnnouncementsSection({
           ))}
         </div>
       </section>
+      <AdminModal
+        footer={
+          <>
+            <button
+              className="rounded-lg border border-slate-200 px-4 py-2 text-sm font-medium text-slate-700 hover:bg-slate-50"
+              disabled={isDeleting}
+              onClick={() => setDeleteTarget(null)}
+              type="button"
+            >
+              Cancel
+            </button>
+            <button
+              className="rounded-lg bg-red-600 px-4 py-2 text-sm font-medium text-white hover:bg-red-700 disabled:cursor-not-allowed disabled:opacity-60"
+              disabled={isDeleting}
+              onClick={handleDelete}
+              type="button"
+            >
+              {isDeleting ? "Deleting..." : "Delete Announcement"}
+            </button>
+          </>
+        }
+        onClose={() => setDeleteTarget(null)}
+        open={Boolean(deleteTarget)}
+        title="Delete Announcement"
+      >
+        <p className="text-sm text-slate-600">
+          Delete {deleteTarget?.title ? `"${deleteTarget.title}"` : "this announcement"}?
+          This action cannot be undone.
+        </p>
+      </AdminModal>
     </div>
   );
 }

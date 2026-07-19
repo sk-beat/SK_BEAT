@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useState } from "react";
 import { getProfileImageUrl } from "../../../utils/profileImages";
+import ImageUploadField from "../../shared/ImageUploadField";
 import AdminModal from "../shared/AdminModal";
 import type {
   AdminEventRegistration,
@@ -53,6 +54,7 @@ type EventFormState = {
   event_time: string;
   location: string;
   expected_attendees: string;
+  cover_image: string;
   description: string;
 };
 
@@ -253,6 +255,7 @@ function eventToForm(event: ActivityEvent | null): EventFormState {
     event_name: event?.event_name ?? "",
     event_time: event?.event_time ?? "09:00",
     expected_attendees: String(event?.expected_attendees ?? ""),
+    cover_image: event?.cover_image ?? "",
     location: event?.location ?? "",
     status: event?.status ?? "draft",
   };
@@ -372,6 +375,7 @@ function CatalogEventModal({
       event_name: form.event_name.trim(),
       event_time: form.event_time || null,
       expected_attendees: Number(form.expected_attendees) || 0,
+      cover_image: form.cover_image || null,
       expenses,
       location: form.location.trim() || null,
       status: form.status,
@@ -466,6 +470,16 @@ function CatalogEventModal({
             onChange={(value) => updateForm("event_name", value)}
             placeholder="e.g. Basketball"
             value={form.event_name}
+          />
+        </div>
+
+        <div className="md:col-span-2">
+          <ImageUploadField
+            disabled={isSaving}
+            folder="events"
+            label="Event Image"
+            onChange={(value) => updateForm("cover_image", value ?? "")}
+            value={form.cover_image || null}
           />
         </div>
 
@@ -871,6 +885,7 @@ function ScheduleEventModal({
       event_name: selectedEvent.event_name,
       event_time: `${startTime}-${endTime}`,
       expected_attendees: selectedEvent.expected_attendees ?? 0,
+      cover_image: selectedEvent.cover_image,
       expenses: selectedEvent.event_expenses,
       location: location.trim() || null,
       status: "scheduled",

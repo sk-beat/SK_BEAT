@@ -58,6 +58,7 @@ export type SaveActivityEventPayload = {
   event_time: string | null;
   location: string | null;
   expected_attendees: number;
+  cover_image: string | null;
   description: string | null;
   expenses: ActivityExpense[];
 };
@@ -159,6 +160,7 @@ export async function saveActivityEvent(payload: SaveActivityEventPayload) {
       quantity: expense.quantity,
       unit_cost: expense.unit_cost,
     })),
+    p_cover_image: payload.cover_image,
     p_location: payload.location,
     p_status: payload.status,
   });

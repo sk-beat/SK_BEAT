@@ -1,4 +1,5 @@
 import { supabase } from "../../../utils/supabase";
+import { getSupabaseFunctionErrorMessage } from "../../../utils/supabaseFunctions";
 
 export type ChangeYouthPasswordPayload = {
   profileId: string;
@@ -195,8 +196,13 @@ export async function completeYouthFirstPasswordChange({
   });
 
   if (error) {
+    const message = await getSupabaseFunctionErrorMessage(
+      error,
+      "Unable to change password. Please try again.",
+    );
+
     return {
-      error: getFriendlyAuthErrorMessage(error.message),
+      error: getFriendlyAuthErrorMessage(message),
       sessionValid: true,
     };
   }

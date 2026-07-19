@@ -7,7 +7,7 @@ import YouthRecordModals, { type YouthRecordModalMode } from "./YouthRecordModal
 import YouthRecordTable from "./YouthRecordTable";
 import YouthRecordToolbar from "./YouthRecordToolbar";
 import { type CreateYouthRecord, type UpdateYouthRecord, type YouthRecord as YouthRecordType } from "./youthRecordData";
-import { YOUTH_TEMPORARY_PASSWORD, sendWelcomeEmail } from "../../../services/emailService";
+import { sendWelcomeEmail } from "../../../services/emailService";
 import { addYouth, deleteYouth, getYouthRecords, lockYouth, recordYouthWelcomeEmailResult, unlockYouth, updateYouth } from "./YouthRecordService";
 
 type AccountAction = "lock" | "unlock" | null;
@@ -15,6 +15,7 @@ type ToastState = { message: string; tone: "success" | "error" } | null;
 type PendingWelcomeEmail = {
   email: string;
   name: string;
+  password: string;
   profileId: string;
 } | null;
 
@@ -251,7 +252,7 @@ async function createYouth(
     await sendWelcomeEmail({
       email: data.email,
       name: data.fullname,
-      password: YOUTH_TEMPORARY_PASSWORD,
+      password: createdProfile.temporary_password,
     });
     await recordYouthWelcomeEmailResult({
       profileId: createdProfile.profile_id,
@@ -269,6 +270,7 @@ async function createYouth(
     setPendingWelcomeEmail({
       email: data.email,
       name: data.fullname,
+      password: createdProfile.temporary_password,
       profileId: createdProfile.profile_id,
     });
     showToast("Youth account created successfully, but the welcome email could not be sent.", "error");
@@ -286,7 +288,7 @@ async function handleRetryWelcomeEmail() {
     await sendWelcomeEmail({
       email: pendingWelcomeEmail.email,
       name: pendingWelcomeEmail.name,
-      password: YOUTH_TEMPORARY_PASSWORD,
+      password: pendingWelcomeEmail.password,
     });
     await recordYouthWelcomeEmailResult({
       profileId: pendingWelcomeEmail.profileId,

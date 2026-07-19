@@ -9,7 +9,12 @@ declare const Deno: {
   serve(handler: (req: Request) => Response | Promise<Response>): void;
 };
 
-const temporaryPassword = "12345678";
+const PASSWORD_LOWERCASE = "abcdefghijkmnopqrstuvwxyz";
+const PASSWORD_UPPERCASE = "ABCDEFGHJKLMNPQRSTUVWXYZ";
+const PASSWORD_NUMBERS = "23456789";
+const PASSWORD_SPECIALS = "#!@$%&*?";
+const PASSWORD_ALL =
+  PASSWORD_LOWERCASE + PASSWORD_UPPERCASE + PASSWORD_NUMBERS + PASSWORD_SPECIALS;
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -112,6 +117,38 @@ function optionalText(value: unknown) {
   if (typeof value !== "string") return null;
   const trimmed = value.trim();
   return trimmed ? trimmed : null;
+}
+
+function randomChar(chars: string) {
+  const values = new Uint32Array(1);
+  crypto.getRandomValues(values);
+  return chars[values[0] % chars.length];
+}
+
+function shuffleSecure(chars: string[]) {
+  const values = new Uint32Array(chars.length);
+  crypto.getRandomValues(values);
+
+  return chars
+    .map((char, index) => ({ char, value: values[index] }))
+    .sort((first, second) => first.value - second.value)
+    .map((item) => item.char)
+    .join("");
+}
+
+function generateTemporaryPassword() {
+  const chars = [
+    randomChar(PASSWORD_UPPERCASE),
+    randomChar(PASSWORD_LOWERCASE),
+    randomChar(PASSWORD_NUMBERS),
+    randomChar(PASSWORD_SPECIALS),
+  ];
+
+  while (chars.length < 12) {
+    chars.push(randomChar(PASSWORD_ALL));
+  }
+
+  return shuffleSecure(chars);
 }
 
 function safeLog(stage: string, error: unknown) {
@@ -220,6 +257,7 @@ Deno.serve(async (req) => {
       );
     }
 
+    const temporaryPassword = generateTemporaryPassword();
     const { data: authData, error: authError } = await supabaseAdmin.auth.admin.createUser({
       email,
       password: temporaryPassword,
@@ -290,6 +328,7 @@ Deno.serve(async (req) => {
       message: "Youth account created successfully.",
       email,
       profile_id: authUserId,
+      temporary_password: temporaryPassword,
     });
   } catch (error: unknown) {
     if (error instanceof PublicFunctionError) {

@@ -90,7 +90,10 @@ export async function getDashboardData(): Promise<{
     suggested,
     decisionInsights,
   ] = await Promise.all([
-    supabase.from("kabataan_profiles").select("profile_id,gender,purok"),
+    supabase
+      .from("kabataan_profiles")
+      .select("profile_id,gender,purok")
+      .eq("status", "active"),
     supabase.rpc("get_admin_dashboard_decision_support"),
     supabase
       .from("events")

@@ -35,6 +35,11 @@ export function buildAdminProfileImagePath(adminId: string, file: File) {
   return `admins/${adminId}/${crypto.randomUUID()}-${filename}`;
 }
 
+export function buildContentImagePath(folder: "announcements" | "events", file: File) {
+  const filename = sanitizeFilename(file.name) || "image";
+  return `${folder}/${crypto.randomUUID()}-${filename}`;
+}
+
 export async function uploadProfileImage(path: string, file: File) {
   return supabase.storage.from(PROFILE_IMAGES_BUCKET).upload(path, file, {
     cacheControl: "3600",

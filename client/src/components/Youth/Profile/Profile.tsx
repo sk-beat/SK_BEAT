@@ -119,10 +119,6 @@ export default function Profile() {
       return "New password must be different from your current password.";
     }
 
-    if (user?.mustChangePassword && newPassword === "12345678") {
-      return "New password cannot be the temporary password.";
-    }
-
     return null;
   }
 

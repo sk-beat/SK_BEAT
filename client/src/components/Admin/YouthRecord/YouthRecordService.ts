@@ -8,6 +8,7 @@ export type CreateYouthResult = {
   email: string;
   message: string;
   profile_id: string;
+  temporary_password: string;
 };
 
 type CreateYouthFunctionResponse = {
@@ -18,6 +19,7 @@ type CreateYouthFunctionResponse = {
   message?: string;
   profile_id?: string;
   success?: boolean;
+  temporary_password?: string;
 };
 
 
@@ -47,7 +49,12 @@ export async function addYouth(
 
   const response = responseData as CreateYouthFunctionResponse | null;
 
-  if (response?.success === true && response.account_created === true && response.profile_id) {
+  if (
+    response?.success === true &&
+    response.account_created === true &&
+    response.profile_id &&
+    response.temporary_password
+  ) {
     return {
       data: {
         success: true,
@@ -55,6 +62,7 @@ export async function addYouth(
         email: response.email ?? data.email,
         message: response.message ?? "Youth account created successfully.",
         profile_id: response.profile_id,
+        temporary_password: response.temporary_password,
       },
       error: null,
     };

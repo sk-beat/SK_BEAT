@@ -1,4 +1,5 @@
 import { useEffect, useState } from "react";
+import ImageUploadField from "../../shared/ImageUploadField";
 import AdminModal from "../shared/AdminModal";
 import type { Announcement, AnnouncementPayload } from "./AnnouncementsService";
 
@@ -34,6 +35,8 @@ export default function SurveysAnnouncementsModals({
   useEffect(() => {
     if (!openCreateAnnouncement) return;
 
+    // Reset the editable modal state whenever the create/edit dialog opens.
+    // eslint-disable-next-line react-hooks/set-state-in-effect
     setForm({
       category: announcement?.category ?? "",
       content: announcement?.content ?? "",
@@ -154,18 +157,13 @@ export default function SurveysAnnouncementsModals({
             />
           </label>
         </div>
-        <label className="block">
-          <span className="mb-1.5 block text-sm font-medium text-slate-700">
-            Image URL or path
-          </span>
-          <input
-            className={inputClass}
-            onChange={(event) => updateField("image_path", event.target.value)}
-            placeholder="Optional image path"
-            type="text"
-            value={form.image_path}
-          />
-        </label>
+        <ImageUploadField
+          disabled={isSaving}
+          folder="announcements"
+          label="Announcement Image"
+          onChange={(value) => updateField("image_path", value ?? "")}
+          value={form.image_path || null}
+        />
         <label className="block">
           <span className="mb-1.5 block text-sm font-medium text-slate-700">
             Message

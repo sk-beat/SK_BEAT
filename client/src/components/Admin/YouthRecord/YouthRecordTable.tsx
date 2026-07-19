@@ -22,6 +22,19 @@ function formatBirthday(value: string | null) {
   });
 }
 
+function calculateAge(dateOfBirth: string | null) {
+  if (!dateOfBirth) return null;
+  const [year, month, day] = dateOfBirth.split("-").map(Number);
+  if (!year || !month || !day) return null;
+  const today = new Date();
+  let age = today.getFullYear() - year;
+  const hasBirthdayPassed =
+    today.getMonth() + 1 > month ||
+    (today.getMonth() + 1 === month && today.getDate() >= day);
+  if (!hasBirthdayPassed) age -= 1;
+  return age;
+}
+
 export default function YouthRecordTable({
   onDelete,
   onEdit,
@@ -98,7 +111,7 @@ export default function YouthRecordTable({
                 </span>
               </td>
               <td className="border-t border-slate-200 px-5 py-4 text-center">
-                {record.age ?? "-"}
+                {calculateAge(record.date_of_birth) ?? "-"}
               </td>
               <td className="min-w-[150px] whitespace-nowrap border-t border-slate-200 px-5 py-4 text-center">
                 {formatBirthday(record.date_of_birth)}

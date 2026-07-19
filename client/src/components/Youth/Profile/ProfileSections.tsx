@@ -71,6 +71,19 @@ function formatBirthday(value?: string | null) {
   }).format(new Date(`${value}T00:00:00`));
 }
 
+function calculateAge(dateOfBirth?: string | null) {
+  if (!dateOfBirth) return null;
+  const [year, month, day] = dateOfBirth.split("-").map(Number);
+  if (!year || !month || !day) return null;
+  const today = new Date();
+  let age = today.getFullYear() - year;
+  const hasBirthdayPassed =
+    today.getMonth() + 1 > month ||
+    (today.getMonth() + 1 === month && today.getDate() >= day);
+  if (!hasBirthdayPassed) age -= 1;
+  return age;
+}
+
 function PasswordField({
   disabled,
   isVisible,
@@ -144,6 +157,7 @@ export default function ProfileSections({
   const isPasswordDialogOpen = isPasswordModalOpen || isPasswordChangeRequired;
   const fullName = profile?.fullname ?? "Youth Member";
   const profileImageUrl = getProfileImageUrl(profile?.profile_image ?? null);
+  const ageFromBirthday = calculateAge(profile?.date_of_birth);
   const profileDetails = [
     {
       label: "Birthday",
@@ -152,7 +166,7 @@ export default function ProfileSections({
     },
     {
       label: "Age",
-      value: profile?.age ? `${profile.age} Years Old` : "Not set",
+      value: ageFromBirthday !== null ? `${ageFromBirthday} Years Old` : "Not set",
       icon: User,
     },
     {

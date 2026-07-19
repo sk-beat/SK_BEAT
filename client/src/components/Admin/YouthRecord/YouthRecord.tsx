@@ -144,7 +144,7 @@ function exportYouthRecords() {
     record.profile_id,
     record.fullname,
     record.email,
-    record.age ?? "",
+    calculateAge(record.date_of_birth) ?? "",
     record.date_of_birth ?? "",
     record.gender,
     record.purok,
@@ -408,8 +408,7 @@ async function confirmAccountAction() {
   }
 }
 
-const selectedAccountAge =
-  accountActionRecord?.age ?? calculateAge(accountActionRecord?.date_of_birth ?? null);
+const selectedAccountAge = calculateAge(accountActionRecord?.date_of_birth ?? null);
 const isOverAgeLimit = (selectedAccountAge ?? 0) >= 31;
 const isUnlockBlocked = accountAction === "unlock" && isOverAgeLimit;
 

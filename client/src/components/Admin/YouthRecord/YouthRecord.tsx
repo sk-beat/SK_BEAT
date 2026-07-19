@@ -7,7 +7,7 @@ import YouthRecordModals, { type YouthRecordModalMode } from "./YouthRecordModal
 import YouthRecordTable from "./YouthRecordTable";
 import YouthRecordToolbar from "./YouthRecordToolbar";
 import { type CreateYouthRecord, type UpdateYouthRecord, type YouthRecord as YouthRecordType } from "./youthRecordData";
-import { sendWelcomeEmail } from "../../../services/emailService";
+import { sendYouthWelcomeEmail } from "../../../services/emailService";
 import { addYouth, deleteYouth, getYouthRecords, lockYouth, recordYouthWelcomeEmailResult, unlockYouth, updateYouth } from "./YouthRecordService";
 
 type AccountAction = "lock" | "unlock" | null;
@@ -199,8 +199,23 @@ function exportYouthRecords() {
     setSelectedRecord(null);
   }
 
+  function getToastTone(message: string, tone: "success" | "error") {
+    const normalizedMessage = message.toLowerCase();
+
+    if (
+      normalizedMessage.includes("created successfully") ||
+      normalizedMessage.includes("updated successfully") ||
+      normalizedMessage.includes("sent successfully") ||
+      normalizedMessage.includes("welcome email sent")
+    ) {
+      return "success";
+    }
+
+    return tone;
+  }
+
   function showToast(message: string, tone: "success" | "error") {
-    setToast({ message, tone });
+    setToast({ message, tone: getToastTone(message, tone) });
     window.setTimeout(() => setToast(null), 4200);
   }
 
@@ -241,18 +256,27 @@ async function createYouth(
     return null;
   }
 
-  await loadRecords();
-
-  if (!createdProfile?.profile_id) {
+  if (!createdProfile?.profile_id || !createdProfile.temporary_password) {
     showToast("Youth account was not created.", "error");
     return null;
   }
 
+  const welcomeEmail = {
+    email: createdProfile.email,
+    name: data.fullname,
+    password: createdProfile.temporary_password,
+  };
+
   try {
-    await sendWelcomeEmail({
-      email: data.email,
-      name: data.fullname,
-      password: createdProfile.temporary_password,
+    console.log("welcome email send starting", {
+      hasEmail: Boolean(welcomeEmail.email),
+      hasName: Boolean(welcomeEmail.name),
+      hasPassword: Boolean(welcomeEmail.password),
+      profileId: createdProfile.profile_id,
+    });
+    await sendYouthWelcomeEmail(welcomeEmail);
+    console.log("welcome email send finished", {
+      profileId: createdProfile.profile_id,
     });
     await recordYouthWelcomeEmailResult({
       profileId: createdProfile.profile_id,
@@ -268,14 +292,13 @@ async function createYouth(
       sent: false,
     });
     setPendingWelcomeEmail({
-      email: data.email,
-      name: data.fullname,
-      password: createdProfile.temporary_password,
+      ...welcomeEmail,
       profileId: createdProfile.profile_id,
     });
     showToast("Youth account created successfully, but the welcome email could not be sent.", "success");
   }
 
+  await loadRecords();
   return createdProfile?.profile_id ?? null;
 }
 
@@ -285,7 +308,7 @@ async function handleRetryWelcomeEmail() {
   setIsRetryingWelcomeEmail(true);
 
   try {
-    await sendWelcomeEmail({
+    await sendYouthWelcomeEmail({
       email: pendingWelcomeEmail.email,
       name: pendingWelcomeEmail.name,
       password: pendingWelcomeEmail.password,
@@ -330,12 +353,12 @@ async function removeYouth(profile_id: string) {
   const { error } = await deleteYouth(profile_id);
 
   if (error) {
-    console.error(error);
-    return;
+    throw error;
   }
 
   await loadRecords();
   closeModal();
+  showToast("Youth account permanently deleted.", "success");
 }
 
 async function lockYouthAccount(profile_id: string) {

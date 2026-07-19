@@ -1,5 +1,5 @@
 import { useAuth } from "../../../auth/useAuth";
-import { supabase } from "../../../utils/supabase";
+import { supabase } from "@/lib/supabase";
 import AdminModal from "./AdminModal";
 import { useEffect, useState } from "react";
 import {

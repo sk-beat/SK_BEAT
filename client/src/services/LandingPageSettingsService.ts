@@ -1,4 +1,4 @@
-import { supabase } from "../utils/supabase";
+import { supabase } from "@/lib/supabase";
 
 export const LANDING_ASSETS_BUCKET = "landing-page-assets";
 

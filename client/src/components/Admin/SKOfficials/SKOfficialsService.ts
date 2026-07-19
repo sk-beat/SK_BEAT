@@ -1,4 +1,4 @@
-import { supabase } from "../../../utils/supabase";
+import { supabase } from "@/lib/supabase";
 
 export const SK_OFFICIAL_PHOTOS_BUCKET = "sk-official-photos";
 export const SK_OFFICIAL_POSITIONS = [

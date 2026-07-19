@@ -1,4 +1,4 @@
-import { supabase } from "../../../utils/supabase";
+import { supabase } from "@/lib/supabase";
 
 export type AdminNotification = {
   notification_id: number;

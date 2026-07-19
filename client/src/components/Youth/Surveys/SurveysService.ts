@@ -1,4 +1,4 @@
-import { supabase } from "../../../utils/supabase";
+import { supabase } from "@/lib/supabase";
 import type { SurveyQuestion, SurveyStatus } from "../../Admin/SurveyBuilder/SurveyBuilderService";
 
 export type YouthSurvey = {

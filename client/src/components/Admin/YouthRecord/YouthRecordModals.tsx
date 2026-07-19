@@ -40,9 +40,10 @@ type FormErrors = Partial<
     | "address"
     | "purok"
     | "email"
-    | "education"
-    | "scholar"
-    | "profileImage",
+     | "education"
+     | "scholar"
+     | "profileImage"
+     | "delete",
     string
   >
 >;
@@ -381,12 +382,13 @@ export default function YouthRecordModals({
 
     try {
       setLoading(true);
+      setErrors((current) => ({ ...current, delete: undefined }));
       await onDelete(record.profile_id);
       onClose();
     } catch (error) {
       const message =
         error instanceof Error ? error.message : "Failed to delete.";
-      alert(message);
+      setErrors((current) => ({ ...current, delete: message }));
     } finally {
       setLoading(false);
     }
@@ -645,11 +647,20 @@ export default function YouthRecordModals({
         open={isDeleteMode}
         title="Delete Youth Record"
       >
-        <p className="text-sm text-slate-600">
-          Are you sure you want to permanently delete the profile of{" "}
-          <strong className="text-slate-900">{name}</strong>? This action
-          cannot be reversed.
-        </p>
+        <div className="grid gap-3 text-sm text-slate-600">
+          <p>
+            Are you sure you want to permanently delete the account of{" "}
+            <strong className="text-slate-900">{name}</strong>?
+          </p>
+          <p className="rounded-lg border border-red-200 bg-red-50 px-4 py-3 font-medium text-red-700">
+            This permanently deletes the Youth account and login access. This action cannot be undone.
+          </p>
+          {errors.delete ? (
+            <p className="rounded-lg border border-amber-200 bg-amber-50 px-4 py-3 font-medium text-amber-800">
+              {errors.delete}
+            </p>
+          ) : null}
+        </div>
       </AdminModal>
     </>
   );

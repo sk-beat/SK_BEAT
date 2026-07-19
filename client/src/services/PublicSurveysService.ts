@@ -1,4 +1,4 @@
-import { supabase } from "../utils/supabase";
+import { supabase } from "@/lib/supabase";
 import type { SurveyAnswerPayload, YouthSurvey } from "../components/Youth/Surveys/SurveysService";
 
 const GUEST_SESSION_KEY = "sk_beat_guest_session_id";

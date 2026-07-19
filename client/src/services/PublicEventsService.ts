@@ -1,4 +1,4 @@
-import { supabase } from "../utils/supabase";
+import { supabase } from "@/lib/supabase";
 
 export type PublicScheduledEvent = {
   event_id: number;

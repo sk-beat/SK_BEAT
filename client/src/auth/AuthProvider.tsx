@@ -1,6 +1,11 @@
-import { useEffect, useState, type ReactNode } from "react";
+import { useCallback, useEffect, useState, type ReactNode } from "react";
 
-import { supabase } from "../utils/supabase";
+import {
+  clearInvalidSupabaseSession,
+  isInvalidRefreshSessionError,
+  logSafeAuthError,
+  supabase,
+} from "@/lib/supabase";
 
 import { AuthContext } from "./AuthContext";
 
@@ -16,10 +21,32 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const [role, setRole] = useState<AppRole | null>(null);
   const [loading, setLoading] = useState(true);
 
-  async function loadUser() {
+  const handleInvalidSession = useCallback(async (error: unknown) => {
+    logSafeAuthError("session_recovery", error);
+    await clearInvalidSupabaseSession();
+    setUser(null);
+    setRole(null);
+    setLoading(false);
+
+    if (window.location.pathname !== "/login") {
+      window.location.replace("/login");
+    }
+  }, []);
+
+  const loadUser = useCallback(async () => {
     const {
       data: { user: authUser },
+      error: authError,
     } = await supabase.auth.getUser();
+
+    if (authError) {
+      if (isInvalidRefreshSessionError(authError)) {
+        await handleInvalidSession(authError);
+        return;
+      }
+
+      logSafeAuthError("get_user", authError);
+    }
 
     if (!authUser) {
       setUser(null);
@@ -83,19 +110,26 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     }
 
     setLoading(false);
-  }
+  }, [handleInvalidSession]);
 
   useEffect(() => {
     void Promise.resolve().then(loadUser);
 
-    const { data: listener } = supabase.auth.onAuthStateChange(() => {
+    const { data: listener } = supabase.auth.onAuthStateChange((event) => {
+      if (event === "SIGNED_OUT") {
+        setUser(null);
+        setRole(null);
+        setLoading(false);
+        return;
+      }
+
       void loadUser();
     });
 
     return () => {
       listener.subscription.unsubscribe();
     };
-  }, []);
+  }, [loadUser]);
 
   async function login({ username, password }: LoginPayload) {
     const { error } = await supabase.auth.signInWithPassword({
@@ -112,7 +146,12 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   }
 
   async function logout() {
-    await supabase.auth.signOut();
+    const { error } = await supabase.auth.signOut();
+    if (error) {
+      logSafeAuthError("sign_out", error);
+      await clearInvalidSupabaseSession();
+    }
+
     setUser(null);
     setRole(null);
   }

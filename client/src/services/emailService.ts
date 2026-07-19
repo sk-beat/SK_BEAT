@@ -23,9 +23,17 @@ export async function sendWelcomeEmail({
   name,
   password,
 }: WelcomeEmailPayload) {
-  const { publicKey, serviceId, templateId } = getEmailJsConfig();
-
   try {
+    const { publicKey, serviceId, templateId } = getEmailJsConfig();
+    console.info("Sending EmailJS welcome email:", { email, templateId });
+    console.log("emailjs.send executing", {
+      hasEmail: Boolean(email),
+      hasPassword: Boolean(password),
+      hasPublicKey: Boolean(publicKey),
+      serviceId,
+      templateId,
+    });
+
     const result = await emailjs.send(
       serviceId,
       templateId,
@@ -46,3 +54,5 @@ export async function sendWelcomeEmail({
     throw error;
   }
 }
+
+export const sendYouthWelcomeEmail = sendWelcomeEmail;

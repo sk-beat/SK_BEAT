@@ -2,7 +2,7 @@ import { useEffect, useState } from "react";
 import { useAuth } from "../../../auth/useAuth";
 import { BellIcon, ChevronDownIcon } from "../Dashboard/icons";
 import AdminAccountModals from "./AdminAccountModals";
-import { supabase } from "../../../utils/supabase";
+import { supabase } from "@/lib/supabase";
 import { getProfileImageUrl } from "../../../utils/profileImages";
 import {
   getAdminNotifications,

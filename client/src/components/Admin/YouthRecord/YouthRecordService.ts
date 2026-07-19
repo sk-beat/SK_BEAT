@@ -1,4 +1,4 @@
-import { supabase } from "../../../utils/supabase";
+import { supabase } from "@/lib/supabase";
 import { getSupabaseFunctionErrorMessage } from "../../../utils/supabaseFunctions";
 import type { CreateYouthRecord, UpdateYouthRecord } from "./youthRecordData";
 
@@ -20,7 +20,36 @@ type CreateYouthFunctionResponse = {
   profile_id?: string;
   success?: boolean;
   temporary_password?: string;
+  temporaryPassword?: string;
 };
+
+function getCreateYouthResponse(
+  responseData: unknown,
+): CreateYouthFunctionResponse | null {
+  if (!responseData || typeof responseData !== "object") return null;
+
+  const response = responseData as CreateYouthFunctionResponse & {
+    data?: CreateYouthFunctionResponse;
+  };
+
+  if (
+    response.data &&
+    typeof response.data === "object" &&
+    ("success" in response.data || "account_created" in response.data)
+  ) {
+    return response.data;
+  }
+
+  return response;
+}
+
+function isTrue(value: unknown) {
+  return value === true || value === "true";
+}
+
+function getNonEmptyString(value: unknown) {
+  return typeof value === "string" && value.trim() ? value.trim() : null;
+}
 
 
 export async function getYouthRecords() {
@@ -47,22 +76,35 @@ export async function addYouth(
     return { data: null, error: new Error(message) };
   }
 
-  const response = responseData as CreateYouthFunctionResponse | null;
+  const response = getCreateYouthResponse(responseData);
+  const formValues = data;
+  const profileId = getNonEmptyString(response?.profile_id);
+  const temporaryPassword =
+    getNonEmptyString(response?.temporary_password) ??
+    getNonEmptyString(response?.temporaryPassword);
+
+  console.log("create-youth response check", {
+    success: response?.success,
+    accountCreated: response?.account_created,
+    hasProfileId: Boolean(profileId),
+    hasTemporaryPassword: Boolean(temporaryPassword),
+    hasEmail: Boolean(formValues.email),
+  });
 
   if (
-    response?.success === true &&
-    response.account_created === true &&
-    response.profile_id &&
-    response.temporary_password
+    isTrue(response?.success) &&
+    isTrue(response.account_created) &&
+    profileId &&
+    temporaryPassword
   ) {
     return {
       data: {
         success: true,
         account_created: true,
-        email: response.email ?? data.email,
+        email: getNonEmptyString(response.email) ?? data.email,
         message: response.message ?? "Youth account created successfully.",
-        profile_id: response.profile_id,
-        temporary_password: response.temporary_password,
+        profile_id: profileId,
+        temporary_password: temporaryPassword,
       },
       error: null,
     };
@@ -140,9 +182,17 @@ export async function unlockYouth(profile_id: string) {
 
 
 export async function deleteYouth(profile_id: string) {
-  const { data, error } = await supabase.rpc("delete_admin_youth_profile", {
-    p_profile_id: profile_id,
+  const { data, error } = await supabase.functions.invoke("delete-youth", {
+    body: { profile_id },
   });
 
-  return { data, error };
+  if (error) {
+    const message = await getSupabaseFunctionErrorMessage(
+      error,
+      "Unable to delete Youth account.",
+    );
+    return { data: null, error: new Error(message) };
+  }
+
+  return { data, error: null };
 }

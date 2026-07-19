@@ -1,4 +1,8 @@
-import { supabase } from "../../../utils/supabase";
+import {
+  isInvalidRefreshSessionError,
+  logSafeAuthError,
+  supabase,
+} from "@/lib/supabase";
 import { getSupabaseFunctionErrorMessage } from "../../../utils/supabaseFunctions";
 
 export type ChangeYouthPasswordPayload = {
@@ -188,6 +192,29 @@ export async function completeYouthFirstPasswordChange({
   currentPassword,
   newPassword,
 }: Omit<ChangeYouthPasswordPayload, "profileId">) {
+  const {
+    data: { user },
+    error: userError,
+  } = await supabase.auth.getUser();
+
+  if (userError) {
+    if (isInvalidRefreshSessionError(userError)) {
+      logSafeAuthError("first_password_change_get_user", userError);
+    }
+
+    return {
+      error: getFriendlyAuthErrorMessage(userError.message),
+      sessionValid: false,
+    };
+  }
+
+  if (!user?.email) {
+    return {
+      error: "Your session expired. Please sign in again.",
+      sessionValid: false,
+    };
+  }
+
   const { error } = await supabase.functions.invoke("complete-youth-first-password-change", {
     body: {
       current_password: currentPassword,
@@ -207,10 +234,16 @@ export async function completeYouthFirstPasswordChange({
     };
   }
 
-  const { error: refreshError } = await supabase.auth.refreshSession();
-  if (refreshError) {
+  const { error: signInError } = await supabase.auth.signInWithPassword({
+    email: user.email,
+    password: newPassword,
+  });
+
+  if (signInError) {
+    logSafeAuthError("first_password_change_reauth", signInError);
+
     return {
-      error: getFriendlyAuthErrorMessage(refreshError.message),
+      error: getFriendlyAuthErrorMessage(signInError.message),
       sessionValid: false,
     };
   }

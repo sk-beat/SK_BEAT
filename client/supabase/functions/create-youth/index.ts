@@ -322,6 +322,11 @@ Deno.serve(async (req) => {
       );
     }
 
+    console.log("create-youth response payload check", {
+      hasProfileId: Boolean(authUserId),
+      hasTemporaryPassword: Boolean(temporaryPassword),
+    });
+
     return jsonResponse({
       success: true,
       account_created: true,
@@ -329,6 +334,7 @@ Deno.serve(async (req) => {
       email,
       profile_id: authUserId,
       temporary_password: temporaryPassword,
+      temporaryPassword,
     });
   } catch (error: unknown) {
     if (error instanceof PublicFunctionError) {

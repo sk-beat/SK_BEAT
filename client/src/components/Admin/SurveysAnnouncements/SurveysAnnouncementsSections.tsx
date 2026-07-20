@@ -1,6 +1,14 @@
 import { useEffect, useState } from "react";
 import { Link, useSearchParams } from "react-router-dom";
+import InsightCard from "../shared/InsightCard";
 import AdminModal from "../shared/AdminModal";
+import {
+  AlertIcon,
+  BanknoteIcon,
+  ClipboardIcon,
+  LineChartIcon,
+} from "../Dashboard/icons";
+import type { InsightTone } from "../Dashboard/dashboardData";
 import {
   deleteAnnouncement,
   getAdminAnnouncements,
@@ -18,6 +26,14 @@ import {
   getKabataanSuggestions,
   type KabataanSuggestion,
 } from "./SurveysAnnouncementsService";
+
+type FeedbackInsightCard = {
+  description: string;
+  icon: typeof LineChartIcon;
+  id: string;
+  title: string;
+  tone: InsightTone;
+};
 
 function DataTable({
   headers,
@@ -62,6 +78,121 @@ function formatDate(value: string | null) {
     day: "2-digit",
     year: "numeric",
   }).format(new Date(value));
+}
+
+function formatRating(value: number | null) {
+  return typeof value === "number" ? value.toFixed(2).replace(/\.00$/, "") : "-";
+}
+
+function getRatingTone(value: number | null): InsightTone {
+  if (typeof value !== "number") return "info";
+  if (value >= 4) return "success";
+  if (value >= 3) return "info";
+  return "warning";
+}
+
+function getTrendLabel(trend: FeedbackInsightsSummary["recentTrend"]) {
+  switch (trend) {
+    case "up":
+      return "Improving";
+    case "down":
+      return "Declining";
+    case "flat":
+      return "Stable";
+    case "not_enough_data":
+      return "Not enough data";
+  }
+}
+
+function getTrendTone(trend: FeedbackInsightsSummary["recentTrend"]): InsightTone {
+  if (trend === "up") return "success";
+  if (trend === "down") return "warning";
+  return "info";
+}
+
+function getMostReviewedEvent(events: FeedbackInsightsSummary["events"]) {
+  return events.reduce<FeedbackInsightsSummary["events"][number] | null>(
+    (current, event) =>
+      !current || event.response_count > current.response_count ? event : current,
+    null,
+  );
+}
+
+function buildFeedbackInsightCards(summary: FeedbackInsightsSummary | null) {
+  if (!summary || summary.totalResponses === 0) {
+    return [];
+  }
+
+  const cards: FeedbackInsightCard[] = [
+    {
+      description: `${summary.totalResponses} completed-event feedback response(s) with an average rating of ${formatRating(summary.overallAverageRating)} out of 5.`,
+      icon: LineChartIcon,
+      id: "overall-rating",
+      title: "Overall Rating",
+      tone: getRatingTone(summary.overallAverageRating),
+    },
+  ];
+  const highestRatedEvent = summary.highestRatedEvents[0];
+  const lowestRatedEvent = summary.lowestRatedEvents[0];
+  const mostReviewedEvent = getMostReviewedEvent(summary.events);
+
+  if (highestRatedEvent && typeof highestRatedEvent.average_rating === "number") {
+    cards.push({
+      description: `${highestRatedEvent.event_name} has the highest average rating at ${formatRating(highestRatedEvent.average_rating)} out of 5 from ${highestRatedEvent.response_count} response(s).`,
+      icon: LineChartIcon,
+      id: `highest-${highestRatedEvent.event_id}`,
+      title: "Highest Rated Event",
+      tone: "success",
+    });
+  }
+
+  if (
+    lowestRatedEvent &&
+    typeof lowestRatedEvent.average_rating === "number" &&
+    lowestRatedEvent.event_id !== highestRatedEvent?.event_id
+  ) {
+    cards.push({
+      description: `${lowestRatedEvent.event_name} has the lowest average rating at ${formatRating(lowestRatedEvent.average_rating)} out of 5 from ${lowestRatedEvent.response_count} response(s).`,
+      icon: AlertIcon,
+      id: `lowest-${lowestRatedEvent.event_id}`,
+      title: "Lowest Rated Event",
+      tone: getRatingTone(lowestRatedEvent.average_rating),
+    });
+  }
+
+  if (mostReviewedEvent) {
+    cards.push({
+      description: `${mostReviewedEvent.event_name} has the most feedback with ${mostReviewedEvent.response_count} response(s).`,
+      icon: ClipboardIcon,
+      id: `most-reviewed-${mostReviewedEvent.event_id}`,
+      title: "Most Reviewed Event",
+      tone: "info",
+    });
+  }
+
+  cards.push({
+    description: `Recent completed-event feedback trend is ${getTrendLabel(summary.recentTrend).toLowerCase()}.`,
+    icon: BanknoteIcon,
+    id: "rating-trend",
+    title: "Rating Trend",
+    tone: getTrendTone(summary.recentTrend),
+  });
+
+  if (
+    lowestRatedEvent &&
+    typeof lowestRatedEvent.average_rating === "number" &&
+    lowestRatedEvent.average_rating < 3.5
+  ) {
+    cards.push({
+      description: `${lowestRatedEvent.event_name} is below the improvement threshold at ${formatRating(lowestRatedEvent.average_rating)} out of 5.`,
+      icon: AlertIcon,
+      id: `needs-improvement-${lowestRatedEvent.event_id}`,
+      title: "Needs Improvement",
+      tone: "warning",
+    });
+  }
+
+  return cards;
 }
 
 export function KabataanSuggestionsSection() {
@@ -199,6 +330,7 @@ export function SurveyResponsesSection() {
       type: answer.question_text,
     })),
   );
+  const feedbackInsightCards = buildFeedbackInsightCards(feedbackInsights);
 
   return (
     <div className="flex-1 p-8">
@@ -289,44 +421,27 @@ export function SurveyResponsesSection() {
             <h3 className="text-sm font-semibold uppercase tracking-[0.1em] text-slate-500">
               Feedback insights
             </h3>
-            {feedbackInsights && feedbackInsights.totalResponses > 0 ? (
-              <div className="mt-4 space-y-4">
-                <div className="grid gap-3 sm:grid-cols-3">
-                  <div className="rounded-lg bg-white p-3">
-                    <p className="text-xs text-slate-400">Overall average</p>
-                    <p className="mt-1 text-lg font-semibold text-slate-900">
-                      {feedbackInsights.overallAverageRating ?? "-"} / 5
-                    </p>
-                  </div>
-                  <div className="rounded-lg bg-white p-3">
-                    <p className="text-xs text-slate-400">Responses</p>
-                    <p className="mt-1 text-lg font-semibold text-slate-900">
-                      {feedbackInsights.totalResponses}
-                    </p>
-                  </div>
-                  <div className="rounded-lg bg-white p-3">
-                    <p className="text-xs text-slate-400">Recent trend</p>
-                    <p className="mt-1 text-lg font-semibold capitalize text-slate-900">
-                      {feedbackInsights.recentTrend.replace(/_/g, " ")}
-                    </p>
-                  </div>
-                </div>
-                <div className="grid gap-2 sm:grid-cols-5">
-                  {(["1", "2", "3", "4", "5"] as const).map((star) => (
-                    <div className="rounded-lg bg-white p-3 text-center" key={star}>
-                      <p className="text-xs text-slate-400">{star} star</p>
-                      <p className="mt-1 font-semibold text-slate-900">{feedbackInsights.ratingDistribution[star]}</p>
-                    </div>
-                  ))}
-                </div>
-                <ul className="space-y-2 text-sm text-slate-600">
-                  {feedbackInsights.insights.map((insight) => (
-                    <li className="rounded-lg bg-white px-3 py-2" key={insight}>{insight}</li>
-                  ))}
-                </ul>
+            {feedbackInsightCards.length > 0 ? (
+              <div className="mt-4 grid gap-4 xl:grid-cols-3">
+                {feedbackInsightCards.map((card) => (
+                  <InsightCard
+                    description={card.description}
+                    icon={card.icon}
+                    key={card.id}
+                    title={card.title}
+                    tone={card.tone}
+                  />
+                ))}
               </div>
             ) : (
-              <p className="mt-4 text-sm text-slate-500">No completed-event feedback ratings yet.</p>
+              <div className="mt-4 grid gap-4 xl:grid-cols-3">
+                <InsightCard
+                  description="No feedback insights available yet."
+                  icon={BanknoteIcon}
+                  title="Feedback insights"
+                  tone="info"
+                />
+              </div>
             )}
           </div>
         </div>

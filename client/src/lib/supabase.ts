@@ -16,6 +16,7 @@ function getProjectRef(url: string) {
 export const supabaseAuthStorageKey = `sb-${getProjectRef(supabaseUrl)}-auth-token`;
 const supabaseAuthStorageModeKey = "sk-beat-auth-storage-mode";
 export const rememberedLoginEmailKey = "sk-beat-remembered-login-email";
+export const rememberedLoginPasswordKey = "sk-beat-remembered-login-password";
 
 type AuthStorageMode = "local" | "session";
 

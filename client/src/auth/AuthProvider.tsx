@@ -3,6 +3,7 @@ import { useCallback, useEffect, useState, type ReactNode } from "react";
 import {
   clearInvalidSupabaseSession,
   clearSupabaseAuthSessionStorage,
+  getSafeAuthError,
   isInvalidRefreshSessionError,
   logSafeAuthError,
   setSupabaseAuthStorageMode,
@@ -17,6 +18,17 @@ import type {
   AuthContextValue,
   LoginPayload,
 } from "./types";
+
+function isInvalidLoginCredentialsError(error: unknown) {
+  const { code, message, status } = getSafeAuthError(error);
+  const normalized = `${code} ${message}`.toLowerCase();
+
+  return (
+    status === 400 &&
+    (normalized.includes("invalid login credentials") ||
+      normalized.includes("invalid_credentials"))
+  );
+}
 
 export function AuthProvider({ children }: { children: ReactNode }) {
   const [user, setUser] = useState<AuthUser | null>(null);
@@ -155,6 +167,9 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     
     if (error) {
       setLoading(false);
+      if (isInvalidLoginCredentialsError(error)) {
+        throw new Error("Email or password invalid.");
+      }
       throw error;
     }
 

@@ -22,9 +22,11 @@ export type Insight = {
   title: string;
   description: string;
   action: string;
-  tone: "critical" | "warning" | "success" | "info";
+  tone: InsightTone;
   icon: (props: IconProps) => React.ReactNode;
 };
+
+export type InsightTone = "critical" | "warning" | "success" | "info";
 
 export const summaryCards: SummaryCard[] = [
   {
@@ -122,19 +124,19 @@ export const iconToneClasses = {
 
 export const insightToneClasses = {
   critical: {
-    card: "border-l-4 border-l-red-500 bg-red-50/60",
+    card: "bg-red-50/60",
     icon: "bg-red-50 text-red-700",
   },
   warning: {
-    card: "border-l-4 border-l-amber-400 bg-amber-100/40",
+    card: "bg-amber-100/40",
     icon: "bg-amber-100 text-amber-700",
   },
   success: {
-    card: "border-l-4 border-l-emerald-500 bg-emerald-100/40",
+    card: "bg-emerald-100/40",
     icon: "bg-emerald-100 text-emerald-700",
   },
   info: {
-    card: "border-l-4 border-l-blue-500 bg-blue-100/60",
+    card: "bg-blue-100/60",
     icon: "bg-blue-100 text-blue-700",
   },
 };

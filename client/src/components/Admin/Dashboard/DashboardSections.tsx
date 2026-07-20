@@ -2,12 +2,12 @@ import { useEffect, useState } from "react";
 import { Link } from "react-router-dom";
 import {
   iconToneClasses,
-  insightToneClasses,
   type SummaryCard,
 } from "./dashboardData";
 import { AlertIcon, ArrowRightIcon, BanknoteIcon, CalendarIcon, ClipboardIcon, DollarIcon, LineChartIcon, TrendingIcon, UserRoundIcon, UsersIcon } from "./icons";
 import { getDashboardData, type DashboardData } from "./DashboardService";
 import { canRunDecisionInsightAction } from "../../../hooks/useDecisionInsightActions";
+import InsightCard from "../shared/InsightCard";
 
 function SummaryCardItem({ card }: { card: SummaryCard }) {
   const Icon = card.icon;
@@ -173,9 +173,8 @@ function CategoryCard({ data }: { data: DashboardData }) {
 }
 
 function InsightsPanel({ data }: { data: DashboardData }) {
-  const visibleInsights = data.decisionInsights
-    .slice(0, 3)
-    .map((insight) => ({
+  const insights = data.decisionInsights.length
+    ? data.decisionInsights.map((insight) => ({
         actionLabel: insight.actionLabel,
         actionType: insight.actionType,
         categoryName: insight.categoryName,
@@ -192,7 +191,18 @@ function InsightsPanel({ data }: { data: DashboardData }) {
           : insight.severity === "opportunity"
             ? "success"
             : insight.severity) as "critical" | "warning" | "success" | "info",
-      }));
+      }))
+    : [
+        {
+          actionLabel: undefined,
+          actionType: "none",
+          description: "Not enough data. Publish event-interest surveys, collect registrations, and record completed-event feedback to show decision-support insights.",
+          icon: AlertIcon,
+          title: "Decision support",
+          tone: "info" as const,
+        },
+      ];
+  const visibleInsights = insights.slice(0, 3);
 
   return (
     <section className="mb-8 rounded-xl border border-slate-200 bg-white p-6 shadow-sm" id="insights">
@@ -214,53 +224,27 @@ function InsightsPanel({ data }: { data: DashboardData }) {
         </Link>
       </div>
 
-      {visibleInsights.length === 0 ? (
-        <div className="rounded-xl border border-dashed border-slate-300 bg-white p-6 text-sm text-slate-500">
-          No decision-support insights are available yet.
-        </div>
-      ) : (
-        <div className="grid gap-4 xl:grid-cols-3">
-        {visibleInsights.map((insight) => {
-          const Icon = insight.icon;
-          const tone = insightToneClasses[insight.tone];
-
-          return (
-            <article
-              className={[
-                "flex items-center gap-4 rounded-[14px] p-5 shadow-sm",
-                tone.card,
-              ].join(" ")}
-              key={insight.insight.id}
-            >
-              <div
-                className={[
-                  "flex h-11 w-11 shrink-0 items-center justify-center rounded-xl",
-                  tone.icon,
-                ].join(" ")}
-              >
-                <Icon className="h-5 w-5" />
-              </div>
-              <div className="min-w-0">
-                <h3 className="text-sm font-semibold text-slate-800">
-                  {insight.title}
-                </h3>
-                <p className="mt-2 text-xs leading-relaxed text-slate-500">
-                  {insight.description}
-                </p>
-                {canRunDecisionInsightAction(insight.insight) ? (
-                  <Link
-                    className="mt-3 inline-flex items-center gap-1 text-xs font-semibold text-[#1e3a5f] hover:underline"
-                    to={getInsightPath(insight.insight)}
-                  >
-                    {insight.actionLabel} <ArrowRightIcon className="h-3.5 w-3.5" />
-                  </Link>
-                ) : null}
-              </div>
-            </article>
-          );
-        })}
+      <div className="grid gap-4 xl:grid-cols-3">
+        {visibleInsights.map((insight, index) => (
+          <InsightCard
+            action={
+              "insight" in insight && canRunDecisionInsightAction(insight.insight) ? (
+                <Link
+                  className="mt-3 inline-flex items-center gap-1 text-xs font-semibold text-[#1e3a5f] hover:underline"
+                  to={getInsightPath(insight.insight)}
+                >
+                  {insight.actionLabel} <ArrowRightIcon className="h-3.5 w-3.5" />
+                </Link>
+              ) : null
+            }
+            description={insight.description}
+            icon={insight.icon}
+            key={"insight" in insight ? insight.insight.id : `${insight.title}-${index}`}
+            title={insight.title}
+            tone={insight.tone}
+          />
+        ))}
       </div>
-      )}
     </section>
   );
 }

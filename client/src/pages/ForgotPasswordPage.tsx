@@ -3,22 +3,9 @@ import { useState, type FormEvent } from "react";
 import { Link } from "react-router-dom";
 import { supabase } from "../lib/supabase";
 
-const productionUrl = "https://sk-beat.vercel.app";
+const passwordResetRedirectUrl = "https://sk-beat.vercel.app/reset-password";
 const neutralSuccessMessage =
   "If an account exists for this email, a password reset link has been sent.";
-
-function getApplicationBaseUrl() {
-  const configuredUrl = import.meta.env.VITE_APP_URL;
-  if (typeof configuredUrl === "string" && configuredUrl.trim()) {
-    return configuredUrl.replace(/\/$/, "");
-  }
-
-  if (window.location.hostname === "sk-beat.vercel.app") {
-    return productionUrl;
-  }
-
-  return window.location.origin;
-}
 
 function isValidEmail(email: string) {
   return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email);
@@ -43,7 +30,7 @@ export default function ForgotPasswordPage() {
 
     setIsSubmitting(true);
     const { error } = await supabase.auth.resetPasswordForEmail(trimmedEmail, {
-      redirectTo: `${getApplicationBaseUrl()}/reset-password`,
+      redirectTo: passwordResetRedirectUrl,
     });
     setIsSubmitting(false);
 

@@ -1,12 +1,92 @@
-import { useRef, useState, type FormEvent } from "react";
+import { useEffect, useRef, useState, type FormEvent } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import { useAuth } from "../../auth/useAuth";
 import skLogo from "../../assets/sklogo.png";
-import { rememberedLoginEmailKey } from "../../lib/supabase";
+import {
+  rememberedLoginEmailKey,
+  rememberedLoginPasswordKey,
+} from "../../lib/supabase";
 
 function getRememberedLoginEmail() {
   if (typeof window === "undefined") return "";
   return window.localStorage.getItem(rememberedLoginEmailKey) ?? "";
+}
+
+function getRememberedLoginPassword() {
+  if (typeof window === "undefined") return "";
+  return window.localStorage.getItem(rememberedLoginPasswordKey) ?? "";
+}
+
+type PasswordCredentialData = {
+  id: string;
+  name?: string;
+  password: string;
+};
+
+type PasswordCredentialConstructor = new (
+  data: PasswordCredentialData,
+) => Credential;
+
+type PasswordCredentialLike = Credential & {
+  id: string;
+  password?: string;
+};
+
+function getPasswordCredentialConstructor() {
+  if (typeof window === "undefined") return null;
+
+  return (
+    window as Window & {
+      PasswordCredential?: PasswordCredentialConstructor;
+    }
+  ).PasswordCredential ?? null;
+}
+
+async function getStoredLoginCredential() {
+  if (typeof navigator === "undefined" || !navigator.credentials) {
+    return null;
+  }
+
+  try {
+    const credential = (await navigator.credentials.get({
+      password: true,
+      mediation: "optional",
+    } as CredentialRequestOptions)) as PasswordCredentialLike | null;
+
+    if (!credential?.id || typeof credential.password !== "string") {
+      return null;
+    }
+
+    return {
+      password: credential.password,
+      username: credential.id,
+    };
+  } catch {
+    return null;
+  }
+}
+
+async function storeLoginCredential(username: string, password: string) {
+  if (typeof navigator === "undefined" || !navigator.credentials) {
+    return;
+  }
+
+  const PasswordCredential = getPasswordCredentialConstructor();
+  if (!PasswordCredential) {
+    return;
+  }
+
+  try {
+    await navigator.credentials.store(
+      new PasswordCredential({
+        id: username,
+        name: username,
+        password,
+      }),
+    );
+  } catch {
+    // Some browsers disable Credential Management or leave this to autocomplete.
+  }
 }
 
 function SkLogo({ size = "large" }: { size?: "large" | "small" }) {
@@ -39,7 +119,12 @@ export default function LoginForm() {
   const [isLockedOpen, setIsLockedOpen] = useState(false);
   const [showPassword, setShowPassword] = useState(false);
   const [rememberedEmail] = useState(getRememberedLoginEmail);
-  const [rememberMe, setRememberMe] = useState(() => Boolean(getRememberedLoginEmail()));
+  const [rememberedPassword] = useState(getRememberedLoginPassword);
+  const [username, setUsername] = useState(rememberedEmail);
+  const [password, setPassword] = useState(rememberedPassword);
+  const [rememberMe, setRememberMe] = useState(
+    () => Boolean(getRememberedLoginEmail()) || Boolean(getRememberedLoginPassword()),
+  );
   const [error, setError] = useState("");
   const [isSubmitting, setIsSubmitting] = useState(false);
 
@@ -77,27 +162,51 @@ export default function LoginForm() {
     expand();
   };
 
+  useEffect(() => {
+    let isMounted = true;
+
+    if (!rememberMe) {
+      return () => {
+        isMounted = false;
+      };
+    }
+
+    void getStoredLoginCredential().then((credential) => {
+      if (!isMounted || !credential) {
+        return;
+      }
+
+      setUsername(credential.username);
+      setPassword(credential.password);
+    });
+
+    return () => {
+      isMounted = false;
+    };
+  }, [rememberMe]);
+
   async function handleSubmit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
 
     setError("");
     setIsSubmitting(true);
 
-    const formData = new FormData(event.currentTarget);
-    const username = String(formData.get("username") || "").trim();
-    const password = String(formData.get("password") || "");
+    const loginUsername = username.trim();
 
     try {
       const session = await login({
         rememberMe,
-        username,
+        username: loginUsername,
         password,
       });
 
       if (rememberMe) {
-        window.localStorage.setItem(rememberedLoginEmailKey, username);
+        window.localStorage.setItem(rememberedLoginEmailKey, loginUsername);
+        window.localStorage.setItem(rememberedLoginPasswordKey, password);
+        await storeLoginCredential(loginUsername, password);
       } else {
         window.localStorage.removeItem(rememberedLoginEmailKey);
+        window.localStorage.removeItem(rememberedLoginPasswordKey);
       }
 
       navigate(
@@ -210,8 +319,10 @@ export default function LoginForm() {
                         type="text"
                         name="username"
                         placeholder="User Name"
-                        defaultValue={rememberedEmail}
+                        autoComplete="username"
+                        onChange={(event) => setUsername(event.target.value)}
                         required
+                        value={username}
                       />
                     </label>
 
@@ -236,7 +347,10 @@ export default function LoginForm() {
                         type={showPassword ? "text" : "password"}
                         name="password"
                         placeholder="Password"
+                        autoComplete="current-password"
+                        onChange={(event) => setPassword(event.target.value)}
                         required
+                        value={password}
                       />
                       <button
                         type="button"

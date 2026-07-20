@@ -13,6 +13,10 @@ export type SurveyOption = {
   option_text: string;
   sort_order: number;
   score_value?: number | null;
+  is_other?: boolean;
+  event_name?: string | null;
+  event_category?: string | null;
+  event_description?: string | null;
 };
 
 export type SurveyQuestion = {
@@ -37,6 +41,7 @@ export type AdminSurvey = {
   is_active: boolean;
   start_date: string | null;
   end_date: string | null;
+  expires_at: string | null;
   target_audience: "kabataan";
   allow_guest_responses: boolean;
   created_at: string | null;
@@ -51,6 +56,7 @@ export type SaveSurveyPayload = {
   status: SurveyStatus;
   start_date: string | null;
   end_date: string | null;
+  expires_at: string | null;
   target_audience: "kabataan";
   allow_guest_responses: boolean;
   questions: SurveyQuestion[];
@@ -60,7 +66,7 @@ export async function getAdminSurveys() {
   const { data, error } = await supabase
     .from("surveys")
     .select(
-      "survey_id,title,question_text,description,status,is_active,start_date,end_date,target_audience,allow_guest_responses,created_at,survey_questions(question_id,question_text,question_type,is_required,sort_order,reporting_key,event_name,event_category,event_description,survey_options(option_id,option_text,sort_order,score_value)),survey_responses(response_id)",
+      "survey_id,title,question_text,description,status,is_active,start_date,end_date,expires_at,target_audience,allow_guest_responses,created_at,survey_questions(question_id,question_text,question_type,is_required,sort_order,reporting_key,event_name,event_category,event_description,survey_options(option_id,option_text,sort_order,score_value,is_other,event_name,event_category,event_description)),survey_responses(response_id)",
     )
     .order("created_at", { ascending: false });
 
@@ -71,6 +77,7 @@ export async function saveAdminSurvey(payload: SaveSurveyPayload) {
   const { data, error } = await supabase.rpc("save_admin_survey", {
     p_description: payload.description,
     p_end_date: payload.end_date,
+    p_expires_at: payload.expires_at,
     p_questions: payload.questions.map((question, index) => ({
       question_text: question.question_text,
       question_type: question.question_type,
@@ -80,6 +87,10 @@ export async function saveAdminSurvey(payload: SaveSurveyPayload) {
         option_text: option.option_text,
         score_value: option.score_value ?? null,
         sort_order: optionIndex,
+        is_other: option.is_other ?? false,
+        event_name: option.event_name ?? null,
+        event_category: option.event_category ?? null,
+        event_description: option.event_description ?? null,
       })),
       reporting_key: question.reporting_key ?? null,
       event_name: question.event_name ?? null,

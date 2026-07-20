@@ -18,15 +18,17 @@ type AdminAccountModalsProps = {
 };
 
 const inputClass =
-  "w-full rounded-lg border border-slate-200 bg-white px-3 py-2.5 text-sm text-slate-800 outline-none focus:border-[#1e3a5f] focus:ring-2 focus:ring-[#1e3a5f]/15";
+  "w-full rounded-lg border border-slate-200 bg-white px-3 py-2.5 text-sm text-slate-800 outline-none focus:border-[#1e3a5f] focus:ring-2 focus:ring-[#1e3a5f]/15 disabled:cursor-not-allowed disabled:bg-slate-100 disabled:text-slate-500 disabled:opacity-70";
 
 function Field({
+  disabled,
   label,
   type = "text",
   value,
   name,
   onChange,
 }: {
+  disabled?: boolean;
   label: string;
   type?: string;
   value?: string;
@@ -40,6 +42,7 @@ function Field({
       </span>
       <input
         className={inputClass}
+        disabled={disabled}
         value={value}
         name={name}
         onChange={onChange}
@@ -207,7 +210,12 @@ export default function AdminAccountModals({
         <div className="grid gap-4 md:grid-cols-2">
           <Field label="Full Name" value={AdminName} />
           <Field label="Position" value={position} />
-          <Field label="Email Address" type="email" value={email} />
+          <div>
+            <Field disabled label="Email Address" type="email" value={email} />
+            <p className="mt-1.5 text-xs text-slate-500">
+              This email is linked to your account and cannot be changed here.
+            </p>
+          </div>
           <Field label="Contact Number" value={contactNumber} />
           <div className="md:col-span-2">
             <span className="mb-1.5 block text-sm font-medium text-slate-700">

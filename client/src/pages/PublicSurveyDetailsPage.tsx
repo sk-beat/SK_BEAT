@@ -38,10 +38,29 @@ export default function PublicSurveyDetailsPage() {
     };
   }, [surveyId]);
 
-  function updateAnswer(questionId: number, optionId: number) {
+  function updateAnswer(questionId: number, optionId: number, checked: boolean, isOther = false) {
     setAnswers((current) => ({
       ...current,
-      [questionId]: { question_id: questionId, option_ids: [optionId] },
+      [questionId]: {
+        ...current[questionId],
+        answer_text: checked || !isOther ? current[questionId]?.answer_text ?? null : null,
+        question_id: questionId,
+        option_ids: checked
+          ? Array.from(new Set([...(current[questionId]?.option_ids ?? []), optionId]))
+          : (current[questionId]?.option_ids ?? []).filter((id) => id !== optionId),
+      },
+    }));
+  }
+
+  function updateOtherText(questionId: number, value: string) {
+    setAnswers((current) => ({
+      ...current,
+      [questionId]: {
+        ...current[questionId],
+        answer_text: value,
+        question_id: questionId,
+        option_ids: current[questionId]?.option_ids ?? [],
+      },
     }));
   }
 
@@ -53,7 +72,16 @@ export default function PublicSurveyDetailsPage() {
     for (const question of survey.survey_questions) {
       const questionId = question.question_id ?? 0;
       if (question.is_required && !answers[questionId]?.option_ids?.length) {
-        setErrorMessage("Please answer all required event ratings.");
+        setErrorMessage("Please select at least one event.");
+        return;
+      }
+      const selectedOther = question.survey_options.some(
+        (option) =>
+          answers[questionId]?.option_ids?.includes(option.option_id ?? 0) &&
+          (option.is_other || option.option_text.trim().toLowerCase() === "other"),
+      );
+      if (selectedOther && !answers[questionId]?.answer_text?.trim()) {
+        setErrorMessage("Please type your event suggestion for Other.");
         return;
       }
     }
@@ -61,7 +89,10 @@ export default function PublicSurveyDetailsPage() {
     setIsSubmitting(true);
     const { error } = await submitPublicEventInterestSurvey(
       survey.survey_id,
-      Object.values(answers),
+      Object.values(answers).map((answer) => ({
+        ...answer,
+        answer_text: answer.answer_text?.trim() || null,
+      })),
     );
     setIsSubmitting(false);
 
@@ -122,7 +153,7 @@ export default function PublicSurveyDetailsPage() {
           <div className="mt-6 space-y-5">
             {survey.survey_questions.map((question, index) => {
               const questionId = question.question_id ?? 0;
-              const selected = answers[questionId]?.option_ids?.[0];
+              const selected = answers[questionId]?.option_ids ?? [];
               return (
                 <fieldset
                   className="rounded-xl border border-slate-200 bg-slate-50 p-4"
@@ -130,40 +161,43 @@ export default function PublicSurveyDetailsPage() {
                   key={questionId}
                 >
                   <legend className="px-1 text-sm font-semibold text-slate-900">
-                    {index + 1}. {question.event_name}
+                    {index + 1}. {question.question_text}
                     {question.is_required ? <span className="text-red-500"> *</span> : null}
                   </legend>
-                  <p className="mt-1 text-xs font-semibold uppercase tracking-[0.08em] text-[#1e3a5f]">
-                    {question.event_category}
-                  </p>
-                  {question.event_description ? (
-                    <p className="mt-2 text-sm leading-6 text-slate-500">
-                      {question.event_description}
-                    </p>
-                  ) : null}
-                  <div className="mt-4 grid gap-2 sm:grid-cols-5">
+                  <div className="mt-4 grid gap-2 sm:grid-cols-2">
                     {question.survey_options.map((option) => {
                       const optionId = option.option_id ?? 0;
+                      const isChecked = selected.includes(optionId);
+                      const isOther = option.is_other || option.option_text.trim().toLowerCase() === "other";
                       return (
-                        <label
+                        <div
                           className={[
-                            "rounded-lg border bg-white p-3 text-center text-sm transition",
-                            selected === optionId
+                            "rounded-lg border bg-white p-3 text-sm transition",
+                            isChecked
                               ? "border-[#1e3a5f] ring-2 ring-[#1e3a5f]/15"
                               : "border-slate-200",
                           ].join(" ")}
                           key={optionId}
                         >
-                          <input
-                            checked={selected === optionId}
-                            className="sr-only"
-                            name={`question-${questionId}`}
-                            onChange={() => updateAnswer(questionId, optionId)}
-                            type="radio"
-                          />
-                          <strong className="block text-[#1e3a5f]">{option.score_value}</strong>
-                          <span className="mt-1 block text-xs text-slate-600">{option.option_text}</span>
-                        </label>
+                          <label className="flex items-center gap-3">
+                            <input
+                              checked={isChecked}
+                              name={`question-${questionId}`}
+                              onChange={(event) => updateAnswer(questionId, optionId, event.target.checked, isOther)}
+                              type="checkbox"
+                            />
+                            <span className="text-slate-700">{option.option_text}</span>
+                          </label>
+                          {isOther && isChecked ? (
+                            <input
+                              className="mt-3 w-full rounded-lg border border-slate-200 px-3 py-2 text-sm outline-none focus:border-[#1e3a5f]"
+                              maxLength={120}
+                              onChange={(event) => updateOtherText(questionId, event.target.value)}
+                              placeholder="Type the event you want"
+                              value={answers[questionId]?.answer_text ?? ""}
+                            />
+                          ) : null}
+                        </div>
                       );
                     })}
                   </div>

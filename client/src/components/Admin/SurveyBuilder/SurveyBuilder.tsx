@@ -80,6 +80,7 @@ export default function SurveyBuilder() {
     await handleSave({
       description: survey.description,
       end_date: survey.end_date,
+      expires_at: survey.expires_at,
       allow_guest_responses: survey.allow_guest_responses,
       questions: survey.survey_questions,
       start_date: survey.start_date,

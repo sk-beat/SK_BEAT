@@ -67,10 +67,29 @@ export default function SurveyDetails() {
         setErrorMessage("Please choose an option for all required questions.");
         return;
       }
+      const selectedOther = question.survey_options.some(
+        (option) =>
+          answer.option_ids?.includes(option.option_id ?? 0) &&
+          (option.is_other || option.option_text.trim().toLowerCase() === "other"),
+      );
+      if (selectedOther && !answer.answer_text?.trim()) {
+        setErrorMessage("Please type your event suggestion for Other.");
+        return;
+      }
+      if ((answer.answer_text?.trim().length ?? 0) > 120) {
+        setErrorMessage("Other event suggestions must be 120 characters or fewer.");
+        return;
+      }
     }
 
     setIsSubmitting(true);
-    const { error } = await submitYouthSurveyResponse(survey.survey_id, Object.values(answers));
+    const { error } = await submitYouthSurveyResponse(
+      survey.survey_id,
+      Object.values(answers).map((answer) => ({
+        ...answer,
+        answer_text: answer.answer_text?.trim() || null,
+      })),
+    );
     setIsSubmitting(false);
 
     if (error) {

@@ -1,6 +1,9 @@
-import { Link, NavLink, useLocation } from "react-router-dom";
-import type { ReactNode } from "react";
+import { Link, NavLink, useLocation, useNavigate } from "react-router-dom";
+import { useState, type ReactNode } from "react";
 import skLogo from "../../assets/sklogo.png";
+import { useAuth } from "../../auth/useAuth";
+import { getSafeAuthError } from "../../lib/supabase";
+import LogoutConfirmationDialog from "../shared/LogoutConfirmationDialog";
 
 type IconProps = {
   className?: string;
@@ -280,8 +283,46 @@ export default function Sidebar({
   onLogout,
 }: SidebarProps) {
   const location = useLocation();
+  const navigate = useNavigate();
+  const { role } = useAuth();
+  const [isLogoutDialogOpen, setIsLogoutDialogOpen] = useState(false);
+  const [isLoggingOut, setIsLoggingOut] = useState(false);
+  const [logoutError, setLogoutError] = useState<string | null>(null);
+
+  function openLogoutDialog() {
+    console.log("[Logout] Confirmation opened", {
+      role,
+    });
+    setLogoutError(null);
+    setIsLogoutDialogOpen(true);
+  }
+
+  async function handleLogoutConfirm() {
+    if (!onLogout || isLoggingOut) return;
+
+    console.log("[Logout] Confirmed", {
+      role,
+    });
+    setIsLoggingOut(true);
+    setLogoutError(null);
+
+    try {
+      await onLogout();
+      setIsLogoutDialogOpen(false);
+      navigate("/login", { replace: true });
+    } catch (error) {
+      const errorMessage = getSafeAuthError(error).message;
+      console.error("[Logout] Failed", {
+        message: errorMessage,
+      });
+      setLogoutError(errorMessage);
+    } finally {
+      setIsLoggingOut(false);
+    }
+  }
 
   return (
+    <>
     <aside className="peer/sidebar group/sidebar fixed left-0 top-0 z-[100] flex h-screen w-[88px] shrink-0 flex-col items-center overflow-hidden bg-[#1e3a5f] py-6 text-white transition-[width] duration-300 ease-in-out hover:w-[300px] max-md:w-[72px] max-md:py-4 max-md:hover:w-[72px]">
       <div className="mb-2 flex min-h-20 w-full flex-col items-center gap-2 px-4 pb-8">
         <img
@@ -366,7 +407,7 @@ export default function Sidebar({
         <button
           className="mb-4 flex min-h-12 w-[calc(100%-1rem)] items-center justify-center gap-2 rounded-xl px-2 text-white transition-colors duration-200 hover:bg-white/15 group-hover/sidebar:justify-start group-hover/sidebar:pl-1 max-md:justify-center max-md:pl-2"
           type="button"
-          onClick={onLogout}
+          onClick={openLogoutDialog}
           title="Logout"
         >
           <LogoutIcon className="h-6 w-6 shrink-0" />
@@ -376,5 +417,16 @@ export default function Sidebar({
         </button>
       ) : null}
     </aside>
+    <LogoutConfirmationDialog
+      errorMessage={logoutError}
+      isLoggingOut={isLoggingOut}
+      onCancel={() => {
+        setIsLogoutDialogOpen(false);
+        setLogoutError(null);
+      }}
+      onConfirm={handleLogoutConfirm}
+      open={isLogoutDialogOpen}
+    />
+    </>
   );
 }

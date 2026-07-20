@@ -88,29 +88,52 @@ export default function SurveyDetailsSections({
                         const optionId = option.option_id ?? 0;
                         const checked = answer.option_ids?.includes(optionId) ?? false;
                         const isMultiple = question.question_type === "multiple_choice";
+                  const isOther = option.is_other || option.option_text.trim().toLowerCase() === "other";
 
                         return (
-                          <label className="flex items-center gap-3 rounded-lg border border-slate-200 bg-white p-3 text-sm text-slate-700" key={optionId}>
-                            <input
-                              checked={checked}
-                              name={`question-${questionId}`}
-                              onChange={(event) => {
-                                const optionIds = isMultiple
-                                  ? event.target.checked
-                                    ? [...(answer.option_ids ?? []), optionId]
-                                    : (answer.option_ids ?? []).filter((id) => id !== optionId)
-                                  : [optionId];
-                                onUpdateAnswer(questionId, { question_id: questionId, option_ids: optionIds });
-                              }}
-                              type={isMultiple ? "checkbox" : "radio"}
-                            />
-                            <span>
-                              {question.question_type === "event_interest_likert" && option.score_value ? (
-                                <strong className="mr-2 text-[#1e3a5f]">{option.score_value}</strong>
-                              ) : null}
-                              {option.option_text}
-                            </span>
-                          </label>
+                          <div className="rounded-lg border border-slate-200 bg-white p-3" key={optionId}>
+                            <label className="flex items-center gap-3 text-sm text-slate-700">
+                              <input
+                                checked={checked}
+                                name={`question-${questionId}`}
+                                onChange={(event) => {
+                                  const optionIds = isMultiple
+                                    ? event.target.checked
+                                      ? Array.from(new Set([...(answer.option_ids ?? []), optionId]))
+                                      : (answer.option_ids ?? []).filter((id) => id !== optionId)
+                                    : [optionId];
+                                  onUpdateAnswer(questionId, {
+                                    ...answer,
+                                    answer_text: event.target.checked || !isOther ? answer.answer_text ?? null : null,
+                                    option_ids: optionIds,
+                                    question_id: questionId,
+                                  });
+                                }}
+                                type={isMultiple ? "checkbox" : "radio"}
+                              />
+                              <span>
+                                {question.question_type === "event_interest_likert" && option.score_value ? (
+                                  <strong className="mr-2 text-[#1e3a5f]">{option.score_value}</strong>
+                                ) : null}
+                                {option.option_text}
+                              </span>
+                            </label>
+                            {isOther && checked ? (
+                              <input
+                                className="mt-3 w-full rounded-lg border border-slate-200 px-3 py-2 text-sm outline-none transition focus:border-blue-400 focus:ring-2 focus:ring-blue-100"
+                                maxLength={120}
+                                onChange={(event) =>
+                                  onUpdateAnswer(questionId, {
+                                    ...answer,
+                                    answer_text: event.target.value,
+                                    question_id: questionId,
+                                  })
+                                }
+                                placeholder="Type the event you want"
+                                value={answer.answer_text ?? ""}
+                              />
+                            ) : null}
+                          </div>
                         );
                       })}
                     </div>

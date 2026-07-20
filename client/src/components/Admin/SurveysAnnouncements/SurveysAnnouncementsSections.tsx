@@ -8,75 +8,16 @@ import {
 } from "./AnnouncementsService";
 import {
   getAdminSurveyResponseDetails,
-  getPreferredActivityTypes,
+  getFeedbackInsightsSummary,
   getTopSuggestedEvents,
   type AdminSurveyResponseDetail,
-  type PreferredActivityType,
+  type FeedbackInsightsSummary,
   type TopSuggestedEvent,
 } from "./SurveyInsightsService";
 import {
   getKabataanSuggestions,
   type KabataanSuggestion,
 } from "./SurveysAnnouncementsService";
-
-const activityTypeColors = ["#1a529b", "#38b6ff", "#ff9f68", "#22c55e"];
-
-function getActivityTypeBreakdown(rows: PreferredActivityType[]) {
-  return rows.map((item, index) => ({
-    color: activityTypeColors[index % activityTypeColors.length],
-    label: item.activity_type,
-    percentage: Math.round(item.positive_interest_percentage),
-    value: item.total_respondent_count,
-  }));
-}
-
-function PreferredActivityPieChart({ rows }: { rows: PreferredActivityType[] }) {
-  const breakdown = getActivityTypeBreakdown(rows);
-  const gradientStops = breakdown.map((item, index) => {
-    const start = breakdown
-      .slice(0, index)
-      .reduce((total, current) => total + current.percentage, 0);
-    const end = start + item.percentage;
-    return `${item.color} ${start}% ${end}%`;
-  });
-
-  return (
-    <div className="mt-5 grid min-h-52 items-center gap-6 sm:grid-cols-[220px_1fr]">
-      <div className="mx-auto flex aspect-square w-full max-w-55 items-center justify-center rounded-full bg-slate-100 p-3">
-        <div
-          aria-label="Preferred activity types pie chart"
-          className="h-full w-full rounded-full shadow-sm ring-1 ring-slate-200"
-          role="img"
-          style={{
-            background: `conic-gradient(${gradientStops.join(", ")})`,
-          }}
-        />
-      </div>
-
-      <div className="space-y-3">
-        {breakdown.length > 0 ? breakdown.map((item) => (
-          <div key={item.label}>
-            <div className="grid grid-cols-[auto_1fr_auto] items-center gap-3 text-sm">
-              <span
-                className="h-3 w-3 rounded-full"
-                style={{ backgroundColor: item.color }}
-              />
-              <span className="font-medium text-slate-700">{item.label}</span>
-              <span className="text-slate-500">
-                {item.value} respondent(s), {item.percentage}% positive
-              </span>
-            </div>
-            {item.value < 3 ? (
-              <p className="ml-6 mt-1 text-xs text-amber-700">
-                Not enough data. Needs at least 3 respondents.
-              </p>
-            ) : null}
-          </div>
-        )) : <p className="text-sm text-slate-500">No response data yet.</p>}
-      </div>
-    </div>
-  );
-}
 
 function DataTable({
   headers,
@@ -198,7 +139,7 @@ export function KabataanSuggestionsSection() {
 export function SurveyResponsesSection() {
   const [searchParams] = useSearchParams();
   const [responses, setResponses] = useState<AdminSurveyResponseDetail[]>([]);
-  const [preferredTypes, setPreferredTypes] = useState<PreferredActivityType[]>([]);
+  const [feedbackInsights, setFeedbackInsights] = useState<FeedbackInsightsSummary | null>(null);
   const [suggestedEvents, setSuggestedEvents] = useState<TopSuggestedEvent[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
@@ -210,18 +151,24 @@ export function SurveyResponsesSection() {
     async function loadResponses() {
       setIsLoading(true);
       setErrorMessage(null);
-      const [responseResult, preferredResult, suggestedResult] = await Promise.all([
+      const [responseResult, suggestedResult, feedbackResult] = await Promise.all([
         getAdminSurveyResponseDetails({ search }),
-        getPreferredActivityTypes(),
         getTopSuggestedEvents(),
+        getFeedbackInsightsSummary(),
       ]);
 
       if (!isMounted) return;
-      const error = responseResult.error || preferredResult.error || suggestedResult.error;
+      const error = responseResult.error || suggestedResult.error || feedbackResult.error;
       if (error) setErrorMessage(error.message);
       setResponses(responseResult.data);
-      setPreferredTypes(preferredResult.data);
       setSuggestedEvents(suggestedResult.data);
+      setFeedbackInsights(feedbackResult.data);
+      console.log("[Survey Results] Unified ranking", {
+        officialCount: suggestedResult.data.filter((event) => event.source_type === "official").length,
+        otherSuggestionCount: suggestedResult.data.filter((event) => event.source_type === "custom").length,
+        combinedResultCount: suggestedResult.data.length,
+        topThreeCount: suggestedResult.data.slice(0, 3).length,
+      });
       setIsLoading(false);
     }
 
@@ -272,21 +219,7 @@ export function SurveyResponsesSection() {
             Add Survey
           </Link>
         </div>
-        <div className="mt-4 grid gap-4 md:grid-cols-2">
-          <div
-            className={[
-              "scroll-mt-8 rounded-xl border bg-slate-50 p-5",
-              searchParams.get("section") === "preferred-activity-types"
-                ? "border-[#1e3a5f] ring-2 ring-[#1e3a5f]/15"
-                : "border-slate-200",
-            ].join(" ")}
-            id="preferred-activity-types"
-          >
-            <h3 className="text-sm font-semibold uppercase tracking-[0.1em] text-slate-500">
-              Preferred activity types
-            </h3>
-            <PreferredActivityPieChart rows={preferredTypes} />
-          </div>
+        <div className="mt-4">
           <div
             className={[
               "scroll-mt-8 rounded-xl border bg-slate-50 p-5",
@@ -297,8 +230,11 @@ export function SurveyResponsesSection() {
             id="top-suggested-events"
           >
             <h3 className="text-sm font-semibold uppercase tracking-[0.1em] text-slate-500">
-              Top suggested events
+              Top 3 Suggested Events
             </h3>
+            <p className="mt-1 text-sm text-slate-500">
+              Based on the most selected event options and submitted custom suggestions.
+            </p>
             <div className="mt-4 space-y-3">
               {suggestedEvents.slice(0, 3).map((event) => (
                 <div key={event.suggested_event_name}>
@@ -308,15 +244,19 @@ export function SurveyResponsesSection() {
                         #{event.rank} {event.suggested_event_name}
                       </span>
                       <p className="text-xs text-slate-500">
-                        {event.category}
+                        {event.source_type === "combined"
+                          ? "Combined"
+                          : event.source_type === "custom"
+                            ? "Custom suggestion"
+                            : "Official option"}
                         {event.is_already_planned ? " · Already planned" : ""}
                       </p>
                     </div>
                     <span className="text-right text-slate-500">
-                      {event.average_rating}/5
+                      {event.vote_count ?? event.respondent_count} vote(s)
                       <br />
                       <span className="text-xs">
-                        {event.total_respondent_count} respondent(s)
+                        {Math.round(event.respondent_percentage ?? event.respondent_support_percentage ?? 0)}% of respondents
                       </span>
                     </span>
                   </div>
@@ -328,15 +268,66 @@ export function SurveyResponsesSection() {
                   <div className="mt-2 h-2 rounded-full bg-slate-200">
                     <div
                       className="h-2 rounded-full bg-[#1e3a5f]"
-                      style={{ width: `${Math.min(100, event.positive_interest_percentage)}%` }}
+                      style={{ width: `${Math.min(100, event.respondent_percentage ?? event.respondent_support_percentage ?? 0)}%` }}
                     />
                   </div>
                 </div>
               ))}
               {suggestedEvents.length === 0 ? (
-                <p className="text-sm text-slate-500">No suggested event data yet.</p>
+                <p className="text-sm text-slate-500">No response data yet.</p>
+              ) : null}
+              {suggestedEvents.length > 0 ? (
+                <p className="text-xs text-slate-500">
+                  Percentages use respondent count as the denominator. Because Youth can select multiple events, totals can exceed 100%.
+                </p>
               ) : null}
             </div>
+          </div>
+        </div>
+        <div className="mt-4">
+          <div className="rounded-xl border border-slate-200 bg-slate-50 p-5">
+            <h3 className="text-sm font-semibold uppercase tracking-[0.1em] text-slate-500">
+              Feedback insights
+            </h3>
+            {feedbackInsights && feedbackInsights.totalResponses > 0 ? (
+              <div className="mt-4 space-y-4">
+                <div className="grid gap-3 sm:grid-cols-3">
+                  <div className="rounded-lg bg-white p-3">
+                    <p className="text-xs text-slate-400">Overall average</p>
+                    <p className="mt-1 text-lg font-semibold text-slate-900">
+                      {feedbackInsights.overallAverageRating ?? "-"} / 5
+                    </p>
+                  </div>
+                  <div className="rounded-lg bg-white p-3">
+                    <p className="text-xs text-slate-400">Responses</p>
+                    <p className="mt-1 text-lg font-semibold text-slate-900">
+                      {feedbackInsights.totalResponses}
+                    </p>
+                  </div>
+                  <div className="rounded-lg bg-white p-3">
+                    <p className="text-xs text-slate-400">Recent trend</p>
+                    <p className="mt-1 text-lg font-semibold capitalize text-slate-900">
+                      {feedbackInsights.recentTrend.replace(/_/g, " ")}
+                    </p>
+                  </div>
+                </div>
+                <div className="grid gap-2 sm:grid-cols-5">
+                  {(["1", "2", "3", "4", "5"] as const).map((star) => (
+                    <div className="rounded-lg bg-white p-3 text-center" key={star}>
+                      <p className="text-xs text-slate-400">{star} star</p>
+                      <p className="mt-1 font-semibold text-slate-900">{feedbackInsights.ratingDistribution[star]}</p>
+                    </div>
+                  ))}
+                </div>
+                <ul className="space-y-2 text-sm text-slate-600">
+                  {feedbackInsights.insights.map((insight) => (
+                    <li className="rounded-lg bg-white px-3 py-2" key={insight}>{insight}</li>
+                  ))}
+                </ul>
+              </div>
+            ) : (
+              <p className="mt-4 text-sm text-slate-500">No completed-event feedback ratings yet.</p>
+            )}
           </div>
         </div>
         <div className="mt-4">

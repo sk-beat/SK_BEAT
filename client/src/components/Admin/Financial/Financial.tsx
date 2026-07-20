@@ -5,6 +5,7 @@ import FinancialHeader from "./FinancialHeader";
 import FinancialModals, { type FinancialModalMode } from "./FinancialModals";
 import {
   createAnnualBudget,
+  downloadFinancialTransactionsCsv,
   getAnnualBudgets,
   getFinancialEventBudgets,
   getFinancialSummary,
@@ -29,8 +30,6 @@ export default function Financial() {
   const [modalMode, setModalMode] = useState<FinancialModalMode>(null);
   const [selectedEvent, setSelectedEvent] =
     useState<FinancialEventBudget | null>(null);
-  const [selectedTransaction, setSelectedTransaction] =
-    useState<FinancialTransaction | null>(null);
   const [successMessage, setSuccessMessage] = useState("");
   const [summary, setSummary] = useState<FinancialSummary | null>(null);
   const [transactions, setTransactions] = useState<FinancialTransaction[]>([]);
@@ -118,7 +117,6 @@ export default function Financial() {
   function closeModal() {
     setModalMode(null);
     setSelectedEvent(null);
-    setSelectedTransaction(null);
   }
 
   async function handleCreateAnnualBudget(amount: number) {
@@ -167,6 +165,17 @@ export default function Financial() {
     }
   }
 
+  function handleExportData() {
+    try {
+      const fileName = downloadFinancialTransactionsCsv(transactions);
+      setSuccessMessage(`Exported ${transactions.length} financial record(s) to ${fileName}.`);
+      setErrorMessage("");
+    } catch (error) {
+      setErrorMessage(error instanceof Error ? error.message : "Unable to export financial data.");
+      setSuccessMessage("");
+    }
+  }
+
   return (
     <div className="flex min-h-screen bg-slate-100 font-sans text-slate-900">
       <Sidebar onLogout={logout} />
@@ -188,13 +197,10 @@ export default function Financial() {
             void loadFinancialData(nextBudgetYearId);
           }}
           onOpenAnnualBudget={() => setModalMode("annual-budget")}
+          onExportData={handleExportData}
           onOpenEventExpense={(event) => {
             setSelectedEvent(event);
             setModalMode("event-expense");
-          }}
-          onOpenStatusEditor={(transaction) => {
-            setSelectedTransaction(transaction);
-            setModalMode("edit-status");
           }}
           selectedBudget={selectedBudget}
           successMessage={successMessage}
@@ -212,7 +218,6 @@ export default function Financial() {
         onCreateAnnualBudget={handleCreateAnnualBudget}
         onSaveTransaction={handleSaveTransaction}
         selectedEvent={selectedEvent}
-        selectedTransaction={selectedTransaction}
         transactions={transactions}
       />
     </div>

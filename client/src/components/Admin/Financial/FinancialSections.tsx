@@ -18,9 +18,9 @@ type FinancialSectionActions = {
   isLoading: boolean;
   onAddExpense: () => void;
   onBudgetYearChange: (budgetYearId: number) => void;
+  onExportData: () => void;
   onOpenAnnualBudget: () => void;
   onOpenEventExpense: (event: FinancialEventBudget) => void;
-  onOpenStatusEditor: (transaction: FinancialTransaction) => void;
   selectedBudget: AnnualBudget | null;
   successMessage: string;
   summary: FinancialSummary | null;
@@ -71,10 +71,8 @@ function statusClass(status: FinancialTransaction["status"]) {
 }
 
 function ExpenseHistoryTable({
-  onOpenStatusEditor,
   transactions,
 }: {
-  onOpenStatusEditor: (transaction: FinancialTransaction) => void;
   transactions: FinancialTransaction[];
 }) {
   const sortedTransactions = [...transactions].sort((first, second) => {
@@ -105,13 +103,12 @@ function ExpenseHistoryTable({
         <table className="w-full min-w-[900px] border-collapse text-sm">
           <thead>
             <tr className="bg-slate-50">
-              {["Date", "Description", "Event", "Status", "Amount", "Action"].map(
+              {["Date", "Description", "Event", "Status", "Amount"].map(
                 (heading) => (
                   <th
                     className={[
                       "px-5 py-4 text-[0.6875rem] font-semibold uppercase tracking-[0.08em] text-slate-400",
                       heading === "Amount" ? "text-right" : "text-left",
-                      heading === "Action" ? "text-center" : "",
                     ].join(" ")}
                     key={heading}
                   >
@@ -126,7 +123,7 @@ function ExpenseHistoryTable({
               <tr>
                 <td
                   className="border-t border-slate-200 px-5 py-10 text-center text-sm text-slate-400"
-                  colSpan={6}
+                  colSpan={5}
                 >
                   No expenses recorded yet.
                 </td>
@@ -161,15 +158,6 @@ function ExpenseHistoryTable({
                   <td className="border-t border-slate-200 px-5 py-4 text-right font-semibold text-slate-800">
                     {formatPeso(transaction.amount)}
                   </td>
-                  <td className="border-t border-slate-200 px-5 py-4 text-center">
-                    <button
-                      className="rounded-lg border border-slate-200 bg-white px-3 py-2 text-xs font-medium text-[#1e3a5f] hover:bg-blue-50"
-                      onClick={() => onOpenStatusEditor(transaction)}
-                      type="button"
-                    >
-                      Edit Status
-                    </button>
-                  </td>
                 </tr>
               ))
             )}
@@ -188,9 +176,9 @@ export default function FinancialSections({
   isLoading,
   onAddExpense,
   onBudgetYearChange,
+  onExportData,
   onOpenAnnualBudget,
   onOpenEventExpense,
-  onOpenStatusEditor,
   selectedBudget,
   successMessage,
   summary,
@@ -238,6 +226,7 @@ export default function FinancialSections({
       <div className="mb-6 flex justify-end gap-3">
         <button
           className="text-sm font-medium text-[#1e3a5f] hover:underline"
+          onClick={onExportData}
           type="button"
         >
           Export data
@@ -280,7 +269,6 @@ export default function FinancialSections({
       </div>
 
       <ExpenseHistoryTable
-        onOpenStatusEditor={onOpenStatusEditor}
         transactions={transactions}
       />
     </div>

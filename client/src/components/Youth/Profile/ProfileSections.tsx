@@ -7,7 +7,6 @@ import {
   EyeOff,
   GraduationCap,
   Lock,
-  LogOut,
   Mail,
   MapPin,
   User,
@@ -32,7 +31,6 @@ type ProfileSectionsProps = {
   isPasswordChangeRequired?: boolean;
   onChangePassword: (values: ChangePasswordFormValues) => Promise<boolean>;
   onEditProfile: () => void;
-  onLogout: () => void;
   profile: YouthProfileRecord | null;
   surveysCount: number;
 };
@@ -141,7 +139,6 @@ export default function ProfileSections({
   isPasswordChangeRequired = false,
   onChangePassword,
   onEditProfile,
-  onLogout,
   profile,
   surveysCount,
 }: ProfileSectionsProps) {
@@ -362,14 +359,6 @@ export default function ProfileSections({
           })}
         </div>
 
-        <button
-          className="mt-6 inline-flex w-full items-center justify-center gap-2 rounded-lg border border-[#1e3a5f]/25 bg-white px-4 py-3 text-sm font-medium text-[#1e3a5f] transition-colors hover:border-[#1e3a5f] hover:bg-[#1e3a5f] hover:text-white sm:w-auto"
-          onClick={onLogout}
-          type="button"
-        >
-          <LogOut className="h-4 w-4" />
-          Logout
-        </button>
       </section>
       <section className="rounded-[14px] border border-slate-200 bg-white p-5 shadow-sm sm:p-6">
         <div className="mb-5 flex items-start gap-3">

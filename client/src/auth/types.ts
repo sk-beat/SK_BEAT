@@ -17,7 +17,7 @@ export type AuthContextValue = {
   user: AuthUser | null;
   role: AppRole | null;
   loading: boolean;
-  login(payload: LoginPayload): Promise<void>;
+  login(payload: LoginPayload): Promise<{ role: AppRole; user: AuthUser }>;
   logout(): Promise<void>;
   refreshUser(): Promise<void>;
 };

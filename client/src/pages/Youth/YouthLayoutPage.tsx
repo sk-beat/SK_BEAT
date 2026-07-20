@@ -1,19 +1,56 @@
-import { Megaphone, User } from "lucide-react";
+import { LogOut, Megaphone } from "lucide-react";
 import { Link, NavLink, Navigate, Outlet, useLocation, useNavigate } from "react-router-dom";
 import { useAuth } from "../../auth/useAuth";
 import skLogo from "../../assets/sklogo.png";
 import BottomNav from "../../components/Youth/shared/BottomNav";
 import { youthAppNavItems } from "../../components/Youth/shared/youthNavigation";
+import LogoutConfirmationDialog from "../../components/shared/LogoutConfirmationDialog";
+import { getSafeAuthError } from "../../lib/supabase";
+import { useState } from "react";
 
 export default function YouthLayoutPage() {
-  const { loading, role, user } = useAuth();
+  const { loading, logout, role, user } = useAuth();
   const location = useLocation();
   const navigate = useNavigate();
+  const [isLogoutDialogOpen, setIsLogoutDialogOpen] = useState(false);
+  const [isLoggingOut, setIsLoggingOut] = useState(false);
+  const [logoutError, setLogoutError] = useState<string | null>(null);
   const isFirstLoginYouth = role === "kabataan" && user?.mustChangePassword;
   const isProfileRoute = location.pathname === "/youth/profile";
 
   if (!loading && isFirstLoginYouth && !isProfileRoute) {
     return <Navigate to="/youth/profile?changePassword=1" replace />;
+  }
+
+  function openLogoutDialog() {
+    console.log("[Logout] Confirmation opened", {
+      role,
+    });
+    setLogoutError(null);
+    setIsLogoutDialogOpen(true);
+  }
+
+  async function handleLogoutConfirm() {
+    if (isLoggingOut) return;
+    console.log("[Logout] Confirmed", {
+      role,
+    });
+    setIsLoggingOut(true);
+    setLogoutError(null);
+
+    try {
+      await logout();
+      setIsLogoutDialogOpen(false);
+      navigate("/login", { replace: true });
+    } catch (error) {
+      const errorMessage = getSafeAuthError(error).message;
+      console.error("[Logout] Failed", {
+        message: errorMessage,
+      });
+      setLogoutError(errorMessage);
+    } finally {
+      setIsLoggingOut(false);
+    }
   }
 
   return (
@@ -55,13 +92,13 @@ export default function YouthLayoutPage() {
               <Megaphone className="h-5 w-5" />
             </button>
             <button
-              aria-label="Profile"
+              aria-label="Logout"
               className="flex h-10 w-10 items-center justify-center rounded-full bg-white/10 text-white transition hover:bg-white/15"
-              onClick={() => navigate("/youth/profile")}
-              title="Profile"
+              onClick={openLogoutDialog}
+              title="Logout"
               type="button"
             >
-              <User className="h-5 w-5" />
+              <LogOut className="h-5 w-5" />
             </button>
           </div>
         </div>
@@ -97,6 +134,16 @@ export default function YouthLayoutPage() {
           </div>
         </div>
       </footer>
+      <LogoutConfirmationDialog
+        errorMessage={logoutError}
+        isLoggingOut={isLoggingOut}
+        onCancel={() => {
+          setIsLogoutDialogOpen(false);
+          setLogoutError(null);
+        }}
+        onConfirm={handleLogoutConfirm}
+        open={isLogoutDialogOpen}
+      />
     </div>
   );
 }

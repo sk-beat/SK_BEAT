@@ -18,6 +18,8 @@ export type TopSuggestedEvent = {
   suggested_event_name: string;
   category: string;
   respondent_count: number;
+  vote_count: number;
+  respondent_percentage: number;
   total_respondent_count: number;
   authenticated_respondent_count: number;
   guest_respondent_count: number;
@@ -30,6 +32,31 @@ export type TopSuggestedEvent = {
   source_surveys: string[];
   is_already_planned: boolean;
   matching_event_id: number | null;
+  source_type?: "official" | "custom" | "combined";
+};
+
+export type FeedbackEventInsight = {
+  event_id: number;
+  event_name: string;
+  event_date: string | null;
+  response_count: number;
+  average_rating: number | null;
+  one_star_count: number;
+  two_star_count: number;
+  three_star_count: number;
+  four_star_count: number;
+  five_star_count: number;
+};
+
+export type FeedbackInsightsSummary = {
+  events: FeedbackEventInsight[];
+  highestRatedEvents: FeedbackEventInsight[];
+  lowestRatedEvents: FeedbackEventInsight[];
+  overallAverageRating: number | null;
+  totalResponses: number;
+  ratingDistribution: Record<"1" | "2" | "3" | "4" | "5", number>;
+  recentTrend: "up" | "down" | "flat" | "not_enough_data";
+  insights: string[];
 };
 
 export type EventPreferenceRecommendation = {
@@ -78,6 +105,11 @@ export async function getPreferredActivityTypes() {
 export async function getTopSuggestedEvents() {
   const { data, error } = await supabase.rpc("get_admin_top_suggested_events");
   return { data: (data ?? []) as TopSuggestedEvent[], error };
+}
+
+export async function getFeedbackInsightsSummary() {
+  const { data, error } = await supabase.rpc("get_admin_feedback_insights_summary");
+  return { data: (data ?? null) as FeedbackInsightsSummary | null, error };
 }
 
 export async function getEventPreferenceRecommendations() {

@@ -8,6 +8,7 @@ export type YouthSurvey = {
   status: SurveyStatus;
   start_date: string | null;
   end_date: string | null;
+  expires_at: string | null;
   allow_guest_responses: boolean;
   created_at: string | null;
   survey_questions: SurveyQuestion[];
@@ -23,17 +24,18 @@ export type SurveyAnswerPayload = {
 function isEventInterestSurvey(survey: YouthSurvey) {
   return survey.survey_questions.some(
     (question) =>
-      question.question_type === "event_interest_likert" &&
-      question.reporting_key === "suggested_event_rating" &&
-      Boolean(question.event_name?.trim()) &&
-      Boolean(question.event_category?.trim()),
+      (question.question_type === "multiple_choice" && question.reporting_key === "suggested_event") ||
+      (question.question_type === "event_interest_likert" &&
+        question.reporting_key === "suggested_event_rating" &&
+        Boolean(question.event_name?.trim()) &&
+        Boolean(question.event_category?.trim())),
   );
 }
 
 function isEligibleSurvey(survey: YouthSurvey) {
   const now = new Date();
   const startsAt = survey.start_date ? new Date(survey.start_date) : null;
-  const endsAt = survey.end_date ? new Date(survey.end_date) : null;
+  const endsAt = survey.expires_at || survey.end_date ? new Date(survey.expires_at ?? survey.end_date ?? "") : null;
 
   return (
     survey.status === "published" &&
@@ -46,7 +48,7 @@ function isEligibleSurvey(survey: YouthSurvey) {
 export async function getYouthSurveys(userId: string) {
   const { data, error } = await supabase
     .from("surveys")
-    .select("survey_id,title,description,status,start_date,end_date,allow_guest_responses,created_at,survey_questions(question_id,question_text,question_type,is_required,sort_order,reporting_key,event_name,event_category,event_description,survey_options(option_id,option_text,sort_order,score_value)),survey_responses(response_id,user_id)")
+    .select("survey_id,title,description,status,start_date,end_date,expires_at,allow_guest_responses,created_at,survey_questions(question_id,question_text,question_type,is_required,sort_order,reporting_key,event_name,event_category,event_description,survey_options(option_id,option_text,sort_order,score_value,is_other,event_name,event_category,event_description)),survey_responses(response_id,user_id)")
     .order("created_at", { ascending: false });
 
   const surveys = ((data ?? []) as YouthSurvey[])
@@ -69,7 +71,7 @@ export async function getYouthSurveys(userId: string) {
 export async function getYouthSurvey(surveyId: number, userId: string) {
   const { data, error } = await supabase
     .from("surveys")
-    .select("survey_id,title,description,status,start_date,end_date,allow_guest_responses,created_at,survey_questions(question_id,question_text,question_type,is_required,sort_order,reporting_key,event_name,event_category,event_description,survey_options(option_id,option_text,sort_order,score_value)),survey_responses(response_id,user_id)")
+    .select("survey_id,title,description,status,start_date,end_date,expires_at,allow_guest_responses,created_at,survey_questions(question_id,question_text,question_type,is_required,sort_order,reporting_key,event_name,event_category,event_description,survey_options(option_id,option_text,sort_order,score_value,is_other,event_name,event_category,event_description)),survey_responses(response_id,user_id)")
     .eq("survey_id", surveyId)
     .maybeSingle();
 

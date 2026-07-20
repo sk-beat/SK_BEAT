@@ -212,7 +212,6 @@ export default function Profile() {
         }
         onChangePassword={handleChangePassword}
         onEditProfile={() => setModalMode("edit")}
-        onLogout={logout}
         profile={profile}
         surveysCount={surveysCount}
       />

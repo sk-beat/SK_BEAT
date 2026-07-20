@@ -218,6 +218,18 @@ export default function ProfileModals({
             value={fullname}
           />
         </div>
+        <div className="md:col-span-2">
+          <Field
+            disabled
+            label="Email"
+            onChange={() => undefined}
+            type="email"
+            value={profile?.email ?? ""}
+          />
+          <p className="mt-1.5 text-xs text-slate-500">
+            This email is linked to your account and cannot be changed here.
+          </p>
+        </div>
         <BirthdayPicker
           disabled={isSaving}
           onChange={setBirthday}

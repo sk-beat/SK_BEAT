@@ -9,6 +9,7 @@ export type PublicSurveySummary = {
   description: string | null;
   start_date: string | null;
   end_date: string | null;
+  expires_at: string | null;
   question_count: number;
   allow_guest_responses: boolean;
 };

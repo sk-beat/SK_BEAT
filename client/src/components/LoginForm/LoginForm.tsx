@@ -80,14 +80,19 @@ export default function LoginForm() {
     const password = String(formData.get("password") || "");
 
     try {
-      await login({
+      const session = await login({
         username,
         password,
       });
 
-      navigate("/dashboard", {
-        replace: true,
-      });
+      navigate(
+        session.role === "admin"
+          ? "/dashboard"
+          : session.user.mustChangePassword
+            ? "/youth/profile?changePassword=1"
+            : "/youth",
+        { replace: true },
+      );
     } catch (err) {
       setError(err instanceof Error ? err.message : "Login failed.");
     } finally {

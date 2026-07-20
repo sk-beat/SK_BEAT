@@ -34,6 +34,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   }, []);
 
   const loadUser = useCallback(async () => {
+    setLoading(true);
     const {
       data: { user: authUser },
       error: authError,
@@ -68,15 +69,16 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     }
 
     if (admin) {
-      setUser({
+      const nextUser = {
         id: authUser.id,
         email: admin.email,
         fullname: admin.fullname,
-      });
+      };
 
+      setUser(nextUser);
       setRole("admin");
       setLoading(false);
-      return;
+      return { role: "admin" as const, user: nextUser };
     }
 
     await supabase.rpc("refresh_my_kabataan_account_lock");
@@ -94,22 +96,26 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     }
 
     if (kabataan) {
-      setUser({
+      const nextUser = {
         id: authUser.id,
         email: kabataan.email,
         fullname: kabataan.fullname,
         mustChangePassword:
           Boolean(kabataan.must_change_password) ||
           kabataan.onboarding_status === "temporary_password_active",
-      });
+      };
 
+      setUser(nextUser);
       setRole("kabataan");
+      setLoading(false);
+      return { role: "kabataan" as const, user: nextUser };
     } else {
       setUser(null);
       setRole(null);
     }
 
     setLoading(false);
+    return null;
   }, [handleInvalidSession]);
 
   useEffect(() => {
@@ -132,6 +138,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   }, [loadUser]);
 
   async function login({ username, password }: LoginPayload) {
+    setLoading(true);
     const { data, error } = await supabase.auth.signInWithPassword({
       email: username,
       password,
@@ -139,12 +146,14 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
     
     if (error) {
+      setLoading(false);
       throw error;
     }
 
     const authUser = data.user;
 
     if (!authUser) {
+      setLoading(false);
       throw new Error("Login failed.");
     }
 
@@ -156,8 +165,9 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       .maybeSingle();
 
     if (admin) {
-      await loadUser();
-      return;
+      const loaded = await loadUser();
+      if (!loaded) throw new Error("Unable to load account profile.");
+      return loaded;
     }
 
     await supabase.rpc("refresh_my_kabataan_account_lock");
@@ -170,16 +180,19 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
     if (youthError) {
       await supabase.auth.signOut({ scope: "local" });
+      setLoading(false);
       throw youthError;
     }
 
     if (!kabataan) {
       await supabase.auth.signOut({ scope: "local" });
+      setLoading(false);
       throw new Error("Account is not authorized for this portal.");
     }
 
     if (kabataan.status !== "active") {
       await supabase.auth.signOut({ scope: "local" });
+      setLoading(false);
       throw new Error(
         kabataan.account_lock_reason === "age_limit"
           ? "Your Youth account is locked because you reached the age limit."
@@ -187,7 +200,9 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       );
     }
 
-    await loadUser();
+    const loaded = await loadUser();
+    if (!loaded) throw new Error("Unable to load account profile.");
+    return loaded;
   }
 
   async function logout() {
@@ -199,6 +214,10 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
     setUser(null);
     setRole(null);
+
+    if (error) {
+      throw error;
+    }
   }
 
   const value: AuthContextValue = {
@@ -208,7 +227,9 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     loading,
     login,
     logout,
-    refreshUser: loadUser,
+    refreshUser: async () => {
+      await loadUser();
+    },
   };
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;

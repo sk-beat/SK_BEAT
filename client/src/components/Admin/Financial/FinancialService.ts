@@ -82,7 +82,7 @@ export type FinancialTransactionPayload = {
   category: string;
   amount: number;
   transaction_date: string;
-  status: FinancialTransactionStatus;
+  status?: FinancialTransactionStatus;
   description: string | null;
   reference_number: string | null;
   payment_method: string | null;
@@ -273,6 +273,62 @@ export async function getFinancialTransactionsForCharts(budgetYearId: number) {
   };
 }
 
+function escapeCsvValue(value: string | number | null | undefined) {
+  const text = value === null || value === undefined ? "" : String(value);
+  return /[",\r\n]/.test(text) ? `"${text.replace(/"/g, '""')}"` : text;
+}
+
+function formatCsvDate(value: string | null | undefined) {
+  if (!value) return "";
+  const date = new Date(value);
+  return Number.isNaN(date.getTime()) ? value : date.toISOString();
+}
+
+export function buildFinancialTransactionsCsv(transactions: FinancialTransaction[]) {
+  const headers = [
+    "Transaction ID",
+    "Date",
+    "Event",
+    "Category",
+    "Description",
+    "Amount",
+    "Status",
+    "Created By",
+    "Created At",
+  ];
+  const rows = transactions.map((transaction) => [
+    transaction.transaction_id,
+    transaction.transaction_date,
+    transaction.events?.event_name ?? "",
+    transaction.category,
+    transaction.description ?? "",
+    transaction.amount,
+    transaction.status,
+    transaction.admins?.fullname ?? transaction.created_by,
+    formatCsvDate(transaction.created_at),
+  ]);
+
+  return [headers, ...rows]
+    .map((row) => row.map(escapeCsvValue).join(","))
+    .join("\r\n");
+}
+
+export function downloadFinancialTransactionsCsv(transactions: FinancialTransaction[]) {
+  const csv = `\uFEFF${buildFinancialTransactionsCsv(transactions)}`;
+  const today = new Date().toISOString().slice(0, 10);
+  const fileName = `sk-beat-financial-export-${today}.csv`;
+  const blob = new Blob([csv], { type: "text/csv;charset=utf-8" });
+  const url = URL.createObjectURL(blob);
+  const link = document.createElement("a");
+  link.href = url;
+  link.download = fileName;
+  document.body.appendChild(link);
+  link.click();
+  link.remove();
+  URL.revokeObjectURL(url);
+  return fileName;
+}
+
 export async function saveFinancialTransaction(
   payload: FinancialTransactionPayload,
 ) {
@@ -287,7 +343,7 @@ export async function saveFinancialTransaction(
       p_payment_method: payload.payment_method,
       p_receipt_path: payload.receipt_path,
       p_reference_number: payload.reference_number,
-      p_status: payload.status,
+      p_status: "completed",
       p_transaction_date: payload.transaction_date,
       p_transaction_id: payload.transaction_id ?? null,
       p_transaction_type: payload.transaction_type,

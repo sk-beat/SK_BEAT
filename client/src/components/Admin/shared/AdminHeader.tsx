@@ -1,9 +1,11 @@
 import { useEffect, useState } from "react";
+import { useNavigate } from "react-router-dom";
 import { useAuth } from "../../../auth/useAuth";
 import { BellIcon, ChevronDownIcon } from "../Dashboard/icons";
 import AdminAccountModals from "./AdminAccountModals";
-import { supabase } from "@/lib/supabase";
+import { getSafeAuthError, supabase } from "@/lib/supabase";
 import { getProfileImageUrl } from "../../../utils/profileImages";
+import LogoutConfirmationDialog from "../../shared/LogoutConfirmationDialog";
 import {
   getAdminNotifications,
   getAdminUnreadNotificationCount,
@@ -20,10 +22,14 @@ type AdminHeaderProps = {
 };
 
 export default function AdminHeader({ subtitle, title }: AdminHeaderProps) {
-  const { logout, user } = useAuth();
+  const { logout, role, user } = useAuth();
+  const navigate = useNavigate();
   const [isUserMenuOpen, setIsUserMenuOpen] = useState(false);
   const [isNotificationsOpen, setIsNotificationsOpen] = useState(false);
   const [accountModal, setAccountModal] = useState<AccountModalKind>(null);
+  const [isLogoutDialogOpen, setIsLogoutDialogOpen] = useState(false);
+  const [isLoggingOut, setIsLoggingOut] = useState(false);
+  const [logoutError, setLogoutError] = useState<string | null>(null);
 
   const [adminName, setAdminName] = useState("");
   const [adminPosition, setAdminPostion] = useState("");
@@ -35,6 +41,39 @@ export default function AdminHeader({ subtitle, title }: AdminHeaderProps) {
   function openAccountModal(modal: AccountModalKind) {
     setAccountModal(modal);
     setIsUserMenuOpen(false);
+  }
+
+  function openLogoutDialog() {
+    console.log("[Logout] Confirmation opened", {
+      role,
+    });
+    setLogoutError(null);
+    setIsUserMenuOpen(false);
+    setIsLogoutDialogOpen(true);
+  }
+
+  async function handleLogoutConfirm() {
+    if (isLoggingOut) return;
+
+    console.log("[Logout] Confirmed", {
+      role,
+    });
+    setIsLoggingOut(true);
+    setLogoutError(null);
+
+    try {
+      await logout();
+      setIsLogoutDialogOpen(false);
+      navigate("/login", { replace: true });
+    } catch (error) {
+      const errorMessage = getSafeAuthError(error).message;
+      console.error("[Logout] Failed", {
+        message: errorMessage,
+      });
+      setLogoutError(errorMessage);
+    } finally {
+      setIsLoggingOut(false);
+    }
   }
 
   async function fetchAdmin() {
@@ -217,7 +256,7 @@ export default function AdminHeader({ subtitle, title }: AdminHeaderProps) {
                 </button>
                 <button
                   className="block w-full px-3 py-2 text-center text-sm text-slate-900 hover:bg-blue-50"
-                  onClick={logout}
+                  onClick={openLogoutDialog}
                   type="button"
                 >
                   Logout
@@ -231,6 +270,16 @@ export default function AdminHeader({ subtitle, title }: AdminHeaderProps) {
       <AdminAccountModals
         modal={accountModal}
         onClose={() => setAccountModal(null)}
+      />
+      <LogoutConfirmationDialog
+        errorMessage={logoutError}
+        isLoggingOut={isLoggingOut}
+        onCancel={() => {
+          setIsLogoutDialogOpen(false);
+          setLogoutError(null);
+        }}
+        onConfirm={handleLogoutConfirm}
+        open={isLogoutDialogOpen}
       />
     </>
   );

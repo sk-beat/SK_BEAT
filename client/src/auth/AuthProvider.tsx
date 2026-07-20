@@ -2,8 +2,10 @@ import { useCallback, useEffect, useState, type ReactNode } from "react";
 
 import {
   clearInvalidSupabaseSession,
+  clearSupabaseAuthSessionStorage,
   isInvalidRefreshSessionError,
   logSafeAuthError,
+  setSupabaseAuthStorageMode,
   supabase,
 } from "@/lib/supabase";
 
@@ -137,8 +139,14 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     };
   }, [loadUser]);
 
-  async function login({ username, password }: LoginPayload) {
+  async function login({ rememberMe = false, username, password }: LoginPayload) {
     setLoading(true);
+    setSupabaseAuthStorageMode(rememberMe ? "local" : "session");
+    console.log("[Login] Remember Me mode", {
+      enabled: rememberMe,
+      storageMode: rememberMe ? "persistent" : "session",
+    });
+
     const { data, error } = await supabase.auth.signInWithPassword({
       email: username,
       password,
@@ -210,6 +218,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     if (error) {
       logSafeAuthError("sign_out", error);
       await clearInvalidSupabaseSession();
+    } else {
+      clearSupabaseAuthSessionStorage();
     }
 
     setUser(null);

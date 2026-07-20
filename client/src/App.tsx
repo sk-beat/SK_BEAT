@@ -1,4 +1,4 @@
-import { type ReactNode, useEffect } from "react";
+import { type ReactNode } from "react";
 import { BrowserRouter, Navigate, Route, Routes } from "react-router-dom";
 import { AuthProvider } from "./auth/AuthProvider";
 import Activities from "./components/Admin/Activities/Activities";
@@ -10,6 +10,8 @@ import SurveyBuilder from "./components/Admin/SurveyBuilder/SurveyBuilder";
 import SurveysAnnouncements from "./components/Admin/SurveysAnnouncements/SurveysAnnouncements";
 import YouthRecord from "./components/Admin/YouthRecord/YouthRecord";
 import LoginPage from "./pages/LoginPage";
+import ForgotPasswordPage from "./pages/ForgotPasswordPage";
+import ResetPasswordPage from "./pages/ResetPasswordPage";
 import UnauthorizedPage from "./pages/UnauthorizedPage";
 import LandingPage from "./pages/LandingPage";
 import EventFeedbackPage from "./pages/EventFeedbackPage";
@@ -30,8 +32,7 @@ import YouthProfilePage from "./pages/Youth/YouthProfilePage";
 import YouthSurveyDetailsPage from "./pages/Youth/YouthSurveyDetailsPage";
 import YouthSurveysPage from "./pages/Youth/YouthSurveysPage";
 import { PublicRoute } from "./routes/PublicRoute";
-
-const appTitle = "SK Kabataan Portal";
+import { useDocumentTitle } from "./hooks/useDocumentTitle";
 
 function PageTitle({
   children,
@@ -40,11 +41,22 @@ function PageTitle({
   children: ReactNode;
   title: string;
 }) {
-  useEffect(() => {
-    document.title = `${title} | ${appTitle}`;
-  }, [title]);
+  useDocumentTitle(title);
 
   return children;
+}
+
+function NotFoundPage() {
+  return (
+    <main className="flex min-h-screen items-center justify-center bg-slate-100 px-6 py-12 font-sans text-slate-900">
+      <section className="max-w-md rounded-[14px] border border-slate-200 bg-white p-8 text-center shadow-sm">
+        <h1 className="text-2xl font-bold text-[#0b1f3b]">Page Not Found</h1>
+        <p className="mt-2 text-sm text-slate-500">
+          The page you are looking for does not exist.
+        </p>
+      </section>
+    </main>
+  );
 }
 
 function App() {
@@ -59,7 +71,9 @@ function App() {
               index
               element={
                 <ProtectedRoute allowedRoles={["kabataan"]}>
-                  <YouthHomePage />
+                  <PageTitle title="Youth Dashboard">
+                    <YouthHomePage />
+                  </PageTitle>
                 </ProtectedRoute>
               }
             />
@@ -67,7 +81,9 @@ function App() {
               path="surveys"
               element={
                 <ProtectedRoute allowedRoles={["kabataan"]}>
-                  <YouthSurveysPage />
+                  <PageTitle title="Surveys">
+                    <YouthSurveysPage />
+                  </PageTitle>
                 </ProtectedRoute>
               }
             />
@@ -83,7 +99,9 @@ function App() {
               path="events"
               element={
                 <ProtectedRoute allowedRoles={["kabataan"]}>
-                  <YouthEventsPage />
+                  <PageTitle title="Events">
+                    <YouthEventsPage />
+                  </PageTitle>
                 </ProtectedRoute>
               }
             />
@@ -91,7 +109,9 @@ function App() {
               path="announcements"
               element={
                 <ProtectedRoute allowedRoles={["kabataan"]}>
-                  <YouthAnnouncementsPage />
+                  <PageTitle title="Announcements">
+                    <YouthAnnouncementsPage />
+                  </PageTitle>
                 </ProtectedRoute>
               }
             />
@@ -99,7 +119,9 @@ function App() {
               path="profile"
               element={
                 <ProtectedRoute allowedRoles={["kabataan"]}>
-                  <YouthProfilePage />
+                  <PageTitle title="Profile">
+                    <YouthProfilePage />
+                  </PageTitle>
                 </ProtectedRoute>
               }
             />
@@ -107,7 +129,9 @@ function App() {
               path="feedback"
               element={
                 <ProtectedRoute allowedRoles={["kabataan"]}>
-                  <YouthFeedbackPage />
+                  <PageTitle title="Feedback">
+                    <YouthFeedbackPage />
+                  </PageTitle>
                 </ProtectedRoute>
               }
             />
@@ -132,10 +156,28 @@ function App() {
             }
           />
           <Route
+            path="/forgot-password"
+            element={
+              <PublicRoute>
+                <PageTitle title="Forgot Password">
+                  <ForgotPasswordPage />
+                </PageTitle>
+              </PublicRoute>
+            }
+          />
+          <Route
+            path="/reset-password"
+            element={
+              <PageTitle title="Reset Password">
+                <ResetPasswordPage />
+              </PageTitle>
+            }
+          />
+          <Route
             path="/dashboard"
             element={
               <ProtectedRoute allowedRoles={["admin"] as const}>
-                <PageTitle title="Dashboard">
+                <PageTitle title="Admin Dashboard">
                   <Dashboard />
                 </PageTitle>
               </ProtectedRoute>
@@ -155,7 +197,7 @@ function App() {
             path="/insights"
             element={
               <ProtectedRoute allowedRoles={["admin"] as const}>
-                <PageTitle title="Decision Support Insights">
+                <PageTitle title="Feedback Insights">
                   <AdminInsightsPage />
                 </PageTitle>
               </ProtectedRoute>
@@ -165,7 +207,7 @@ function App() {
             path="/activities"
             element={
               <ProtectedRoute allowedRoles={["admin"] as const}>
-                <PageTitle title="Activities">
+                <PageTitle title="Events">
                   <Activities />
                 </PageTitle>
               </ProtectedRoute>
@@ -175,7 +217,7 @@ function App() {
             path="/financial"
             element={
               <ProtectedRoute allowedRoles={["admin"] as const}>
-                <PageTitle title="Financial">
+                <PageTitle title="Financial Management">
                   <Financial />
                 </PageTitle>
               </ProtectedRoute>
@@ -209,7 +251,7 @@ function App() {
             path="/survey-responses"
             element={
               <ProtectedRoute allowedRoles={["admin"] as const}>
-                <PageTitle title="Survey Responses">
+                <PageTitle title="Survey Results">
                   <SurveysAnnouncements view="responses" />
                 </PageTitle>
               </ProtectedRoute>
@@ -249,7 +291,7 @@ function App() {
             <Route
               path="/"
               element={
-                <PageTitle title="Home">
+                <PageTitle title="Landing">
                   <LandingPage />
                 </PageTitle>
               }
@@ -274,7 +316,7 @@ function App() {
             <Route
               path="/youth-events"
               element={
-                <PageTitle title="Events">
+                <PageTitle title="Upcoming Events">
                   <AdminEventsPage />
                 </PageTitle>
               }
@@ -282,7 +324,7 @@ function App() {
             <Route
               path="/youth-surveys"
               element={
-                <PageTitle title="Surveys">
+                <PageTitle title="Public Surveys">
                   <AdminSurveysPage />
                 </PageTitle>
               }
@@ -291,9 +333,7 @@ function App() {
             <Route
               path="/surveys/:surveyId"
               element={
-                <PageTitle title="Survey">
-                  <PublicSurveyDetailsPage />
-                </PageTitle>
+                <PublicSurveyDetailsPage />
               }
             />
           </Route>
@@ -303,6 +343,14 @@ function App() {
             element={
               <PageTitle title="Unauthorized">
                 <UnauthorizedPage />
+              </PageTitle>
+            }
+          />
+          <Route
+            path="*"
+            element={
+              <PageTitle title="Not Found">
+                <NotFoundPage />
               </PageTitle>
             }
           />

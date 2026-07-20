@@ -370,25 +370,6 @@ export async function getDecisionInsights(): Promise<{
       });
     });
 
-  if (insightRows.length === 0) {
-    insightRows.push({
-      actionLabel: "Open Survey Responses",
-      actionType: "view_survey_results",
-      category: "survey",
-      categoryName: "top-suggested-events",
-      dataSource: "Dashboard decision support",
-      description:
-        "Not enough data yet. Publish event-interest surveys, collect registrations, and record completed-event feedback to unlock stronger recommendations.",
-      id: "insufficient-data",
-      priority: 99,
-      recommendedAction: "Collect more survey, registration, and feedback data.",
-      severity: "info",
-      supportingValue: "Minimum 3 respondents or registrations required",
-      title: "Not enough data for strong conclusions",
-      type: "insufficient_data",
-    });
-  }
-
   return {
     data: {
       budgetYearId,

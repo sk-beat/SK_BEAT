@@ -8,6 +8,7 @@ export type AuthUser = {
 };
 
 export type LoginPayload = {
+  rememberMe?: boolean;
   username: string;
   password: string;
 };

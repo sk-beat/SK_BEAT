@@ -1,6 +1,7 @@
 import { useEffect, useState } from "react";
 import { useParams } from "react-router-dom";
 import { useAuth } from "../../../auth/useAuth";
+import { useDocumentTitle } from "../../../hooks/useDocumentTitle";
 import SurveyDetailsHeader from "./SurveyDetailsHeader";
 import SurveyDetailsSections from "./SurveyDetailsSections";
 import {
@@ -19,6 +20,7 @@ export default function SurveyDetails() {
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
   const [successMessage, setSuccessMessage] = useState<string | null>(null);
+  useDocumentTitle(survey?.title ?? "Survey Details");
 
   useEffect(() => {
     let isMounted = true;

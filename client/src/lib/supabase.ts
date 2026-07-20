@@ -14,6 +14,53 @@ function getProjectRef(url: string) {
 }
 
 export const supabaseAuthStorageKey = `sb-${getProjectRef(supabaseUrl)}-auth-token`;
+const supabaseAuthStorageModeKey = "sk-beat-auth-storage-mode";
+export const rememberedLoginEmailKey = "sk-beat-remembered-login-email";
+
+type AuthStorageMode = "local" | "session";
+
+function getBrowserStorage(type: AuthStorageMode) {
+  if (typeof window === "undefined") return null;
+  return type === "local" ? window.localStorage : window.sessionStorage;
+}
+
+export function getSupabaseAuthStorageMode(): AuthStorageMode {
+  return getBrowserStorage("local")?.getItem(supabaseAuthStorageModeKey) === "local"
+    ? "local"
+    : "session";
+}
+
+export function setSupabaseAuthStorageMode(mode: AuthStorageMode) {
+  const localStorage = getBrowserStorage("local");
+  const sessionStorage = getBrowserStorage("session");
+
+  if (mode === "local") {
+    localStorage?.setItem(supabaseAuthStorageModeKey, "local");
+    sessionStorage?.removeItem(supabaseAuthStorageKey);
+    return;
+  }
+
+  localStorage?.removeItem(supabaseAuthStorageModeKey);
+  localStorage?.removeItem(supabaseAuthStorageKey);
+}
+
+export function clearSupabaseAuthSessionStorage() {
+  getBrowserStorage("local")?.removeItem(supabaseAuthStorageKey);
+  getBrowserStorage("session")?.removeItem(supabaseAuthStorageKey);
+}
+
+const supabaseAuthStorage = {
+  getItem(key: string) {
+    return getBrowserStorage(getSupabaseAuthStorageMode())?.getItem(key) ?? null;
+  },
+  setItem(key: string, value: string) {
+    getBrowserStorage(getSupabaseAuthStorageMode())?.setItem(key, value);
+  },
+  removeItem(key: string) {
+    getBrowserStorage("local")?.removeItem(key);
+    getBrowserStorage("session")?.removeItem(key);
+  },
+};
 
 declare global {
   var __SK_BEAT_SUPABASE_CLIENT__: SupabaseClient | undefined;
@@ -26,6 +73,7 @@ export const supabase =
       autoRefreshToken: true,
       persistSession: true,
       detectSessionInUrl: true,
+      storage: supabaseAuthStorage,
     },
   });
 
@@ -86,5 +134,5 @@ export async function clearInvalidSupabaseSession() {
     logSafeAuthError("local_sign_out", error);
   }
 
-  window.localStorage.removeItem(supabaseAuthStorageKey);
+  clearSupabaseAuthSessionStorage();
 }

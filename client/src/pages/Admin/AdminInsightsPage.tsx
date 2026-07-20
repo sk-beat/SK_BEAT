@@ -8,6 +8,7 @@ import {
   BanknoteIcon,
   LineChartIcon,
 } from "../../components/Admin/Dashboard/icons";
+import { insightToneClasses } from "../../components/Admin/Dashboard/dashboardData";
 import {
   canRunDecisionInsightAction,
 } from "../../hooks/useDecisionInsightActions";
@@ -54,6 +55,13 @@ function getSeverityClass(severity: DecisionInsightSeverity) {
     case "info":
       return "bg-blue-50 text-blue-700 ring-blue-200";
   }
+}
+
+function getInsightTone(severity: DecisionInsightSeverity) {
+  if (severity === "critical") return insightToneClasses.critical;
+  if (severity === "warning") return insightToneClasses.warning;
+  if (severity === "opportunity") return insightToneClasses.success;
+  return insightToneClasses.info;
 }
 
 function getIcon(insight: DecisionInsight) {
@@ -172,7 +180,7 @@ export default function AdminInsightsPage() {
         </div>
 
         <div className="flex-1 p-8">
-          <section className="mb-6 grid gap-4 md:grid-cols-4">
+          <section className="mb-6 grid grid-cols-5 gap-6 max-xl:grid-cols-2 max-md:grid-cols-1">
             {[
               ["Budget Year", budgetYear ?? "Current"],
               ["Total Insights", insights.length],
@@ -181,13 +189,13 @@ export default function AdminInsightsPage() {
               ["Opportunity", opportunityCount],
             ].map(([label, value]) => (
               <article
-                className="rounded-xl border border-slate-200 bg-white p-4 shadow-sm"
+                className="rounded-[14px] border border-[#1e3a5f]/15 bg-white px-6 py-5 shadow-sm"
                 key={label}
               >
-                <p className="text-xs font-semibold uppercase tracking-[0.08em] text-slate-400">
+                <p className="text-sm font-semibold tracking-[0.02em] text-slate-400">
                   {label}
                 </p>
-                <p className="mt-2 text-2xl font-bold text-[#1e3a5f]">
+                <p className="mt-1 text-3xl font-bold leading-tight tracking-tight text-[#1e3a5f]">
                   {value}
                 </p>
               </article>
@@ -258,14 +266,23 @@ export default function AdminInsightsPage() {
               {filteredInsights.map((insight) => {
                 const Icon = getIcon(insight);
                 const canAct = canRunDecisionInsightAction(insight);
+                const tone = getInsightTone(insight.severity);
 
                 return (
                   <article
-                    className="rounded-xl border border-slate-200 bg-white p-5 shadow-sm"
+                    className={[
+                      "rounded-[14px] border border-slate-200 p-5 shadow-sm",
+                      tone.card,
+                    ].join(" ")}
                     key={insight.id}
                   >
                     <div className="flex items-start gap-4">
-                      <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl bg-[#1e3a5f]/10 text-[#1e3a5f]">
+                      <div
+                        className={[
+                          "flex h-11 w-11 shrink-0 items-center justify-center rounded-xl",
+                          tone.icon,
+                        ].join(" ")}
+                      >
                         <Icon className="h-5 w-5" />
                       </div>
                       <div className="min-w-0 flex-1">
@@ -285,7 +302,7 @@ export default function AdminInsightsPage() {
                         <h2 className="mt-3 text-base font-semibold text-slate-900">
                           {insight.title}
                         </h2>
-                        <p className="mt-2 text-sm leading-6 text-slate-600">
+                        <p className="mt-2 break-words text-sm leading-6 text-slate-600">
                           {insight.description}
                         </p>
                         <div className="mt-4 grid gap-3 text-xs text-slate-500 sm:grid-cols-2">

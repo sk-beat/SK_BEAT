@@ -1,7 +1,13 @@
 import { useRef, useState, type FormEvent } from "react";
-import { useNavigate } from "react-router-dom";
+import { Link, useNavigate } from "react-router-dom";
 import { useAuth } from "../../auth/useAuth";
 import skLogo from "../../assets/sklogo.png";
+import { rememberedLoginEmailKey } from "../../lib/supabase";
+
+function getRememberedLoginEmail() {
+  if (typeof window === "undefined") return "";
+  return window.localStorage.getItem(rememberedLoginEmailKey) ?? "";
+}
 
 function SkLogo({ size = "large" }: { size?: "large" | "small" }) {
   const isLarge = size === "large";
@@ -32,6 +38,8 @@ export default function LoginForm() {
   const [isExpanded, setIsExpanded] = useState(false);
   const [isLockedOpen, setIsLockedOpen] = useState(false);
   const [showPassword, setShowPassword] = useState(false);
+  const [rememberedEmail] = useState(getRememberedLoginEmail);
+  const [rememberMe, setRememberMe] = useState(() => Boolean(getRememberedLoginEmail()));
   const [error, setError] = useState("");
   const [isSubmitting, setIsSubmitting] = useState(false);
 
@@ -81,9 +89,16 @@ export default function LoginForm() {
 
     try {
       const session = await login({
+        rememberMe,
         username,
         password,
       });
+
+      if (rememberMe) {
+        window.localStorage.setItem(rememberedLoginEmailKey, username);
+      } else {
+        window.localStorage.removeItem(rememberedLoginEmailKey);
+      }
 
       navigate(
         session.role === "admin"
@@ -195,6 +210,7 @@ export default function LoginForm() {
                         type="text"
                         name="username"
                         placeholder="User Name"
+                        defaultValue={rememberedEmail}
                         required
                       />
                     </label>
@@ -233,16 +249,21 @@ export default function LoginForm() {
 
                     <div className="flex items-center justify-between gap-4">
                       <label className="flex cursor-pointer items-center gap-2 text-sm text-slate-700">
-                        <input className="peer sr-only" type="checkbox" />
+                        <input
+                          checked={rememberMe}
+                          className="peer sr-only"
+                          onChange={(event) => setRememberMe(event.target.checked)}
+                          type="checkbox"
+                        />
                         <span className="flex h-[18px] w-[18px] shrink-0 items-center justify-center rounded border-2 border-slate-300 peer-checked:border-[#0b1f3b] peer-checked:bg-[#0b1f3b] peer-checked:after:mb-0.5 peer-checked:after:h-2.5 peer-checked:after:w-1.5 peer-checked:after:rotate-45 peer-checked:after:border-b-2 peer-checked:after:border-r-2 peer-checked:after:border-white peer-checked:after:content-['']" />
                         Remember me
                       </label>
-                      <a
+                      <Link
                         className="text-sm text-[#0b1f3b] hover:underline"
-                        href="#forgot-password"
+                        to="/forgot-password"
                       >
                         Forgot Password?
-                      </a>
+                      </Link>
                     </div>
 
                     {error ? (
@@ -260,12 +281,16 @@ export default function LoginForm() {
                     </button>
 
                     <p className="text-center text-sm text-slate-500">
-                      <a
+                      <button
                         className="font-medium text-[#0b1f3b] hover:underline"
-                        href="#events"
+                        onClick={() => {
+                          console.log("[Login] Navigating to upcoming events");
+                          navigate("/youth-events");
+                        }}
+                        type="button"
                       >
                         View upcoming events
-                      </a>{" "}
+                      </button>{" "}
                       without logging in.
                     </p>
                   </form>

@@ -3,6 +3,7 @@ import {
   getAllPublicScheduledEvents,
   type PublicScheduledEvent,
 } from "../../services/PublicEventsService";
+import { useDocumentTitle } from "../../hooks/useDocumentTitle";
 import { youthImages } from "../../utils/adminPortalData";
 import AdminModal from "../../utils/AdminModal";
 
@@ -25,6 +26,7 @@ export default function AdminEventsPage() {
     useState<PublicScheduledEvent | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
+  useDocumentTitle(selectedEvent?.event_name ?? "Upcoming Events");
 
   useEffect(() => {
     let isMounted = true;

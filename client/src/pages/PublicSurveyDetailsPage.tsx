@@ -8,6 +8,7 @@ import {
   markGuestSurveySubmitted,
   submitPublicEventInterestSurvey,
 } from "../services/PublicSurveysService";
+import { useDocumentTitle } from "../hooks/useDocumentTitle";
 
 export default function PublicSurveyDetailsPage() {
   const { surveyId } = useParams();
@@ -17,6 +18,7 @@ export default function PublicSurveyDetailsPage() {
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [errorMessage, setErrorMessage] = useState("");
   const [hasSubmitted, setHasSubmitted] = useState(false);
+  useDocumentTitle(survey?.title ?? "Public Survey Details");
 
   useEffect(() => {
     let isMounted = true;

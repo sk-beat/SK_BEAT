@@ -173,8 +173,9 @@ function CategoryCard({ data }: { data: DashboardData }) {
 }
 
 function InsightsPanel({ data }: { data: DashboardData }) {
-  const insights = data.decisionInsights.length
-    ? data.decisionInsights.map((insight) => ({
+  const visibleInsights = data.decisionInsights
+    .slice(0, 3)
+    .map((insight) => ({
         actionLabel: insight.actionLabel,
         actionType: insight.actionType,
         categoryName: insight.categoryName,
@@ -187,22 +188,11 @@ function InsightsPanel({ data }: { data: DashboardData }) {
         recommendedEventName: insight.recommendedEventName,
         title: insight.title,
         tone: (insight.severity === "critical"
-          ? "warning"
+          ? "critical"
           : insight.severity === "opportunity"
             ? "success"
-            : insight.severity) as "warning" | "success" | "info",
-      }))
-    : [
-        {
-          actionLabel: undefined,
-          actionType: "none",
-          description: "Not enough data. Publish event-interest surveys, collect registrations, and record completed-event feedback to show decision-support insights.",
-          icon: AlertIcon,
-          title: "Decision support",
-          tone: "info" as const,
-        },
-      ];
-  const visibleInsights = insights.slice(0, 3);
+            : insight.severity) as "critical" | "warning" | "success" | "info",
+      }));
 
   return (
     <section className="mb-8 rounded-xl border border-slate-200 bg-white p-6 shadow-sm" id="insights">
@@ -224,8 +214,13 @@ function InsightsPanel({ data }: { data: DashboardData }) {
         </Link>
       </div>
 
-      <div className="grid gap-4 xl:grid-cols-3">
-        {visibleInsights.map((insight, index) => {
+      {visibleInsights.length === 0 ? (
+        <div className="rounded-xl border border-dashed border-slate-300 bg-white p-6 text-sm text-slate-500">
+          No decision-support insights are available yet.
+        </div>
+      ) : (
+        <div className="grid gap-4 xl:grid-cols-3">
+        {visibleInsights.map((insight) => {
           const Icon = insight.icon;
           const tone = insightToneClasses[insight.tone];
 
@@ -235,7 +230,7 @@ function InsightsPanel({ data }: { data: DashboardData }) {
                 "flex items-center gap-4 rounded-[14px] p-5 shadow-sm",
                 tone.card,
               ].join(" ")}
-              key={"insight" in insight ? insight.insight.id : `${insight.title}-${index}`}
+              key={insight.insight.id}
             >
               <div
                 className={[
@@ -252,7 +247,7 @@ function InsightsPanel({ data }: { data: DashboardData }) {
                 <p className="mt-2 text-xs leading-relaxed text-slate-500">
                   {insight.description}
                 </p>
-                {"insight" in insight && canRunDecisionInsightAction(insight.insight) ? (
+                {canRunDecisionInsightAction(insight.insight) ? (
                   <Link
                     className="mt-3 inline-flex items-center gap-1 text-xs font-semibold text-[#1e3a5f] hover:underline"
                     to={getInsightPath(insight.insight)}
@@ -265,6 +260,7 @@ function InsightsPanel({ data }: { data: DashboardData }) {
           );
         })}
       </div>
+      )}
     </section>
   );
 }

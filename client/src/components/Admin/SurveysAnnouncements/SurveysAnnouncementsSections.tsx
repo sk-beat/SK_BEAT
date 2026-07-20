@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useState, type ReactNode } from "react";
 import { Link, useSearchParams } from "react-router-dom";
 import InsightCard from "../shared/InsightCard";
 import AdminModal from "../shared/AdminModal";
@@ -24,6 +24,7 @@ import {
 } from "./SurveyInsightsService";
 import {
   getKabataanSuggestions,
+  updateKabataanSuggestionFeedback,
   type KabataanSuggestion,
 } from "./SurveysAnnouncementsService";
 
@@ -40,7 +41,7 @@ function DataTable({
   rows,
 }: {
   headers: string[];
-  rows: Array<Array<string | number>>;
+  rows: Array<Array<ReactNode>>;
 }) {
   return (
     <div className="overflow-hidden overflow-x-auto rounded-[14px] border border-slate-200 bg-white shadow-sm">
@@ -58,7 +59,7 @@ function DataTable({
           {rows.map((row) => (
             <tr className="hover:bg-slate-50" key={String(row[0])}>
               {row.map((cell, index) => (
-                <td className="border-t border-slate-200 px-5 py-4" key={`${cell}-${index}`}>{cell}</td>
+                <td className="border-t border-slate-200 px-5 py-4" key={`${String(row[0])}-${index}`}>{cell}</td>
               ))}
             </tr>
           ))}
@@ -82,6 +83,25 @@ function formatDate(value: string | null) {
 
 function formatRating(value: number | null) {
   return typeof value === "number" ? value.toFixed(2).replace(/\.00$/, "") : "-";
+}
+
+function normalizeFeedback(value: string | null | undefined) {
+  const trimmed = value?.trim();
+  return trimmed ? trimmed : null;
+}
+
+function FeedbackCell({ value }: { value: string | null }) {
+  const feedback = normalizeFeedback(value);
+
+  if (!feedback) {
+    return <span className="text-slate-400">No feedback yet</span>;
+  }
+
+  return (
+    <p className="max-w-xs whitespace-pre-line text-slate-700" title={feedback}>
+      {feedback.length > 120 ? `${feedback.slice(0, 117)}...` : feedback}
+    </p>
+  );
 }
 
 function getRatingTone(value: number | null): InsightTone {
@@ -198,35 +218,62 @@ function buildFeedbackInsightCards(summary: FeedbackInsightsSummary | null) {
 export function KabataanSuggestionsSection() {
   const [suggestions, setSuggestions] = useState<KabataanSuggestion[]>([]);
   const [isLoading, setIsLoading] = useState(true);
+  const [isSavingFeedback, setIsSavingFeedback] = useState(false);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
+  const [feedbackErrorMessage, setFeedbackErrorMessage] = useState<string | null>(null);
+  const [selectedSuggestion, setSelectedSuggestion] = useState<KabataanSuggestion | null>(null);
+  const [feedbackComment, setFeedbackComment] = useState("");
 
-  useEffect(() => {
-    let isMounted = true;
+  async function loadSuggestions() {
+    setIsLoading(true);
+    setErrorMessage(null);
 
-    async function loadSuggestions() {
-      setIsLoading(true);
-      setErrorMessage(null);
+    const { data, error } = await getKabataanSuggestions();
 
-      const { data, error } = await getKabataanSuggestions();
-
-      if (!isMounted) {
-        return;
-      }
-
-      if (error) {
-        setErrorMessage(error.message);
-      }
-
+    if (error) {
+      setErrorMessage("Unable to load Kabataan suggestions.");
+      setSuggestions([]);
+    } else {
       setSuggestions(data);
-      setIsLoading(false);
     }
 
-    loadSuggestions();
+    setIsLoading(false);
+  }
 
-    return () => {
-      isMounted = false;
-    };
+  useEffect(() => {
+    void Promise.resolve().then(loadSuggestions);
   }, []);
+
+  function openFeedbackModal(suggestion: KabataanSuggestion) {
+    setSelectedSuggestion(suggestion);
+    setFeedbackComment(normalizeFeedback(suggestion.feedback_comment) ?? "");
+    setFeedbackErrorMessage(null);
+  }
+
+  async function handleSaveFeedback() {
+    if (!selectedSuggestion) {
+      return;
+    }
+
+    setIsSavingFeedback(true);
+    setFeedbackErrorMessage(null);
+
+    const { error } = await updateKabataanSuggestionFeedback(
+      selectedSuggestion.suggestion_id,
+      feedbackComment,
+    );
+
+    setIsSavingFeedback(false);
+
+    if (error) {
+      setFeedbackErrorMessage(error.message);
+      return;
+    }
+
+    setSelectedSuggestion(null);
+    setFeedbackComment("");
+    await loadSuggestions();
+  }
 
   return (
     <div className="flex-1 p-8">
@@ -248,12 +295,20 @@ export function KabataanSuggestionsSection() {
             </div>
           ) : suggestions.length > 0 ? (
             <DataTable
-              headers={["#", "Date", "Submitted By", "Feedback"]}
+              headers={["#", "Date", "Submitted By", "Suggestion", "Feedback", "Actions"]}
               rows={suggestions.map((item) => [
                 item.suggestion_id,
                 formatDate(item.submitted_at),
                 item.submitted_by,
                 item.message,
+                <FeedbackCell value={item.feedback_comment} />,
+                <button
+                  className="rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm font-medium text-slate-700 hover:bg-slate-50"
+                  onClick={() => openFeedbackModal(item)}
+                  type="button"
+                >
+                  {normalizeFeedback(item.feedback_comment) ? "Edit Feedback" : "Add Feedback"}
+                </button>,
               ])}
             />
           ) : (
@@ -263,6 +318,59 @@ export function KabataanSuggestionsSection() {
           )}
         </div>
       </section>
+      <AdminModal
+        footer={
+          <>
+            <button
+              className="rounded-lg border border-slate-200 px-4 py-2 text-sm font-medium text-slate-700 hover:bg-slate-50"
+              disabled={isSavingFeedback}
+              onClick={() => setSelectedSuggestion(null)}
+              type="button"
+            >
+              Cancel
+            </button>
+            <button
+              className="rounded-lg bg-[#1e3a5f] px-4 py-2 text-sm font-medium text-white hover:bg-[#2a4a6f] disabled:cursor-not-allowed disabled:opacity-60"
+              disabled={isSavingFeedback}
+              onClick={handleSaveFeedback}
+              type="button"
+            >
+              {isSavingFeedback ? "Saving..." : "Save Feedback"}
+            </button>
+          </>
+        }
+        onClose={() => {
+          if (!isSavingFeedback) setSelectedSuggestion(null);
+        }}
+        open={Boolean(selectedSuggestion)}
+        title="Suggestion Feedback"
+      >
+        <div className="space-y-4">
+          <div>
+            <p className="text-xs font-semibold uppercase tracking-[0.08em] text-slate-400">
+              Suggestion
+            </p>
+            <p className="mt-1 whitespace-pre-line text-sm text-slate-700">
+              {selectedSuggestion?.message}
+            </p>
+          </div>
+          <label className="block space-y-2">
+            <span className="text-sm font-medium text-slate-700">Feedback</span>
+            <textarea
+              className="min-h-32 w-full resize-y rounded-lg border border-slate-200 px-4 py-3 text-sm text-slate-800 outline-none focus:border-[#1e3a5f] focus:ring-2 focus:ring-[#1e3a5f]/15"
+              disabled={isSavingFeedback}
+              onChange={(event) => setFeedbackComment(event.target.value)}
+              placeholder="Type admin feedback for this suggestion..."
+              value={feedbackComment}
+            />
+          </label>
+          {feedbackErrorMessage ? (
+            <div className="rounded-lg border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700">
+              {feedbackErrorMessage}
+            </div>
+          ) : null}
+        </div>
+      </AdminModal>
     </div>
   );
 }

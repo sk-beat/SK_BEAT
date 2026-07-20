@@ -126,6 +126,7 @@ export default function LoginForm() {
     () => Boolean(getRememberedLoginEmail()) || Boolean(getRememberedLoginPassword()),
   );
   const [error, setError] = useState("");
+  const [passwordError, setPasswordError] = useState("");
   const [isSubmitting, setIsSubmitting] = useState(false);
 
   const expand = () => setIsExpanded(true);
@@ -189,6 +190,7 @@ export default function LoginForm() {
     event.preventDefault();
 
     setError("");
+    setPasswordError("");
     setIsSubmitting(true);
 
     const loginUsername = username.trim();
@@ -218,10 +220,21 @@ export default function LoginForm() {
         { replace: true },
       );
     } catch (err) {
-      setError(err instanceof Error ? err.message : "Login failed.");
+      const message = err instanceof Error ? err.message : "Login failed.";
+
+      if (message === "Email or password is invalid.") {
+        setPasswordError(message);
+      } else {
+        setError(message);
+      }
     } finally {
       setIsSubmitting(false);
     }
+  }
+
+  function clearCredentialErrors() {
+    if (error) setError("");
+    if (passwordError) setPasswordError("");
   }
 
   return (
@@ -298,7 +311,7 @@ export default function LoginForm() {
                   </p>
 
                   <form className="space-y-5" onSubmit={handleSubmit}>
-                    <label className="relative block">
+                    <label className="relative block" htmlFor="username">
                       <span className="pointer-events-none absolute left-4 top-1/2 flex -translate-y-1/2 text-slate-500">
                         <svg
                           xmlns="http://www.w3.org/2000/svg"
@@ -316,56 +329,74 @@ export default function LoginForm() {
                       </span>
                       <input
                         className="w-full rounded-lg border border-slate-300 px-4 py-3.5 pl-12 text-[0.9375rem] text-slate-800 transition outline-none placeholder:text-slate-400 focus:border-[#0b1f3b]"
+                        id="username"
                         type="text"
                         name="username"
                         placeholder="User Name"
                         autoComplete="username"
                         onChange={(event) => {
                           setUsername(event.target.value);
-                          if (error) setError("");
+                          clearCredentialErrors();
                         }}
                         required
                         value={username}
                       />
                     </label>
 
-                    <label className="relative block">
-                      <span className="pointer-events-none absolute left-4 top-1/2 flex -translate-y-1/2 text-slate-500">
-                        <svg
-                          xmlns="http://www.w3.org/2000/svg"
-                          width="18"
-                          height="18"
-                          viewBox="0 0 24 24"
-                          fill="none"
-                          stroke="currentColor"
-                          strokeWidth="2"
-                          aria-hidden="true"
+                    <div className="space-y-2">
+                      <label className="relative block" htmlFor="password">
+                        <span className="pointer-events-none absolute left-4 top-1/2 flex -translate-y-1/2 text-slate-500">
+                          <svg
+                            xmlns="http://www.w3.org/2000/svg"
+                            width="18"
+                            height="18"
+                            viewBox="0 0 24 24"
+                            fill="none"
+                            stroke="currentColor"
+                            strokeWidth="2"
+                            aria-hidden="true"
+                          >
+                            <rect x="3" y="11" width="18" height="11" rx="2" />
+                            <path d="M7 11V7a5 5 0 0 1 10 0v4" />
+                          </svg>
+                        </span>
+                        <input
+                          aria-describedby={passwordError ? "password-error" : undefined}
+                          aria-invalid={Boolean(passwordError)}
+                          className={[
+                            "w-full rounded-lg border px-4 py-3.5 pl-12 pr-20 text-[0.9375rem] text-slate-800 transition outline-none placeholder:text-slate-400 focus:border-[#0b1f3b]",
+                            passwordError ? "border-red-300" : "border-slate-300",
+                          ].join(" ")}
+                          id="password"
+                          type={showPassword ? "text" : "password"}
+                          name="password"
+                          placeholder="Password"
+                          autoComplete="current-password"
+                          onChange={(event) => {
+                            setPassword(event.target.value);
+                            clearCredentialErrors();
+                          }}
+                          required
+                          value={password}
+                        />
+                        <button
+                          type="button"
+                          className="absolute right-4 top-1/2 -translate-y-1/2 text-xs font-semibold text-[#0b1f3b] hover:underline"
+                          onClick={() => setShowPassword((current) => !current)}
                         >
-                          <rect x="3" y="11" width="18" height="11" rx="2" />
-                          <path d="M7 11V7a5 5 0 0 1 10 0v4" />
-                        </svg>
-                      </span>
-                      <input
-                        className="w-full rounded-lg border border-slate-300 px-4 py-3.5 pl-12 pr-20 text-[0.9375rem] text-slate-800 transition outline-none placeholder:text-slate-400 focus:border-[#0b1f3b]"
-                        type={showPassword ? "text" : "password"}
-                        name="password"
-                        placeholder="Password"
-                        autoComplete="current-password"
-                        onChange={(event) => {
-                          setPassword(event.target.value);
-                          if (error) setError("");
-                        }}
-                        required
-                        value={password}
-                      />
-                      <button
-                        type="button"
-                        className="absolute right-4 top-1/2 -translate-y-1/2 text-xs font-semibold text-[#0b1f3b] hover:underline"
-                        onClick={() => setShowPassword((current) => !current)}
-                      >
-                        {showPassword ? "HIDE" : "SHOW"}
-                      </button>
-                    </label>
+                          {showPassword ? "HIDE" : "SHOW"}
+                        </button>
+                      </label>
+                      {passwordError ? (
+                        <p
+                          className="text-sm text-red-600"
+                          id="password-error"
+                          role="alert"
+                        >
+                          {passwordError}
+                        </p>
+                      ) : null}
+                    </div>
 
                     <div className="flex items-center justify-between gap-4">
                       <label className="flex cursor-pointer items-center gap-2 text-sm text-slate-700">

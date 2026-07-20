@@ -223,11 +223,18 @@ WITH CHECK (
 -- KABATAAN SUGGESTIONS
 -------------------------------------------------------------------------------
 
-CREATE POLICY "Authenticated users can view suggestions"
+CREATE POLICY "Active admins can read suggestions"
 ON kabataan_suggestions
 FOR SELECT
 TO authenticated
-USING (true);
+USING (is_active_admin());
+
+
+CREATE POLICY "Youth can read own suggestions"
+ON kabataan_suggestions
+FOR SELECT
+TO authenticated
+USING (auth.uid() = user_id);
 
 
 CREATE POLICY "Users can submit own suggestions"
@@ -237,3 +244,16 @@ TO authenticated
 WITH CHECK (
   auth.uid() = user_id
 );
+
+
+CREATE POLICY "Active admins can update suggestion feedback"
+ON kabataan_suggestions
+FOR UPDATE
+TO authenticated
+USING (is_active_admin())
+WITH CHECK (is_active_admin());
+
+
+REVOKE UPDATE ON kabataan_suggestions FROM public, anon, authenticated;
+GRANT UPDATE (feedback_comment, feedback_updated_at, feedback_updated_by)
+ON kabataan_suggestions TO authenticated;

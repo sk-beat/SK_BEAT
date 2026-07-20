@@ -250,7 +250,7 @@ const defaultSidebarItems: SidebarItem[] = [
     icon: MegaphoneIcon,
     subItems: [
       {
-        label: "Kabataan Suggestions",
+        label: "Event Feedback",
         to: "/kabataan-suggestions",
         icon: MessageIcon,
       },

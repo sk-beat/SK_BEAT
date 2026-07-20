@@ -1,38 +1,73 @@
 import { supabase } from "@/lib/supabase";
 
-export type KabataanSuggestion = {
+export type AdminEventFeedbackRecord = {
   comment: string | null;
-  created_at: string | null;
-  feedback_id: string;
+  event_id: number | null;
+  event_name: string | null;
+  feedback_id: number;
   is_guest: boolean;
-  related_title: string | null;
-  source_type: string;
+  rating: number | null;
+  respondent_status: "Guest" | "Registered User";
+  submitted_at: string | null;
   submitted_by: string;
+  was_registered: boolean;
 };
 
-type KabataanSuggestionRow = {
-  comment: string | null;
-  created_at: string | null;
-  feedback_id: string;
-  is_guest: boolean;
-  related_title: string | null;
-  source_type: string;
-  submitted_by_name: string;
+type AdminEventFeedbackRecordRow = {
+  comments: string | null;
+  event_id: number | null;
+  events: { event_name: string | null } | { event_name: string | null }[] | null;
+  feedback_id: number;
+  guest_name: string | null;
+  kabataan_profiles:
+    | { fullname: string | null; email: string | null }
+    | { fullname: string | null; email: string | null }[]
+    | null;
+  rating: number | null;
+  respondent_type: string | null;
+  submitted_at: string | null;
+  user_id: string | null;
+  was_registered: boolean | null;
 };
 
-export async function getKabataanSuggestions() {
-  const { data, error } = await supabase.rpc("get_admin_kabataan_feedback_records");
-  const suggestions = ((data ?? []) as KabataanSuggestionRow[]).map((item) => ({
-    comment: item.comment,
-    created_at: item.created_at,
-    feedback_id: item.feedback_id,
-    is_guest: item.is_guest,
-    related_title: item.related_title,
-    source_type: item.source_type,
-    submitted_by: item.is_guest ? "Guest" : item.submitted_by_name || "Youth",
-  }));
+function firstRelated<T>(value: T | T[] | null): T | null {
+  return Array.isArray(value) ? (value[0] ?? null) : value;
+}
 
-  return { data: suggestions, error };
+export async function getAdminEventFeedbackRecords() {
+  const { data, error } = await supabase
+    .from("post_event_feedback")
+    .select(
+      "feedback_id,event_id,user_id,rating,comments,submitted_at,respondent_type,guest_name,was_registered,events(event_name),kabataan_profiles(fullname,email)",
+    )
+    .order("submitted_at", { ascending: false, nullsFirst: false })
+    .order("feedback_id", { ascending: false });
+
+  const records: AdminEventFeedbackRecord[] = ((data ?? []) as AdminEventFeedbackRecordRow[]).map((item) => {
+    const event = firstRelated(item.events);
+    const profile = firstRelated(item.kabataan_profiles);
+    const isGuest = item.respondent_type === "guest" || !item.user_id;
+    const guestName = item.guest_name?.trim();
+    const profileName = profile?.fullname?.trim();
+    const profileEmail = profile?.email?.trim();
+
+    return {
+      comment: item.comments,
+      event_id: item.event_id,
+      event_name: event?.event_name ?? null,
+      feedback_id: item.feedback_id,
+      is_guest: isGuest,
+      rating: item.rating,
+      respondent_status: isGuest ? "Guest" : "Registered User",
+      submitted_at: item.submitted_at,
+      submitted_by: isGuest
+        ? guestName || "Guest"
+        : profileName || profileEmail || "Registered User",
+      was_registered: item.was_registered ?? false,
+    };
+  });
+
+  return { data: records, error };
 }
 
 export type SurveyResponseReport = {
@@ -83,10 +118,6 @@ type SurveyResponseReportRow = {
     }>;
   }>;
 };
-
-function firstRelated<T>(value: T | T[] | null): T | null {
-  return Array.isArray(value) ? (value[0] ?? null) : value;
-}
 
 export async function getSurveyResponseReports() {
   const { data, error } = await supabase

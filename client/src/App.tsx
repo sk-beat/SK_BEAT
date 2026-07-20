@@ -241,8 +241,8 @@ function App() {
             path="/kabataan-suggestions"
             element={
               <ProtectedRoute allowedRoles={["admin"] as const}>
-                <PageTitle title="Kabataan Suggestions">
-                  <SurveysAnnouncements view="suggestions" />
+                <PageTitle title="Event Feedback">
+                  <SurveysAnnouncements view="feedback" />
                 </PageTitle>
               </ProtectedRoute>
             }

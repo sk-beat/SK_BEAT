@@ -10,12 +10,12 @@ import SurveysAnnouncementsHeader from "./SurveysAnnouncementsHeader";
 import SurveysAnnouncementsModals from "./SurveysAnnouncementsModals";
 import {
   AnnouncementsSection,
-  KabataanSuggestionsSection,
+  EventFeedbackSection,
   SurveyResponsesSection,
 } from "./SurveysAnnouncementsSections";
 
 type SurveysAnnouncementsProps = {
-  view?: "suggestions" | "responses" | "announcements";
+  view?: "feedback" | "suggestions" | "responses" | "announcements";
 };
 
 export default function SurveysAnnouncements({
@@ -51,7 +51,8 @@ export default function SurveysAnnouncements({
   }
 
   const viewContent = {
-    suggestions: <KabataanSuggestionsSection />,
+    feedback: <EventFeedbackSection />,
+    suggestions: <EventFeedbackSection />,
     responses: <SurveyResponsesSection />,
     announcements: (
       <AnnouncementsSection

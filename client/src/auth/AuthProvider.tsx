@@ -185,7 +185,6 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   }, [loadUser]);
 
   async function login({ rememberMe = false, username, password }: LoginPayload) {
-    setLoading(true);
     setSupabaseAuthStorageMode(rememberMe ? "local" : "session");
 
     const { data, error } = await supabase.auth.signInWithPassword({

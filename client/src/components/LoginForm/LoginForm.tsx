@@ -111,6 +111,17 @@ function SkLogo({ size = "large" }: { size?: "large" | "small" }) {
   );
 }
 
+function isFailedCredentialsMessage(message: string) {
+  const normalized = message.toLowerCase();
+
+  return (
+    normalized.includes("email or password is invalid") ||
+    normalized.includes("invalid login credentials") ||
+    normalized.includes("invalid credentials") ||
+    normalized.includes("failed credentials")
+  );
+}
+
 export default function LoginForm() {
   const { login } = useAuth();
   const navigate = useNavigate();
@@ -222,7 +233,7 @@ export default function LoginForm() {
     } catch (err) {
       const message = err instanceof Error ? err.message : "Login failed.";
 
-      if (message === "Email or password is invalid.") {
+      if (isFailedCredentialsMessage(message)) {
         setPasswordError(message);
       } else {
         setError(message);

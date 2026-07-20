@@ -23,8 +23,8 @@ import {
   type TopSuggestedEvent,
 } from "./SurveyInsightsService";
 import {
-  getKabataanSuggestions,
-  type KabataanSuggestion,
+  getAdminEventFeedbackRecords,
+  type AdminEventFeedbackRecord,
 } from "./SurveysAnnouncementsService";
 
 type FeedbackInsightCard = {
@@ -229,31 +229,31 @@ function buildFeedbackInsightCards(summary: FeedbackInsightsSummary | null) {
   return cards;
 }
 
-export function KabataanSuggestionsSection() {
-  const [suggestions, setSuggestions] = useState<KabataanSuggestion[]>([]);
+export function EventFeedbackSection() {
+  const [feedbackRecords, setFeedbackRecords] = useState<AdminEventFeedbackRecord[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
   const [search, setSearch] = useState("");
-  const [sourceFilter, setSourceFilter] = useState("all");
+  const [statusFilter, setStatusFilter] = useState<"all" | "guest" | "registered">("all");
   const [sortOrder, setSortOrder] = useState<"newest" | "oldest">("newest");
   const [page, setPage] = useState(1);
   const pageSize = 10;
 
-  async function loadSuggestions() {
+  async function loadFeedbackRecords() {
     setIsLoading(true);
     setErrorMessage(null);
 
-    const { data, error } = await getKabataanSuggestions();
+    const { data, error } = await getAdminEventFeedbackRecords();
 
     if (error) {
       setErrorMessage("Unable to load feedback records.");
-      setSuggestions([]);
+      setFeedbackRecords([]);
     } else {
-      setSuggestions(data);
-      console.log("[Kabataan Feedback] Loaded", {
+      setFeedbackRecords(data);
+      console.log("[Event Feedback] Loaded", {
         totalRows: data.length,
         guestRows: data.filter((item) => item.is_guest).length,
-        youthRows: data.filter((item) => !item.is_guest).length,
+        registeredRows: data.filter((item) => !item.is_guest).length,
       });
     }
 
@@ -261,46 +261,49 @@ export function KabataanSuggestionsSection() {
   }
 
   useEffect(() => {
-    void Promise.resolve().then(loadSuggestions);
+    void Promise.resolve().then(loadFeedbackRecords);
   }, []);
 
-  const sourceOptions = useMemo(
-    () => Array.from(new Set(suggestions.map((item) => item.source_type))).sort(),
-    [suggestions],
-  );
-  const filteredSuggestions = useMemo(() => {
+  const filteredFeedbackRecords = useMemo(() => {
     const normalizedSearch = search.trim().toLowerCase();
 
-    return suggestions
-      .filter((item) => sourceFilter === "all" || item.source_type === sourceFilter)
+    return feedbackRecords
+      .filter(
+        (item) =>
+          statusFilter === "all" ||
+          (statusFilter === "guest" && item.is_guest) ||
+          (statusFilter === "registered" && !item.is_guest),
+      )
       .filter((item) => {
         if (!normalizedSearch) return true;
 
         return [
           item.submitted_by,
-          item.source_type,
+          item.respondent_status,
           item.comment ?? "",
-          item.related_title ?? "",
+          item.event_name ?? "",
+          item.event_id ? `event ${item.event_id}` : "",
+          item.rating ? `${item.rating}` : "",
         ].some((value) => value.toLowerCase().includes(normalizedSearch));
       })
       .sort((first, second) => {
-        const firstTime = first.created_at ? new Date(first.created_at).getTime() : 0;
-        const secondTime = second.created_at ? new Date(second.created_at).getTime() : 0;
+        const firstTime = first.submitted_at ? new Date(first.submitted_at).getTime() : 0;
+        const secondTime = second.submitted_at ? new Date(second.submitted_at).getTime() : 0;
         return sortOrder === "newest" ? secondTime - firstTime : firstTime - secondTime;
       });
-  }, [search, sortOrder, sourceFilter, suggestions]);
-  const totalPages = Math.max(1, Math.ceil(filteredSuggestions.length / pageSize));
+  }, [feedbackRecords, search, sortOrder, statusFilter]);
+  const totalPages = Math.max(1, Math.ceil(filteredFeedbackRecords.length / pageSize));
   const currentPage = Math.min(page, totalPages);
-  const visibleSuggestions = filteredSuggestions.slice((currentPage - 1) * pageSize, currentPage * pageSize);
+  const visibleFeedbackRecords = filteredFeedbackRecords.slice((currentPage - 1) * pageSize, currentPage * pageSize);
 
   return (
     <div className="flex-1 p-8">
       <section className="rounded-xl border border-slate-200 bg-white p-6 shadow-sm">
         <h2 className="text-base font-semibold text-slate-800">
-          Kabataan Suggestions
+          Event Feedback
         </h2>
         <p className="mt-1 text-sm text-slate-500">
-          Feedback and suggestions submitted by Youth and guests
+          Feedback submitted by registered users and guests after events
         </p>
         <div className="mt-4 grid gap-3 lg:grid-cols-[1fr_auto_auto]">
           <input
@@ -309,23 +312,20 @@ export function KabataanSuggestionsSection() {
               setSearch(event.target.value);
               setPage(1);
             }}
-            placeholder="Search by submitter, source, comment, or related record"
+            placeholder="Search by submitter, status, event, rating, or feedback"
             value={search}
           />
           <select
             className="rounded-lg border border-slate-200 bg-white px-3 py-2.5 text-sm text-slate-700 outline-none"
             onChange={(event) => {
-              setSourceFilter(event.target.value);
+              setStatusFilter(event.target.value as typeof statusFilter);
               setPage(1);
             }}
-            value={sourceFilter}
+            value={statusFilter}
           >
-            <option value="all">All sources</option>
-            {sourceOptions.map((source) => (
-              <option key={source} value={source}>
-                {source}
-              </option>
-            ))}
+            <option value="all">All feedback</option>
+            <option value="registered">Registered users</option>
+            <option value="guest">Guests</option>
           </select>
           <select
             className="rounded-lg border border-slate-200 bg-white px-3 py-2.5 text-sm text-slate-700 outline-none"
@@ -348,21 +348,26 @@ export function KabataanSuggestionsSection() {
             <div className="rounded-[14px] border border-slate-200 bg-white p-6 text-sm text-slate-500 shadow-sm">
               Loading feedback records...
             </div>
-          ) : filteredSuggestions.length > 0 ? (
+          ) : filteredFeedbackRecords.length > 0 ? (
             <>
               <DataTable
-                headers={["Submitted By", "Source", "Comment", "Related Event/Survey", "Date Submitted"]}
-                rows={visibleSuggestions.map((item) => [
-                item.submitted_by,
-                <SourceBadge source={item.source_type} />,
-                <FeedbackCell value={item.comment} />,
-                item.related_title ?? "-",
-                formatDate(item.created_at),
-              ])}
+                headers={["Event", "Rating", "Feedback", "Submitted By", "Status", "Date Submitted"]}
+                rows={visibleFeedbackRecords.map((item) => [
+                  item.event_name
+                    ? `${item.event_name}${item.event_id ? ` (#${item.event_id})` : ""}`
+                    : item.event_id
+                      ? `Event #${item.event_id}`
+                      : "Unknown event",
+                  item.rating ? `${item.rating} / 5` : "-",
+                  <FeedbackCell value={item.comment} />,
+                  item.submitted_by,
+                  <SourceBadge source={item.respondent_status} />,
+                  formatDate(item.submitted_at),
+                ])}
               />
               <div className="mt-4 flex flex-wrap items-center justify-between gap-3 text-sm text-slate-500">
                 <span>
-                  Showing {(currentPage - 1) * pageSize + 1}-{Math.min(currentPage * pageSize, filteredSuggestions.length)} of {filteredSuggestions.length}
+                  Showing {(currentPage - 1) * pageSize + 1}-{Math.min(currentPage * pageSize, filteredFeedbackRecords.length)} of {filteredFeedbackRecords.length}
                 </span>
                 <div className="flex gap-2">
                   <button
@@ -771,5 +776,5 @@ export function AnnouncementsSection({
 }
 
 export default function SurveysAnnouncementsSections() {
-  return <KabataanSuggestionsSection />;
+  return <EventFeedbackSection />;
 }

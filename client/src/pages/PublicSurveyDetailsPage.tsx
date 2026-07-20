@@ -3,8 +3,9 @@ import { useEffect, useState } from "react";
 import { Link, useParams } from "react-router-dom";
 import type { SurveyAnswerPayload, YouthSurvey } from "../components/Youth/Surveys/SurveysService";
 import {
-  getGuestSessionId,
   getPublicEventInterestSurvey,
+  hasGuestSubmittedSurvey,
+  markGuestSurveySubmitted,
   submitPublicEventInterestSurvey,
 } from "../services/PublicSurveysService";
 
@@ -15,7 +16,7 @@ export default function PublicSurveyDetailsPage() {
   const [isLoading, setIsLoading] = useState(true);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [errorMessage, setErrorMessage] = useState("");
-  const [successMessage, setSuccessMessage] = useState("");
+  const [hasSubmitted, setHasSubmitted] = useState(false);
 
   useEffect(() => {
     let isMounted = true;
@@ -24,10 +25,12 @@ export default function PublicSurveyDetailsPage() {
       if (!surveyId) return;
       setIsLoading(true);
       setErrorMessage("");
+      setHasSubmitted(false);
       const { data, error } = await getPublicEventInterestSurvey(Number(surveyId));
       if (!isMounted) return;
       if (error) setErrorMessage(error.message);
       setSurvey(data);
+      setHasSubmitted(hasGuestSubmittedSurvey(Number(surveyId)));
       setIsLoading(false);
     }
 
@@ -67,7 +70,6 @@ export default function PublicSurveyDetailsPage() {
   async function handleSubmit() {
     if (!survey) return;
     setErrorMessage("");
-    setSuccessMessage("");
 
     for (const question of survey.survey_questions) {
       const questionId = question.question_id ?? 0;
@@ -87,7 +89,7 @@ export default function PublicSurveyDetailsPage() {
     }
 
     setIsSubmitting(true);
-    const { error } = await submitPublicEventInterestSurvey(
+    const { error, isGuestSubmission } = await submitPublicEventInterestSurvey(
       survey.survey_id,
       Object.values(answers).map((answer) => ({
         ...answer,
@@ -97,11 +99,18 @@ export default function PublicSurveyDetailsPage() {
     setIsSubmitting(false);
 
     if (error) {
+      if (error.message.toLowerCase().includes("already submitted")) {
+        if (isGuestSubmission) markGuestSurveySubmitted(survey.survey_id);
+        setHasSubmitted(true);
+        return;
+      }
+
       setErrorMessage(error.message);
       return;
     }
 
-    setSuccessMessage("Your survey response was submitted.");
+    if (isGuestSubmission) markGuestSurveySubmitted(survey.survey_id);
+    setHasSubmitted(true);
   }
 
   return (
@@ -119,6 +128,10 @@ export default function PublicSurveyDetailsPage() {
         <div className="rounded-xl border border-slate-200 bg-white p-6 text-sm text-slate-500">
           Survey unavailable.
         </div>
+      ) : hasSubmitted ? (
+        <div className="rounded-xl border border-emerald-200 bg-emerald-50 p-6 text-center text-sm font-semibold text-emerald-700 shadow-sm">
+          You Already Submitted
+        </div>
       ) : (
         <form
           className="rounded-xl border border-slate-200 bg-white p-6 shadow-sm"
@@ -131,25 +144,12 @@ export default function PublicSurveyDetailsPage() {
           {survey.description ? (
             <p className="mt-2 text-sm leading-6 text-slate-500">{survey.description}</p>
           ) : null}
-          <div className="mt-4 rounded-lg border border-blue-100 bg-blue-50 px-4 py-3 text-sm text-blue-700">
-            Submitting as Guest using this browser session. Clearing browser storage
-            or using another device may allow another guest submission.
-          </div>
-          <p className="mt-2 text-xs text-slate-400">
-            Guest session: {getGuestSessionId()}
-          </p>
 
           {errorMessage ? (
             <div className="mt-4 rounded-lg border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700">
               {errorMessage}
             </div>
           ) : null}
-          {successMessage ? (
-            <div className="mt-4 rounded-lg border border-emerald-200 bg-emerald-50 px-4 py-3 text-sm text-emerald-700">
-              {successMessage}
-            </div>
-          ) : null}
-
           <div className="mt-6 space-y-5">
             {survey.survey_questions.map((question, index) => {
               const questionId = question.question_id ?? 0;
@@ -157,7 +157,7 @@ export default function PublicSurveyDetailsPage() {
               return (
                 <fieldset
                   className="rounded-xl border border-slate-200 bg-slate-50 p-4"
-                  disabled={isSubmitting || Boolean(successMessage)}
+                  disabled={isSubmitting}
                   key={questionId}
                 >
                   <legend className="px-1 text-sm font-semibold text-slate-900">
@@ -208,7 +208,7 @@ export default function PublicSurveyDetailsPage() {
 
           <button
             className="mt-6 inline-flex w-full items-center justify-center gap-2 rounded-lg bg-[#1e3a5f] px-4 py-3 text-sm font-semibold text-white hover:bg-[#173256] disabled:cursor-not-allowed disabled:opacity-60 sm:w-auto"
-            disabled={isSubmitting || Boolean(successMessage)}
+            disabled={isSubmitting}
             type="submit"
           >
             <Send className="h-4 w-4" />

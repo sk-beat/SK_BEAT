@@ -227,7 +227,7 @@ export default function ProfileModals({
             value={profile?.email ?? ""}
           />
           <p className="mt-1.5 text-xs text-slate-500">
-            This email is linked to your account and cannot be changed here.
+            This email is linked to your account and cannot be changed.
           </p>
         </div>
         <BirthdayPicker

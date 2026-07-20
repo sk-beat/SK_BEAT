@@ -271,9 +271,9 @@ export default function YouthRecordModals({
       nextErrors.gender = "Gender is required.";
     }
 
-    if (!trimmedEmail) {
+    if (!isEdit && !trimmedEmail) {
       nextErrors.email = "Email is required.";
-    } else if (!isValidEmail(trimmedEmail)) {
+    } else if (!isEdit && !isValidEmail(trimmedEmail)) {
       nextErrors.email = "Enter a valid email address.";
     }
 
@@ -499,7 +499,7 @@ export default function YouthRecordModals({
             value={gender}
           />
           <Field
-            disabled={loading}
+            disabled={loading || isEdit}
             error={errors.email}
             label="Email Address"
             onChange={(event) => setEmail(event.target.value)}

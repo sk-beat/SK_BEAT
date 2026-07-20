@@ -44,8 +44,8 @@ export default function AdminSurveysPage() {
     <main className="mx-auto max-w-6xl px-6 py-14">
       <h1 className="text-3xl font-bold text-[#0b1f3b]">Surveys & Feedback</h1>
       <p className="mt-2 max-w-2xl text-slate-500">
-        Answer currently published SK event-interest surveys. Guest submissions
-        use a browser session id and are best effort only.
+        Answer currently published SK event-interest surveys that are open to
+        guest responses.
       </p>
 
       {errorMessage ? (

@@ -213,7 +213,7 @@ export default function AdminAccountModals({
           <div>
             <Field disabled label="Email Address" type="email" value={email} />
             <p className="mt-1.5 text-xs text-slate-500">
-              This email is linked to your account and cannot be changed here.
+              This email is linked to your account and cannot be changed.
             </p>
           </div>
           <Field label="Contact Number" value={contactNumber} />

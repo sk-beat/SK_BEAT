@@ -79,11 +79,11 @@ export default function SurveyBuilder() {
   async function handleStatusChange(survey: AdminSurvey, status: AdminSurvey["status"]) {
     await handleSave({
       description: survey.description,
-      end_date: survey.end_date,
+      end_date: null,
       expires_at: survey.expires_at,
       allow_guest_responses: survey.allow_guest_responses,
       questions: survey.survey_questions,
-      start_date: survey.start_date,
+      start_date: null,
       status,
       survey_id: survey.survey_id,
       target_audience: survey.target_audience,

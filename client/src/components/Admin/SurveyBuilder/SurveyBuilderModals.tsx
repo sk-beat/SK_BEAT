@@ -34,14 +34,6 @@ function blankQuestion(sortOrder = 0): SurveyQuestion {
   };
 }
 
-function toDateInputValue(value: string | null) {
-  return value ? value.slice(0, 10) : "";
-}
-
-function fromDateInputValue(value: string) {
-  return value ? new Date(`${value}T00:00:00`).toISOString() : null;
-}
-
 function fromDateTimeInputValue(value: string) {
   return value ? new Date(value).toISOString() : null;
 }
@@ -59,12 +51,6 @@ function getLocalDateTimeInputValue(date = new Date()) {
   withoutSeconds.setSeconds(0, 0);
   const offsetDate = new Date(withoutSeconds.getTime() - withoutSeconds.getTimezoneOffset() * 60000);
   return offsetDate.toISOString().slice(0, 16);
-}
-
-function isSameInstant(inputValue: string, storedValue: string | null | undefined) {
-  if (!inputValue && !storedValue) return true;
-  if (!inputValue || !storedValue) return false;
-  return inputValue === toDateTimeInputValue(storedValue);
 }
 
 function getEventOptions(survey: AdminSurvey | null) {
@@ -105,8 +91,6 @@ export default function SurveyBuilderModals({
   const [description, setDescription] = useState("");
   const [status, setStatus] = useState<SurveyStatus>("draft");
   const [allowGuestResponses, setAllowGuestResponses] = useState(false);
-  const [startDate, setStartDate] = useState("");
-  const [endDate, setEndDate] = useState("");
   const [expiresAt, setExpiresAt] = useState("");
   const [questions, setQuestions] = useState<SurveyQuestion[]>([blankQuestion()]);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
@@ -117,9 +101,7 @@ export default function SurveyBuilderModals({
     setDescription(survey?.description ?? "");
     setStatus(survey?.status ?? "draft");
     setAllowGuestResponses(survey?.allow_guest_responses ?? false);
-    setStartDate(toDateTimeInputValue(survey?.start_date ?? null));
-    setEndDate(toDateInputValue(survey?.end_date ?? null));
-    setExpiresAt(toDateTimeInputValue(survey?.expires_at ?? survey?.end_date ?? null));
+    setExpiresAt(toDateTimeInputValue(survey?.expires_at ?? null));
     setQuestions(getEventOptions(survey));
     setErrorMessage(null);
   }, [survey, mode]);
@@ -130,34 +112,25 @@ export default function SurveyBuilderModals({
 
   function validate() {
     const now = new Date();
-    const startAt = startDate ? new Date(startDate) : null;
     const expiresAtDate = expiresAt ? new Date(expiresAt) : null;
-    const startChanged = !isSameInstant(startDate, survey?.start_date);
-    const expirationChanged = !isSameInstant(expiresAt, survey?.expires_at ?? survey?.end_date);
-    const startValid =
-      !startAt ||
-      !startChanged ||
-      startAt.getTime() >= now.getTime();
+    const expirationChanged = expiresAt !== toDateTimeInputValue(survey?.expires_at ?? null);
     const expirationValid =
       !expiresAtDate ||
-      ((!expirationChanged || expiresAtDate.getTime() >= now.getTime()) &&
-        (!startAt || expiresAtDate.getTime() > startAt.getTime()));
+      !expirationChanged ||
+      expiresAtDate.getTime() >= now.getTime();
 
     console.log("[Survey Schedule] Validation", {
-      startAt: startAt?.toISOString() ?? null,
+      startAt: null,
       expiresAt: expiresAtDate?.toISOString() ?? null,
       now: now.toISOString(),
-      startValid,
+      startValid: true,
       expirationValid,
     });
 
     if (!title.trim()) return "Survey title is required.";
-    if (startAt && Number.isNaN(startAt.getTime())) return "Survey start time must be today or in the future.";
+    if (!expiresAtDate) return "Survey expiration is required.";
     if (expiresAtDate && Number.isNaN(expiresAtDate.getTime())) return "Survey expiration cannot be in the past.";
-    if (!startValid) return "Survey start time must be today or in the future.";
     if (expiresAtDate && expirationChanged && expiresAtDate.getTime() < now.getTime()) return "Survey expiration cannot be in the past.";
-    if (startAt && expiresAtDate && expiresAtDate.getTime() <= startAt.getTime()) return "Survey expiration must be after the start time.";
-    if (startDate && endDate && new Date(`${endDate}T23:59:59`).getTime() <= new Date(startDate).getTime()) return "End date must be later than start date.";
     if (questions.length === 0) return "At least one proposed event is required.";
     if (survey?.survey_responses.length) {
       return "This survey already has responses. Create a new survey instead of editing answered questions.";
@@ -179,7 +152,7 @@ export default function SurveyBuilderModals({
 
     await onSave({
       description: description.trim() || null,
-      end_date: fromDateInputValue(endDate),
+      end_date: null,
       expires_at: fromDateTimeInputValue(expiresAt),
       allow_guest_responses: allowGuestResponses,
       questions: [
@@ -214,7 +187,7 @@ export default function SurveyBuilderModals({
           ],
         },
       ],
-      start_date: fromDateTimeInputValue(startDate),
+      start_date: null,
       status,
       survey_id: survey?.survey_id ?? null,
       target_audience: "kabataan",
@@ -270,32 +243,15 @@ export default function SurveyBuilderModals({
             />
             Allow Guest Responses
             <span className="text-xs font-normal text-slate-500">
-              Guests submit with a browser session id, not a Youth account.
+              Guests can answer without signing in to a Youth account.
             </span>
           </label>
-          <div className="grid gap-3 sm:grid-cols-2">
-            <label className="block">
-              <span className="mb-1.5 block text-sm font-medium text-slate-700">Start Date and Time</span>
-              <input
-                className={inputClass}
-                disabled={isSaving}
-                min={getLocalDateTimeInputValue()}
-                onChange={(event) => setStartDate(event.target.value)}
-                type="datetime-local"
-                value={startDate}
-              />
-            </label>
-            <label className="block">
-              <span className="mb-1.5 block text-sm font-medium text-slate-700">End Date</span>
-              <input className={inputClass} disabled={isSaving} onChange={(event) => setEndDate(event.target.value)} type="date" value={endDate} />
-            </label>
-          </div>
           <label className="block md:col-span-2">
             <span className="mb-1.5 block text-sm font-medium text-slate-700">Expiration Date and Time</span>
             <input
               className={inputClass}
               disabled={isSaving}
-              min={startDate || getLocalDateTimeInputValue()}
+              min={getLocalDateTimeInputValue()}
               onChange={(event) => setExpiresAt(event.target.value)}
               type="datetime-local"
               value={expiresAt}

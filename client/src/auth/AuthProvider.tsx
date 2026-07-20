@@ -30,6 +30,39 @@ function isInvalidLoginCredentialsError(error: unknown) {
   );
 }
 
+function getLoginErrorMessage(error: unknown) {
+  const { code, message, status } = getSafeAuthError(error);
+  const normalized = `${code} ${message}`.toLowerCase();
+
+  console.error("[Login] Authentication failed", {
+    message,
+    status,
+    code,
+  });
+
+  if (isInvalidLoginCredentialsError(error)) {
+    return "Email or password is invalid.";
+  }
+
+  if (
+    normalized.includes("email not confirmed") ||
+    normalized.includes("email_not_confirmed") ||
+    normalized.includes("confirm")
+  ) {
+    return "Please confirm your email before logging in.";
+  }
+
+  if (
+    normalized.includes("fetch failed") ||
+    normalized.includes("network") ||
+    normalized.includes("failed to fetch")
+  ) {
+    return "Unable to connect right now. Please check your connection and try again.";
+  }
+
+  return "Unable to log in right now. Please try again.";
+}
+
 export function AuthProvider({ children }: { children: ReactNode }) {
   const [user, setUser] = useState<AuthUser | null>(null);
   const [role, setRole] = useState<AppRole | null>(null);
@@ -154,23 +187,15 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   async function login({ rememberMe = false, username, password }: LoginPayload) {
     setLoading(true);
     setSupabaseAuthStorageMode(rememberMe ? "local" : "session");
-    console.log("[Login] Remember Me mode", {
-      enabled: rememberMe,
-      storageMode: rememberMe ? "persistent" : "session",
-    });
 
     const { data, error } = await supabase.auth.signInWithPassword({
       email: username,
       password,
     });
 
-    
     if (error) {
       setLoading(false);
-      if (isInvalidLoginCredentialsError(error)) {
-        throw new Error("Email or password invalid.");
-      }
-      throw error;
+      throw new Error(getLoginErrorMessage(error));
     }
 
     const authUser = data.user;
@@ -182,12 +207,17 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
     const { data: admin } = await supabase
       .from("admins")
-      .select("admin_id")
+      .select("admin_id,status")
       .eq("admin_id", authUser.id)
-      .eq("status", "active")
       .maybeSingle();
 
     if (admin) {
+      if (admin.status !== "active") {
+        await supabase.auth.signOut({ scope: "local" });
+        setLoading(false);
+        throw new Error("Your Admin account is inactive. Please contact an administrator.");
+      }
+
       const loaded = await loadUser();
       if (!loaded) throw new Error("Unable to load account profile.");
       return loaded;

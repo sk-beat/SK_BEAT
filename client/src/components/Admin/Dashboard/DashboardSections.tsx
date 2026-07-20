@@ -5,7 +5,14 @@ import {
   type SummaryCard,
 } from "./dashboardData";
 import { AlertIcon, ArrowRightIcon, BanknoteIcon, CalendarIcon, ClipboardIcon, DollarIcon, LineChartIcon, TrendingIcon, UserRoundIcon, UsersIcon } from "./icons";
-import { getDashboardData, type DashboardData } from "./DashboardService";
+import {
+  getDashboardData,
+  getDashboardSurveyFilters,
+  getSurveyAnswerChart,
+  type DashboardData,
+  type DashboardSurveyFilter,
+  type SurveyAnswerChartEntry,
+} from "./DashboardService";
 import { canRunDecisionInsightAction } from "../../../hooks/useDecisionInsightActions";
 import InsightCard from "../shared/InsightCard";
 
@@ -129,45 +136,188 @@ function PopulationCard({ data }: { data: DashboardData }) {
   );
 }
 
-function CategoryCard({ data }: { data: DashboardData }) {
-  const maxValue = Math.max(...data.preferredActivityTypes.map((item) => item.total_respondent_count), 1);
+function SurveyAnswerResultsCard() {
+  const [surveys, setSurveys] = useState<DashboardSurveyFilter[]>([]);
+  const [selectedSurveyId, setSelectedSurveyId] = useState<number | null>(null);
+  const [selectedQuestionId, setSelectedQuestionId] = useState<number | null>(null);
+  const [chartData, setChartData] = useState<SurveyAnswerChartEntry[]>([]);
+  const [isLoadingFilters, setIsLoadingFilters] = useState(true);
+  const [isLoadingChart, setIsLoadingChart] = useState(false);
+  const [errorMessage, setErrorMessage] = useState<string | null>(null);
+
+  useEffect(() => {
+    let isMounted = true;
+
+    async function loadFilters() {
+      setIsLoadingFilters(true);
+      const { data, error } = await getDashboardSurveyFilters();
+      if (!isMounted) return;
+
+      if (error) {
+        setErrorMessage(error.message);
+        setIsLoadingFilters(false);
+        return;
+      }
+
+      setSurveys(data);
+
+      const defaultSurvey = data.find((survey) => survey.status === "published" && survey.responseCount > 0)
+        ?? data.find((survey) => survey.responseCount > 0)
+        ?? data[0]
+        ?? null;
+
+      setSelectedSurveyId(defaultSurvey?.survey_id ?? null);
+      setSelectedQuestionId(defaultSurvey?.questions[0]?.question_id ?? null);
+      setIsLoadingFilters(false);
+    }
+
+    loadFilters();
+
+    return () => {
+      isMounted = false;
+    };
+  }, []);
+
+  const selectedSurvey = surveys.find((survey) => survey.survey_id === selectedSurveyId) ?? null;
+
+  useEffect(() => {
+    const surveyId = selectedSurvey?.survey_id ?? null;
+    const questionId = selectedQuestionId;
+
+    if (!surveyId || !questionId) {
+      return;
+    }
+
+    let isMounted = true;
+    const chartSurveyId = surveyId;
+    const chartQuestionId = questionId;
+
+    async function loadChart() {
+      setIsLoadingChart(true);
+      setErrorMessage(null);
+      const { data, error } = await getSurveyAnswerChart({
+        questionId: chartQuestionId,
+        surveyId: chartSurveyId,
+      });
+      if (!isMounted) return;
+
+      if (error) {
+        setErrorMessage(error.message);
+        setChartData([]);
+      } else {
+        setChartData(data);
+      }
+
+      setIsLoadingChart(false);
+    }
+
+    loadChart();
+
+    return () => {
+      isMounted = false;
+    };
+  }, [selectedQuestionId, selectedSurvey]);
+
+  const maxValue = Math.max(...chartData.map((item) => item.count), 1);
+  const selectedQuestionType = chartData[0]?.question_type
+    ?? selectedSurvey?.questions.find((question) => question.question_id === selectedQuestionId)?.question_type
+    ?? "";
+  const allowsMultipleSelections = selectedQuestionType === "multiple_choice";
 
   return (
     <section className="rounded-[14px] border border-[#1e3a5f]/20 bg-white p-6 shadow-sm">
-      <div className="mb-4 flex items-center justify-between gap-4">
-        <h2 className="m-0 text-sm font-semibold uppercase tracking-[0.1em] text-slate-400">
-          Participants by category
-        </h2>
+      <div className="mb-4 flex flex-wrap items-start justify-between gap-4">
+        <div>
+          <h2 className="m-0 text-sm font-semibold uppercase tracking-[0.1em] text-slate-400">
+            Survey Answer Results
+          </h2>
+          <p className="mt-1 text-[0.8125rem] text-slate-400">
+            Response distribution for the selected survey.
+          </p>
+        </div>
         <select
           className="rounded-md border border-slate-200 bg-white px-3 py-1.5 text-xs text-slate-700 outline-none"
-          aria-label="Filter participants by month"
+          aria-label="Select survey"
+          disabled={isLoadingFilters || surveys.length === 0}
+          onChange={(event) => {
+            const surveyId = Number(event.target.value);
+            const nextSurvey = surveys.find((survey) => survey.survey_id === surveyId) ?? null;
+            setSelectedSurveyId(nextSurvey?.survey_id ?? null);
+            setSelectedQuestionId(nextSurvey?.questions[0]?.question_id ?? null);
+          }}
+          value={selectedSurveyId ?? ""}
         >
-          <option>All months</option>
-          <option>January</option>
-          <option>February</option>
-          <option>March</option>
+          {surveys.length === 0 ? <option value="">No surveys</option> : null}
+          {surveys.map((survey) => (
+            <option key={survey.survey_id} value={survey.survey_id}>
+              {survey.title}
+            </option>
+          ))}
         </select>
       </div>
 
-      <div className="flex h-[180px] items-end gap-4 border-b border-slate-200 pt-6">
-        {data.preferredActivityTypes.slice(0, 5).map((category) => (
-          <div
-            className="flex flex-1 flex-col items-center justify-end gap-2"
-            key={category.activity_type}
-          >
-            <div
-              className="w-full max-w-12 rounded-t-md bg-[#1e3a5f]"
-              style={{ height: `${Math.max(8, (category.total_respondent_count / maxValue) * 100)}%` }}
-            />
-            <span className="text-[0.7rem] font-medium text-slate-500">
-              {category.activity_type}
-            </span>
-          </div>
-        ))}
-      </div>
-      <p className="mt-3 text-xs text-slate-400">
-        Based on distinct Youth survey respondents.
-      </p>
+      {selectedSurvey && selectedSurvey.questions.length > 1 ? (
+        <select
+          aria-label="Select survey question"
+          className="mb-4 w-full rounded-md border border-slate-200 bg-white px-3 py-2 text-xs text-slate-700 outline-none"
+          onChange={(event) => setSelectedQuestionId(Number(event.target.value))}
+          value={selectedQuestionId ?? ""}
+        >
+          {selectedSurvey.questions.map((question) => (
+            <option key={question.question_id} value={question.question_id}>
+              {question.question_text}
+            </option>
+          ))}
+        </select>
+      ) : null}
+
+      {isLoadingFilters || isLoadingChart ? (
+        <div className="grid h-[220px] place-items-center rounded-lg border border-dashed border-slate-200 text-sm text-slate-500">
+          Loading survey results...
+        </div>
+      ) : errorMessage ? (
+        <div className="rounded-lg border border-amber-200 bg-amber-50 p-4 text-sm text-amber-700">
+          {errorMessage}
+        </div>
+      ) : !selectedSurvey ? (
+        <div className="rounded-lg border border-dashed border-slate-200 p-4 text-sm text-slate-500">
+          No surveys are available.
+        </div>
+      ) : chartData.length === 0 ? (
+        <div className="rounded-lg border border-dashed border-slate-200 p-4 text-sm text-slate-500">
+          No survey responses are available for this survey.
+        </div>
+      ) : (
+        <div className="space-y-3">
+          {chartData.map((entry) => (
+            <div className="grid grid-cols-[minmax(110px,1fr)_minmax(0,2fr)_auto] items-center gap-3 text-sm" key={entry.label}>
+              <span className="min-w-0 truncate font-medium text-slate-700" title={entry.label}>
+                {entry.label}
+              </span>
+              <div className="h-8 overflow-hidden rounded-md bg-slate-100" title={`${entry.label}: ${entry.count} selections, ${entry.percentage}% of respondents`}>
+                <div
+                  className="h-full rounded-md bg-[#1e3a5f]"
+                  style={{ width: `${Math.max(4, (entry.count / maxValue) * 100)}%` }}
+                />
+              </div>
+              <span className="text-right text-xs font-semibold text-slate-500">
+                {entry.count} ({entry.percentage}%)
+              </span>
+            </div>
+          ))}
+        </div>
+      )}
+
+      {allowsMultipleSelections && chartData.length > 0 ? (
+        <p className="mt-3 text-xs text-slate-400">
+          Respondents may select multiple options, so percentages may total more than 100%.
+        </p>
+      ) : null}
+      {chartData.length > 0 ? (
+        <p className="mt-2 text-xs text-slate-400">
+          Based on {chartData[0]?.respondent_count ?? 0} respondent(s).
+        </p>
+      ) : null}
     </section>
   );
 }
@@ -474,7 +624,7 @@ export default function DashboardSections() {
 
       <section className="mb-6 grid grid-cols-2 gap-6 max-xl:grid-cols-1">
         <PopulationCard data={data} />
-        <CategoryCard data={data} />
+        <SurveyAnswerResultsCard />
       </section>
 
       <InsightsPanel data={data} />

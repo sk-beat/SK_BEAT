@@ -19,6 +19,7 @@ type AdminAccountModalsProps = {
 
 const inputClass =
   "w-full rounded-lg border border-slate-200 bg-white px-3 py-2.5 text-sm text-slate-800 outline-none focus:border-[#1e3a5f] focus:ring-2 focus:ring-[#1e3a5f]/15 disabled:cursor-not-allowed disabled:bg-slate-100 disabled:text-slate-500 disabled:opacity-70";
+const ADMIN_BARANGAY = "Barangay Galas Maasim";
 
 function Field({
   disabled,
@@ -62,7 +63,6 @@ export default function AdminAccountModals({
   const [position, setPosition] = useState<string>("");
   const [email, setEmail] = useState<string>("");
   const [contactNumber, setContactNumber] = useState<string>("");
-  const [barangay, setBarangay] = useState<string>("");
   const [profileImage, setProfileImage] = useState<string>("");
   const [profileImageFile, setProfileImageFile] = useState<File | null>(null);
   const [profileImagePreview, setProfileImagePreview] = useState<string | null>(null);
@@ -81,7 +81,6 @@ export default function AdminAccountModals({
     setPosition(data.position);
     setEmail(data.email);
     setContactNumber(data.contact_number);
-    setBarangay(data.barangay);
     setProfileImage(data.profile_image ?? "");
   }
 
@@ -162,6 +161,9 @@ export default function AdminAccountModals({
     }
 
     const { error } = await supabase.rpc("update_admin_profile_image", {
+      p_contact_number: contactNumber,
+      p_fullname: AdminName,
+      p_position: position,
       p_profile_image: nextProfileImage,
     });
 
@@ -208,15 +210,15 @@ export default function AdminAccountModals({
         title="Edit Admin Profile"
       >
         <div className="grid gap-4 md:grid-cols-2">
-          <Field label="Full Name" value={AdminName} />
-          <Field label="Position" value={position} />
+          <Field label="Full Name" onChange={(e) => setAdminName(e.target.value)} value={AdminName} />
+          <Field label="Position" onChange={(e) => setPosition(e.target.value)} value={position} />
           <div>
             <Field disabled label="Email Address" type="email" value={email} />
             <p className="mt-1.5 text-xs text-slate-500">
               This email is linked to your account and cannot be changed.
             </p>
           </div>
-          <Field label="Contact Number" value={contactNumber} />
+          <Field label="Contact Number" onChange={(e) => setContactNumber(e.target.value)} value={contactNumber} />
           <div className="md:col-span-2">
             <span className="mb-1.5 block text-sm font-medium text-slate-700">
               Profile Image
@@ -254,7 +256,10 @@ export default function AdminAccountModals({
             <span className="mb-1.5 block text-sm font-medium text-slate-700">
               Barangay
             </span>
-            <input className={inputClass} defaultValue={barangay} type="text" />
+            <input className={inputClass} disabled type="text" value={ADMIN_BARANGAY} />
+            <p className="mt-1.5 text-xs text-slate-500">
+              The assigned barangay is fixed and cannot be changed.
+            </p>
           </label>
         </div>
       </AdminModal>

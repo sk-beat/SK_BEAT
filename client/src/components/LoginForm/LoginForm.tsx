@@ -320,7 +320,10 @@ export default function LoginForm() {
                         name="username"
                         placeholder="User Name"
                         autoComplete="username"
-                        onChange={(event) => setUsername(event.target.value)}
+                        onChange={(event) => {
+                          setUsername(event.target.value);
+                          if (error) setError("");
+                        }}
                         required
                         value={username}
                       />
@@ -348,7 +351,10 @@ export default function LoginForm() {
                         name="password"
                         placeholder="Password"
                         autoComplete="current-password"
-                        onChange={(event) => setPassword(event.target.value)}
+                        onChange={(event) => {
+                          setPassword(event.target.value);
+                          if (error) setError("");
+                        }}
                         required
                         value={password}
                       />
@@ -381,7 +387,7 @@ export default function LoginForm() {
                     </div>
 
                     {error ? (
-                      <div className="rounded-lg bg-red-50 p-3 text-sm text-red-600">
+                      <div className="rounded-lg bg-red-50 p-3 text-sm text-red-600" role="alert">
                         {error}
                       </div>
                     ) : null}
@@ -398,7 +404,6 @@ export default function LoginForm() {
                       <button
                         className="font-medium text-[#0b1f3b] hover:underline"
                         onClick={() => {
-                          console.log("[Login] Navigating to upcoming events");
                           navigate("/youth-events");
                         }}
                         type="button"

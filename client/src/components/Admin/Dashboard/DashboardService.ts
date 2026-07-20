@@ -52,6 +52,37 @@ export type DashboardData = {
   topSuggestedEvents: TopSuggestedEvent[];
 };
 
+export type DashboardSurveyQuestion = {
+  question_id: number;
+  question_text: string;
+  question_type: string;
+  sort_order: number;
+};
+
+export type DashboardSurveyFilter = {
+  survey_id: number;
+  title: string;
+  status: string;
+  created_at: string | null;
+  expires_at: string | null;
+  responseCount: number;
+  questions: DashboardSurveyQuestion[];
+};
+
+export type SurveyAnswerChartEntry = {
+  answer_type: string;
+  count: number;
+  display_order: number;
+  label: string;
+  percentage: number;
+  question_id: number;
+  question_text: string;
+  question_type: string;
+  respondent_count: number;
+  survey_id: number;
+  survey_title: string;
+};
+
 type EventRow = Omit<DashboardEvent, "registered_count"> & {
   status: string;
   event_registrations?: Array<{ registration_id: number; attendance_status: string | null }>;
@@ -175,4 +206,53 @@ export async function getDashboardData(): Promise<{
     },
     error: null,
   };
+}
+
+type SurveyFilterRow = {
+  created_at: string | null;
+  expires_at: string | null;
+  status: string;
+  survey_id: number;
+  title: string;
+  survey_questions?: DashboardSurveyQuestion[];
+  survey_responses?: Array<{ response_id: number }>;
+};
+
+export async function getDashboardSurveyFilters() {
+  const { data, error } = await supabase
+    .from("surveys")
+    .select(
+      "survey_id,title,status,created_at,expires_at,survey_questions(question_id,question_text,question_type,sort_order),survey_responses(response_id)",
+    )
+    .order("created_at", { ascending: false })
+    .order("sort_order", { ascending: true, referencedTable: "survey_questions" });
+
+  const rows = (data ?? []) as SurveyFilterRow[];
+
+  return {
+    data: rows.map((survey) => ({
+      created_at: survey.created_at,
+      expires_at: survey.expires_at,
+      questions: [...(survey.survey_questions ?? [])].sort(
+        (first, second) => first.sort_order - second.sort_order || first.question_id - second.question_id,
+      ),
+      responseCount: survey.survey_responses?.length ?? 0,
+      status: survey.status,
+      survey_id: survey.survey_id,
+      title: survey.title,
+    })),
+    error,
+  };
+}
+
+export async function getSurveyAnswerChart(options: {
+  questionId: number;
+  surveyId: number;
+}) {
+  const { data, error } = await supabase.rpc("get_admin_survey_answer_chart", {
+    p_question_id: options.questionId,
+    p_survey_id: options.surveyId,
+  });
+
+  return { data: (data ?? []) as SurveyAnswerChartEntry[], error };
 }

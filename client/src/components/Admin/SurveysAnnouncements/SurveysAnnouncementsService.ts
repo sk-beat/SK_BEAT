@@ -1,83 +1,38 @@
 import { supabase } from "@/lib/supabase";
 
 export type KabataanSuggestion = {
-  feedback_comment: string | null;
-  feedback_updated_at: string | null;
-  suggestion_id: number;
-  message: string;
-  submitted_at: string | null;
+  comment: string | null;
+  created_at: string | null;
+  feedback_id: string;
+  is_guest: boolean;
+  related_title: string | null;
+  source_type: string;
   submitted_by: string;
 };
 
 type KabataanSuggestionRow = {
-  feedback_comment: string | null;
-  feedback_updated_at: string | null;
-  suggestion_id: number;
-  message: string;
-  submitted_at: string | null;
-  kabataan_profiles:
-    | {
-        fullname: string;
-      }
-    | {
-        fullname: string;
-      }[]
-    | null;
+  comment: string | null;
+  created_at: string | null;
+  feedback_id: string;
+  is_guest: boolean;
+  related_title: string | null;
+  source_type: string;
+  submitted_by_name: string;
 };
 
 export async function getKabataanSuggestions() {
-  const { data, error } = await supabase
-    .from("kabataan_suggestions")
-    .select(
-      "suggestion_id,message,submitted_at,feedback_comment,feedback_updated_at,kabataan_profiles(fullname)",
-    )
-    .order("submitted_at", { ascending: false });
-
-  const suggestions = ((data ?? []) as KabataanSuggestionRow[]).map((item) => {
-    const profile = Array.isArray(item.kabataan_profiles)
-      ? item.kabataan_profiles[0]
-      : item.kabataan_profiles;
-
-    return {
-      feedback_comment: item.feedback_comment,
-      feedback_updated_at: item.feedback_updated_at,
-      suggestion_id: item.suggestion_id,
-      message: item.message,
-      submitted_at: item.submitted_at,
-      submitted_by: profile?.fullname ?? "Kabataan",
-    };
-  });
+  const { data, error } = await supabase.rpc("get_admin_kabataan_feedback_records");
+  const suggestions = ((data ?? []) as KabataanSuggestionRow[]).map((item) => ({
+    comment: item.comment,
+    created_at: item.created_at,
+    feedback_id: item.feedback_id,
+    is_guest: item.is_guest,
+    related_title: item.related_title,
+    source_type: item.source_type,
+    submitted_by: item.is_guest ? "Guest" : item.submitted_by_name || "Youth",
+  }));
 
   return { data: suggestions, error };
-}
-
-export async function updateKabataanSuggestionFeedback(
-  suggestionId: number,
-  feedbackComment: string,
-) {
-  const {
-    data: { user },
-    error: userError,
-  } = await supabase.auth.getUser();
-
-  if (userError) {
-    return { data: null, error: userError };
-  }
-
-  const { data, error } = await supabase
-    .from("kabataan_suggestions")
-    .update({
-      feedback_comment: feedbackComment.trim() || null,
-      feedback_updated_at: new Date().toISOString(),
-      feedback_updated_by: user?.id ?? null,
-    })
-    .eq("suggestion_id", suggestionId)
-    .select(
-      "suggestion_id,message,submitted_at,feedback_comment,feedback_updated_at,kabataan_profiles(fullname)",
-    )
-    .single();
-
-  return { data, error };
 }
 
 export type SurveyResponseReport = {

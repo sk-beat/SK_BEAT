@@ -206,6 +206,13 @@ function SurveyAnswerResultsCard() {
         setChartData([]);
       } else {
         setChartData(data);
+        console.log("[Survey Answer Results] Aggregation", {
+          surveyId: chartSurveyId,
+          questionId: chartQuestionId,
+          officialOptionCount: data.filter((entry) => entry.answer_type !== "other").length,
+          otherCount: data.find((entry) => entry.answer_type === "other")?.count ?? 0,
+          totalRows: data.length,
+        });
       }
 
       setIsLoadingChart(false);

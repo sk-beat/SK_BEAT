@@ -1,4 +1,4 @@
-import { useEffect, useState, type ReactNode } from "react";
+import { useEffect, useMemo, useState, type ReactNode } from "react";
 import { Link, useSearchParams } from "react-router-dom";
 import InsightCard from "../shared/InsightCard";
 import AdminModal from "../shared/AdminModal";
@@ -24,7 +24,6 @@ import {
 } from "./SurveyInsightsService";
 import {
   getKabataanSuggestions,
-  updateKabataanSuggestionFeedback,
   type KabataanSuggestion,
 } from "./SurveysAnnouncementsService";
 
@@ -94,13 +93,28 @@ function FeedbackCell({ value }: { value: string | null }) {
   const feedback = normalizeFeedback(value);
 
   if (!feedback) {
-    return <span className="text-slate-400">No feedback yet</span>;
+    return <span className="text-slate-400">No comment provided</span>;
   }
 
   return (
-    <p className="max-w-xs whitespace-pre-line text-slate-700" title={feedback}>
+    <p className="max-w-sm whitespace-pre-line text-slate-700" title={feedback}>
       {feedback.length > 120 ? `${feedback.slice(0, 117)}...` : feedback}
     </p>
+  );
+}
+
+function SourceBadge({ source }: { source: string }) {
+  const isGuest = source.toLowerCase().includes("guest");
+
+  return (
+    <span
+      className={[
+        "inline-flex rounded-full px-2.5 py-1 text-xs font-semibold",
+        isGuest ? "bg-amber-50 text-amber-700" : "bg-blue-50 text-[#1e3a5f]",
+      ].join(" ")}
+    >
+      {source}
+    </span>
   );
 }
 
@@ -218,11 +232,12 @@ function buildFeedbackInsightCards(summary: FeedbackInsightsSummary | null) {
 export function KabataanSuggestionsSection() {
   const [suggestions, setSuggestions] = useState<KabataanSuggestion[]>([]);
   const [isLoading, setIsLoading] = useState(true);
-  const [isSavingFeedback, setIsSavingFeedback] = useState(false);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
-  const [feedbackErrorMessage, setFeedbackErrorMessage] = useState<string | null>(null);
-  const [selectedSuggestion, setSelectedSuggestion] = useState<KabataanSuggestion | null>(null);
-  const [feedbackComment, setFeedbackComment] = useState("");
+  const [search, setSearch] = useState("");
+  const [sourceFilter, setSourceFilter] = useState("all");
+  const [sortOrder, setSortOrder] = useState<"newest" | "oldest">("newest");
+  const [page, setPage] = useState(1);
+  const pageSize = 10;
 
   async function loadSuggestions() {
     setIsLoading(true);
@@ -231,10 +246,15 @@ export function KabataanSuggestionsSection() {
     const { data, error } = await getKabataanSuggestions();
 
     if (error) {
-      setErrorMessage("Unable to load Kabataan suggestions.");
+      setErrorMessage("Unable to load feedback records.");
       setSuggestions([]);
     } else {
       setSuggestions(data);
+      console.log("[Kabataan Feedback] Loaded", {
+        totalRows: data.length,
+        guestRows: data.filter((item) => item.is_guest).length,
+        youthRows: data.filter((item) => !item.is_guest).length,
+      });
     }
 
     setIsLoading(false);
@@ -244,36 +264,34 @@ export function KabataanSuggestionsSection() {
     void Promise.resolve().then(loadSuggestions);
   }, []);
 
-  function openFeedbackModal(suggestion: KabataanSuggestion) {
-    setSelectedSuggestion(suggestion);
-    setFeedbackComment(normalizeFeedback(suggestion.feedback_comment) ?? "");
-    setFeedbackErrorMessage(null);
-  }
+  const sourceOptions = useMemo(
+    () => Array.from(new Set(suggestions.map((item) => item.source_type))).sort(),
+    [suggestions],
+  );
+  const filteredSuggestions = useMemo(() => {
+    const normalizedSearch = search.trim().toLowerCase();
 
-  async function handleSaveFeedback() {
-    if (!selectedSuggestion) {
-      return;
-    }
+    return suggestions
+      .filter((item) => sourceFilter === "all" || item.source_type === sourceFilter)
+      .filter((item) => {
+        if (!normalizedSearch) return true;
 
-    setIsSavingFeedback(true);
-    setFeedbackErrorMessage(null);
-
-    const { error } = await updateKabataanSuggestionFeedback(
-      selectedSuggestion.suggestion_id,
-      feedbackComment,
-    );
-
-    setIsSavingFeedback(false);
-
-    if (error) {
-      setFeedbackErrorMessage(error.message);
-      return;
-    }
-
-    setSelectedSuggestion(null);
-    setFeedbackComment("");
-    await loadSuggestions();
-  }
+        return [
+          item.submitted_by,
+          item.source_type,
+          item.comment ?? "",
+          item.related_title ?? "",
+        ].some((value) => value.toLowerCase().includes(normalizedSearch));
+      })
+      .sort((first, second) => {
+        const firstTime = first.created_at ? new Date(first.created_at).getTime() : 0;
+        const secondTime = second.created_at ? new Date(second.created_at).getTime() : 0;
+        return sortOrder === "newest" ? secondTime - firstTime : firstTime - secondTime;
+      });
+  }, [search, sortOrder, sourceFilter, suggestions]);
+  const totalPages = Math.max(1, Math.ceil(filteredSuggestions.length / pageSize));
+  const currentPage = Math.min(page, totalPages);
+  const visibleSuggestions = filteredSuggestions.slice((currentPage - 1) * pageSize, currentPage * pageSize);
 
   return (
     <div className="flex-1 p-8">
@@ -282,8 +300,45 @@ export function KabataanSuggestionsSection() {
           Kabataan Suggestions
         </h2>
         <p className="mt-1 text-sm text-slate-500">
-          Free-form feedback submitted by Kabataan
+          Feedback and suggestions submitted by Youth and guests
         </p>
+        <div className="mt-4 grid gap-3 lg:grid-cols-[1fr_auto_auto]">
+          <input
+            className="w-full rounded-lg border border-slate-200 bg-white px-4 py-2.5 text-sm outline-none focus:border-[#1e3a5f] focus:ring-2 focus:ring-[#1e3a5f]/15"
+            onChange={(event) => {
+              setSearch(event.target.value);
+              setPage(1);
+            }}
+            placeholder="Search by submitter, source, comment, or related record"
+            value={search}
+          />
+          <select
+            className="rounded-lg border border-slate-200 bg-white px-3 py-2.5 text-sm text-slate-700 outline-none"
+            onChange={(event) => {
+              setSourceFilter(event.target.value);
+              setPage(1);
+            }}
+            value={sourceFilter}
+          >
+            <option value="all">All sources</option>
+            {sourceOptions.map((source) => (
+              <option key={source} value={source}>
+                {source}
+              </option>
+            ))}
+          </select>
+          <select
+            className="rounded-lg border border-slate-200 bg-white px-3 py-2.5 text-sm text-slate-700 outline-none"
+            onChange={(event) => {
+              setSortOrder(event.target.value as "newest" | "oldest");
+              setPage(1);
+            }}
+            value={sortOrder}
+          >
+            <option value="newest">Newest first</option>
+            <option value="oldest">Oldest first</option>
+          </select>
+        </div>
         <div className="mt-4">
           {errorMessage ? (
             <div className="rounded-lg border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-800">
@@ -291,86 +346,51 @@ export function KabataanSuggestionsSection() {
             </div>
           ) : isLoading ? (
             <div className="rounded-[14px] border border-slate-200 bg-white p-6 text-sm text-slate-500 shadow-sm">
-              Loading suggestions...
+              Loading feedback records...
             </div>
-          ) : suggestions.length > 0 ? (
-            <DataTable
-              headers={["#", "Date", "Submitted By", "Suggestion", "Feedback", "Actions"]}
-              rows={suggestions.map((item) => [
-                item.suggestion_id,
-                formatDate(item.submitted_at),
+          ) : filteredSuggestions.length > 0 ? (
+            <>
+              <DataTable
+                headers={["Submitted By", "Source", "Comment", "Related Event/Survey", "Date Submitted"]}
+                rows={visibleSuggestions.map((item) => [
                 item.submitted_by,
-                item.message,
-                <FeedbackCell value={item.feedback_comment} />,
-                <button
-                  className="rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm font-medium text-slate-700 hover:bg-slate-50"
-                  onClick={() => openFeedbackModal(item)}
-                  type="button"
-                >
-                  {normalizeFeedback(item.feedback_comment) ? "Edit Feedback" : "Add Feedback"}
-                </button>,
+                <SourceBadge source={item.source_type} />,
+                <FeedbackCell value={item.comment} />,
+                item.related_title ?? "-",
+                formatDate(item.created_at),
               ])}
-            />
+              />
+              <div className="mt-4 flex flex-wrap items-center justify-between gap-3 text-sm text-slate-500">
+                <span>
+                  Showing {(currentPage - 1) * pageSize + 1}-{Math.min(currentPage * pageSize, filteredSuggestions.length)} of {filteredSuggestions.length}
+                </span>
+                <div className="flex gap-2">
+                  <button
+                    className="rounded-lg border border-slate-200 px-3 py-2 font-medium disabled:cursor-not-allowed disabled:opacity-50"
+                    disabled={currentPage === 1}
+                    onClick={() => setPage((current) => Math.max(1, current - 1))}
+                    type="button"
+                  >
+                    Previous
+                  </button>
+                  <button
+                    className="rounded-lg border border-slate-200 px-3 py-2 font-medium disabled:cursor-not-allowed disabled:opacity-50"
+                    disabled={currentPage === totalPages}
+                    onClick={() => setPage((current) => Math.min(totalPages, current + 1))}
+                    type="button"
+                  >
+                    Next
+                  </button>
+                </div>
+              </div>
+            </>
           ) : (
             <div className="rounded-[14px] border border-slate-200 bg-white p-6 text-sm text-slate-500 shadow-sm">
-              No suggestions submitted yet.
+              No feedback records found.
             </div>
           )}
         </div>
       </section>
-      <AdminModal
-        footer={
-          <>
-            <button
-              className="rounded-lg border border-slate-200 px-4 py-2 text-sm font-medium text-slate-700 hover:bg-slate-50"
-              disabled={isSavingFeedback}
-              onClick={() => setSelectedSuggestion(null)}
-              type="button"
-            >
-              Cancel
-            </button>
-            <button
-              className="rounded-lg bg-[#1e3a5f] px-4 py-2 text-sm font-medium text-white hover:bg-[#2a4a6f] disabled:cursor-not-allowed disabled:opacity-60"
-              disabled={isSavingFeedback}
-              onClick={handleSaveFeedback}
-              type="button"
-            >
-              {isSavingFeedback ? "Saving..." : "Save Feedback"}
-            </button>
-          </>
-        }
-        onClose={() => {
-          if (!isSavingFeedback) setSelectedSuggestion(null);
-        }}
-        open={Boolean(selectedSuggestion)}
-        title="Suggestion Feedback"
-      >
-        <div className="space-y-4">
-          <div>
-            <p className="text-xs font-semibold uppercase tracking-[0.08em] text-slate-400">
-              Suggestion
-            </p>
-            <p className="mt-1 whitespace-pre-line text-sm text-slate-700">
-              {selectedSuggestion?.message}
-            </p>
-          </div>
-          <label className="block space-y-2">
-            <span className="text-sm font-medium text-slate-700">Feedback</span>
-            <textarea
-              className="min-h-32 w-full resize-y rounded-lg border border-slate-200 px-4 py-3 text-sm text-slate-800 outline-none focus:border-[#1e3a5f] focus:ring-2 focus:ring-[#1e3a5f]/15"
-              disabled={isSavingFeedback}
-              onChange={(event) => setFeedbackComment(event.target.value)}
-              placeholder="Type admin feedback for this suggestion..."
-              value={feedbackComment}
-            />
-          </label>
-          {feedbackErrorMessage ? (
-            <div className="rounded-lg border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700">
-              {feedbackErrorMessage}
-            </div>
-          ) : null}
-        </div>
-      </AdminModal>
     </div>
   );
 }

@@ -5,6 +5,7 @@ import type { Announcement, AnnouncementPayload } from "./AnnouncementsService";
 
 type SurveysAnnouncementsModalsProps = {
   announcement: Announcement | null;
+  errorMessage: string | null;
   isSaving: boolean;
   onClose: () => void;
   onSaveAnnouncement: (payload: AnnouncementPayload) => Promise<void>;
@@ -16,6 +17,7 @@ const inputClass =
 
 export default function SurveysAnnouncementsModals({
   announcement,
+  errorMessage,
   isSaving,
   onClose,
   onSaveAnnouncement,
@@ -184,6 +186,11 @@ export default function SurveysAnnouncementsModals({
           />
           Published
         </label>
+        {errorMessage ? (
+          <div className="rounded-lg border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700">
+            {errorMessage}
+          </div>
+        ) : null}
       </div>
     </AdminModal>
   );

@@ -27,19 +27,22 @@ export default function SurveysAnnouncements({
     useState<Announcement | null>(null);
   const [isSavingAnnouncement, setIsSavingAnnouncement] = useState(false);
   const [announcementRefreshKey, setAnnouncementRefreshKey] = useState(0);
+  const [announcementError, setAnnouncementError] = useState<string | null>(null);
 
   function closeAnnouncementModal() {
     setIsAnnouncementModalOpen(false);
     setSelectedAnnouncement(null);
+    setAnnouncementError(null);
   }
 
   async function handleSaveAnnouncement(payload: AnnouncementPayload) {
     setIsSavingAnnouncement(true);
+    setAnnouncementError(null);
     const { error } = await saveAnnouncement(payload);
     setIsSavingAnnouncement(false);
 
     if (error) {
-      window.alert(error.message);
+      setAnnouncementError(error.message);
       return;
     }
 
@@ -74,6 +77,7 @@ export default function SurveysAnnouncements({
       </main>
       <SurveysAnnouncementsModals
         announcement={selectedAnnouncement}
+        errorMessage={announcementError}
         isSaving={isSavingAnnouncement}
         onClose={closeAnnouncementModal}
         onSaveAnnouncement={handleSaveAnnouncement}

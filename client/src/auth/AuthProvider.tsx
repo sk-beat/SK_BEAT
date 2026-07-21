@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useState, type ReactNode } from "react";
+import { useCallback, useEffect, useRef, useState, type ReactNode } from "react";
 
 import {
   clearInvalidSupabaseSession,
@@ -67,21 +67,29 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const [user, setUser] = useState<AuthUser | null>(null);
   const [role, setRole] = useState<AppRole | null>(null);
   const [loading, setLoading] = useState(true);
+  const currentAuthUserIdRef = useRef<string | null>(null);
+
+  const setAuthUser = useCallback((nextUser: AuthUser | null) => {
+    currentAuthUserIdRef.current = nextUser?.id ?? null;
+    setUser(nextUser);
+  }, []);
 
   const handleInvalidSession = useCallback(async (error: unknown) => {
     logSafeAuthError("session_recovery", error);
     await clearInvalidSupabaseSession();
-    setUser(null);
+    setAuthUser(null);
     setRole(null);
     setLoading(false);
 
     if (window.location.pathname !== "/login") {
       window.location.replace("/login");
     }
-  }, []);
+  }, [setAuthUser]);
 
-  const loadUser = useCallback(async () => {
-    setLoading(true);
+  const loadUser = useCallback(async ({ showLoading = true } = {}) => {
+    if (showLoading) {
+      setLoading(true);
+    }
     const {
       data: { user: authUser },
       error: authError,
@@ -97,7 +105,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     }
 
     if (!authUser) {
-      setUser(null);
+      setAuthUser(null);
       setRole(null);
       setLoading(false);
       return;
@@ -122,7 +130,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         fullname: admin.fullname,
       };
 
-      setUser(nextUser);
+      setAuthUser(nextUser);
       setRole("admin");
       setLoading(false);
       return { role: "admin" as const, user: nextUser };
@@ -152,37 +160,45 @@ export function AuthProvider({ children }: { children: ReactNode }) {
           kabataan.onboarding_status === "temporary_password_active",
       };
 
-      setUser(nextUser);
+      setAuthUser(nextUser);
       setRole("kabataan");
       setLoading(false);
       return { role: "kabataan" as const, user: nextUser };
     } else {
-      setUser(null);
+      setAuthUser(null);
       setRole(null);
     }
 
     setLoading(false);
     return null;
-  }, [handleInvalidSession]);
+  }, [handleInvalidSession, setAuthUser]);
 
   useEffect(() => {
-    void Promise.resolve().then(loadUser);
-
-    const { data: listener } = supabase.auth.onAuthStateChange((event) => {
+    const { data: listener } = supabase.auth.onAuthStateChange((event, session) => {
       if (event === "SIGNED_OUT") {
-        setUser(null);
+        setAuthUser(null);
         setRole(null);
         setLoading(false);
         return;
       }
 
-      void loadUser();
+      if (event === "TOKEN_REFRESHED") {
+        return;
+      }
+
+      if (event === "SIGNED_IN" && session?.user.id === currentAuthUserIdRef.current) {
+        return;
+      }
+
+      void loadUser({
+        showLoading: event === "INITIAL_SESSION" || currentAuthUserIdRef.current === null,
+      });
     });
 
     return () => {
       listener.subscription.unsubscribe();
     };
-  }, [loadUser]);
+  }, [loadUser, setAuthUser]);
 
   async function login({ rememberMe = false, username, password }: LoginPayload) {
     setSupabaseAuthStorageMode(rememberMe ? "local" : "session");
@@ -266,7 +282,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       clearSupabaseAuthSessionStorage();
     }
 
-    setUser(null);
+    setAuthUser(null);
     setRole(null);
 
     if (error) {

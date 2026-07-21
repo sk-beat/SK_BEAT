@@ -333,7 +333,10 @@ function ParticipationTrendCard({ data }: { data: DashboardData }) {
   const rows = data.participationTrendByCategory;
   const categories = Array.from(new Set(rows.map((row) => row.category)));
   const [selectedCategory, setSelectedCategory] = useState(categories[0] ?? "");
-  const selectedRows = rows.filter((row) => row.category === selectedCategory);
+  const activeCategory = categories.includes(selectedCategory)
+    ? selectedCategory
+    : categories[0] ?? "";
+  const selectedRows = rows.filter((row) => row.category === activeCategory);
   const maxRegistered = Math.max(...selectedRows.map((row) => row.registered_count), 1);
 
   return (
@@ -352,7 +355,7 @@ function ParticipationTrendCard({ data }: { data: DashboardData }) {
           className="rounded-md border border-slate-200 bg-white px-3 py-1.5 text-xs text-slate-700 outline-none"
           disabled={categories.length === 0}
           onChange={(event) => setSelectedCategory(event.target.value)}
-          value={selectedCategory}
+          value={activeCategory}
         >
           {categories.length === 0 ? <option value="">No categories</option> : null}
           {categories.map((category) => (

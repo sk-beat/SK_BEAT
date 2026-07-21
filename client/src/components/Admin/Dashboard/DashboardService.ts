@@ -100,6 +100,11 @@ type EventRow = Omit<DashboardEvent, "registered_count"> & {
   event_registrations?: Array<{ registration_id: number; attendance_status: string | null }>;
 };
 
+type EventCategoryRow = {
+  name: string;
+  is_active: boolean;
+};
+
 function countByValue<T>(rows: T[], getValue: (row: T) => string | null | undefined) {
   const counts = new Map<string, number>();
 
@@ -119,12 +124,18 @@ function todayValue() {
 
 const monthLabels = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
 
-function buildParticipationTrendByCategory(eventRows: EventRow[]) {
+function buildParticipationTrendByCategory(eventRows: EventRow[], categoryRows: EventCategoryRow[]) {
   const categories = Array.from(
     new Set(
-      eventRows
-        .filter((event) => event.status !== "draft")
-        .map((event) => event.category?.trim() || "Uncategorized"),
+      [
+        ...categoryRows
+          .filter((category) => category.is_active)
+          .map((category) => category.name.trim())
+          .filter(Boolean),
+        ...eventRows
+          .filter((event) => event.status !== "draft")
+          .map((event) => event.category?.trim() || "Uncategorized"),
+      ],
     ),
   ).sort((first, second) => first.localeCompare(second));
   const grouped = new Map<string, DashboardParticipationTrendMonth>();
@@ -193,6 +204,7 @@ export async function getDashboardData(): Promise<{
     surveys,
     responses,
     announcements,
+    eventCategories,
     preferred,
     suggested,
     decisionInsights,
@@ -216,6 +228,11 @@ export async function getDashboardData(): Promise<{
       .from("announcements")
       .select("announcement_id", { count: "exact", head: true })
       .eq("is_published", true),
+    supabase
+      .from("event_categories")
+      .select("name,is_active")
+      .order("sort_order", { ascending: true })
+      .order("name", { ascending: true }),
     getPreferredActivityTypes(),
     getTopSuggestedEvents(),
     getDecisionInsights(),
@@ -227,7 +244,8 @@ export async function getDashboardData(): Promise<{
     events.error ||
     surveys.error ||
     responses.error ||
-    announcements.error;
+    announcements.error ||
+    eventCategories.error;
   const decisionError = decisionInsights.error;
 
   if (firstError || decisionError) {
@@ -240,6 +258,7 @@ export async function getDashboardData(): Promise<{
     purok: string | null;
   }>;
   const eventRows = (events.data ?? []) as EventRow[];
+  const eventCategoryRows = (eventCategories.data ?? []) as EventCategoryRow[];
   const visibleUpcomingEvents = eventRows
     .filter((event) => event.status === "scheduled" && event.event_date !== null && event.event_date >= today)
     .slice(0, 5)
@@ -267,7 +286,7 @@ export async function getDashboardData(): Promise<{
       genderGroups: countByValue(profileRows, (profile) => profile.gender),
       ongoingEventsCount: Number(metrics.ongoing_events ?? 0),
       oversubscribedAllocation: Number(metrics.oversubscribed_allocation ?? 0),
-      participationTrendByCategory: buildParticipationTrendByCategory(eventRows),
+      participationTrendByCategory: buildParticipationTrendByCategory(eventRows, eventCategoryRows),
       preferredActivityTypes: preferred.error ? [] : preferred.data,
       publishedAnnouncementsCount: Number(metrics.published_announcements ?? announcements.count ?? 0),
       publishedSurveysCount: Number(metrics.published_surveys ?? surveys.count ?? 0),

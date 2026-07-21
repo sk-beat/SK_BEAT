@@ -175,14 +175,14 @@ export default function FinancialModals({
     });
   }
 
-  function exportEventExpenses() {
+  async function exportEventExpenses() {
     if (!selectedEvent) {
       setFormError("Select an event before exporting expenses.");
       return;
     }
 
     try {
-      downloadEventExpensePdf(selectedEvent, eventRecords);
+      await downloadEventExpensePdf(selectedEvent, eventRecords);
       setFormError("");
     } catch (error) {
       setFormError(error instanceof Error ? error.message : "Unable to export event expenses.");

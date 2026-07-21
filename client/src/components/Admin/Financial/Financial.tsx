@@ -165,10 +165,10 @@ export default function Financial() {
     }
   }
 
-  function handleExportData() {
+  async function handleExportData() {
     try {
-      const fileName = downloadFinancialTransactionsPdf(transactions, selectedBudget?.fiscal_year);
-      setSuccessMessage(`Opened ${transactions.length} financial record(s) in ${fileName}.`);
+      const fileName = await downloadFinancialTransactionsPdf(transactions, selectedBudget?.fiscal_year);
+      setSuccessMessage(`Downloaded ${transactions.length} financial record(s) to ${fileName}.`);
       setErrorMessage("");
     } catch (error) {
       setErrorMessage(error instanceof Error ? error.message : "Unable to export financial data.");

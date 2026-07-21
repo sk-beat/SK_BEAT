@@ -1,5 +1,5 @@
 import { supabase } from "@/lib/supabase";
-import { openOfficialPdfReport } from "../../../utils/pdfExport";
+import { downloadOfficialPdfReport } from "../../../utils/pdfExport";
 
 export type FinancialTransactionType =
   | "expense"
@@ -308,7 +308,7 @@ export function downloadFinancialTransactionsPdf(
   const today = new Date().toISOString().slice(0, 10);
   const totalAmount = transactions.reduce((sum, transaction) => sum + transaction.amount, 0);
 
-  return openOfficialPdfReport({
+  return downloadOfficialPdfReport({
     columns: [
       { header: "#", value: (_row, index) => index + 1 },
       { header: "Date", value: (row) => formatReportDate(row.transaction_date) },
@@ -337,7 +337,7 @@ export function downloadEventExpensePdf(
   const today = new Date().toISOString().slice(0, 10);
   const totalAmount = transactions.reduce((sum, transaction) => sum + transaction.amount, 0);
 
-  return openOfficialPdfReport({
+  return downloadOfficialPdfReport({
     columns: [
       { header: "#", value: (_row, index) => index + 1 },
       { header: "Date", value: (row) => formatReportDate(row.transaction_date) },

@@ -9,7 +9,7 @@ import YouthRecordToolbar from "./YouthRecordToolbar";
 import { type CreateYouthRecord, type UpdateYouthRecord, type YouthRecord as YouthRecordType } from "./youthRecordData";
 import { sendYouthWelcomeEmail } from "../../../services/emailService";
 import { addYouth, deleteYouth, getYouthRecords, lockYouth, recordYouthWelcomeEmailResult, unlockYouth, updateYouth } from "./YouthRecordService";
-import { openOfficialPdfReport } from "../../../utils/pdfExport";
+import { downloadOfficialPdfReport } from "../../../utils/pdfExport";
 
 type AccountAction = "lock" | "unlock" | null;
 type ToastState = { message: string; tone: "success" | "error" } | null;
@@ -113,14 +113,14 @@ const filteredRecords = records.filter((record) => {
   return matchesSearch && matchesScholar && matchesEducation;
 });
 
-function exportYouthRecords() {
+async function exportYouthRecords() {
   if (filteredRecords.length === 0) {
     window.alert("No youth records to export.");
     return;
   }
 
   try {
-    openOfficialPdfReport({
+    await downloadOfficialPdfReport({
       columns: [
         { header: "#", value: (_record, index) => index + 1 },
         { header: "Full Name", value: (record) => record.fullname },

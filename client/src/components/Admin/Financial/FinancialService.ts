@@ -286,11 +286,11 @@ function formatReportDate(value: string | null | undefined) {
       }).format(date);
 }
 
-function formatPeso(value: number) {
+function formatReportAmount(value: number) {
   return new Intl.NumberFormat("en-PH", {
-    currency: "PHP",
     maximumFractionDigits: 2,
-    style: "currency",
+    minimumFractionDigits: 2,
+    useGrouping: true,
   }).format(value);
 }
 
@@ -316,14 +316,14 @@ export function downloadFinancialTransactionsPdf(
       { header: "Category", value: (row) => row.category },
       { header: "Description", value: (row) => row.description ?? "-" },
       { header: "Status", value: (row) => labelize(row.status) },
-      { align: "right", header: "Amount", value: (row) => formatPeso(row.amount) },
+      { align: "right", header: "Amount", value: (row) => formatReportAmount(row.amount), width: 30 },
     ],
     fileName: `sk-beat-financial-report-${today}.pdf`,
     rows: transactions,
     subtitle: fiscalYear ? `Budget Year ${fiscalYear}` : "Selected budget year",
     summary: [
       { label: "Records", value: transactions.length },
-      { label: "Total Amount", value: formatPeso(totalAmount) },
+      { label: "Total Amount", value: formatReportAmount(totalAmount) },
       { label: "Report Type", value: "Financial Transactions" },
     ],
     title: "Financial Transaction Report",
@@ -344,15 +344,15 @@ export function downloadEventExpensePdf(
       { header: "Description", value: (row) => row.description ?? row.category },
       { header: "Reference", value: (row) => row.reference_number ?? "-" },
       { header: "Status", value: (row) => labelize(row.status) },
-      { align: "right", header: "Amount", value: (row) => formatPeso(row.amount) },
+      { align: "right", header: "Amount", value: (row) => formatReportAmount(row.amount), width: 30 },
     ],
     fileName: `sk-beat-event-expenses-${event.event_id}-${today}.pdf`,
     rows: transactions,
     subtitle: `${event.event_name} | ${formatReportDate(event.event_date)}`,
     summary: [
-      { label: "Allocated Budget", value: formatPeso(event.allocated_budget) },
-      { label: "Recorded Expenses", value: formatPeso(totalAmount) },
-      { label: "Remaining Budget", value: formatPeso(event.remaining_event_budget) },
+      { label: "Allocated Budget", value: formatReportAmount(event.allocated_budget) },
+      { label: "Recorded Expenses", value: formatReportAmount(totalAmount) },
+      { label: "Remaining Budget", value: formatReportAmount(event.remaining_event_budget) },
     ],
     title: "Event Expense Report",
   });

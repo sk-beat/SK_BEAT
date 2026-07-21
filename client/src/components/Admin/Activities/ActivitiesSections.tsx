@@ -118,6 +118,12 @@ function formatPeso(amount: number) {
   return `P${amount.toLocaleString("en-PH")}`;
 }
 
+function formatRatingValue(value: number | null | undefined) {
+  return typeof value === "number" && Number.isFinite(value)
+    ? `${value}/5`
+    : "No rating yet";
+}
+
 function getStatusClass(status: ActivityEventStatus) {
   switch (status) {
     case "draft":
@@ -442,14 +448,14 @@ function EventInsightsPanel({
           actionType: "create_event",
           category: "survey",
           dataSource: "Survey event preference results",
-          description: `${topRecommendation.event_name} averages ${topRecommendation.average_rating}/5 from ${topRecommendation.total_respondent_count ?? topRecommendation.response_count} respondent(s): ${topRecommendation.authenticated_respondent_count ?? 0} registered Youth and ${topRecommendation.guest_respondent_count ?? 0} guest(s).`,
+          description: `${topRecommendation.event_name} has ${formatRatingValue(topRecommendation.average_rating)} from ${topRecommendation.total_respondent_count ?? topRecommendation.response_count} respondent(s): ${topRecommendation.authenticated_respondent_count ?? 0} registered Youth and ${topRecommendation.guest_respondent_count ?? 0} guest(s).`,
           id: `activity-top-recommendation-${topRecommendation.event_name}`,
           priority: 6,
           recommendedAction: "Create a draft event for admin review.",
           recommendedEventCategory: topRecommendation.event_category,
           recommendedEventName: topRecommendation.event_name,
           severity: "opportunity",
-          supportingValue: `${topRecommendation.average_rating}/5 average`,
+          supportingValue: formatRatingValue(topRecommendation.average_rating),
           title: "Highest-rated unscheduled recommendation",
           type: "unscheduled_recommendation",
         }
@@ -725,7 +731,7 @@ function ActivitiesListPanel({
                 {event.event_category}
               </p>
               <p className="mt-2 text-xs text-slate-500">
-                {event.average_rating}/5 average -{" "}
+                {formatRatingValue(event.average_rating)} average -{" "}
                 {event.positive_interest_percentage}% positive
               </p>
               <p className="mt-1 text-xs text-slate-500">

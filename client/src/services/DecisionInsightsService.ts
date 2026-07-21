@@ -82,6 +82,12 @@ function formatPeso(amount: number) {
   return `P${amount.toLocaleString("en-PH")}`;
 }
 
+function formatRatingValue(value: number | null | undefined) {
+  return typeof value === "number" && Number.isFinite(value)
+    ? `${value}/5`
+    : "No rating yet";
+}
+
 function severityRank(severity: DecisionInsightSeverity) {
   switch (severity) {
     case "critical":
@@ -301,7 +307,7 @@ export async function getDecisionInsights(): Promise<{
         actionType: alreadyPlanned ? "view_event" : "create_event",
         category: "survey",
         dataSource: "Survey event preference results",
-        description: `${recommendation.event_name} averages ${recommendation.average_rating}/5 from ${recommendation.total_respondent_count} respondent(s).`,
+        description: `${recommendation.event_name} has ${formatRatingValue(recommendation.average_rating)} from ${recommendation.total_respondent_count} respondent(s).`,
         eventId: recommendation.matching_event_id ?? undefined,
         id: `survey-recommendation-${recommendation.rank}-${recommendation.event_name}`,
         matchingEventId: recommendation.matching_event_id ?? undefined,
@@ -359,7 +365,7 @@ export async function getDecisionInsights(): Promise<{
         category: "survey",
         categoryName: "preferred-activity-types",
         dataSource: "Preferred activity type analytics",
-        description: `${category.activity_type} averages ${category.average_rating}/5 from ${category.total_respondent_count} respondent(s).`,
+        description: `${category.activity_type} has ${formatRatingValue(category.average_rating)} from ${category.total_respondent_count} respondent(s).`,
         id: `preferred-category-${category.rank}-${category.activity_type}`,
         priority: 8,
         recommendedAction: "Review preferred activity type results.",

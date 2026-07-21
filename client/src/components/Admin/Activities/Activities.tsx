@@ -6,14 +6,19 @@ import ActivitiesHeader from "./ActivitiesHeader";
 import ActivitiesModals, { type ActivitiesModalMode } from "./ActivitiesModals";
 import ActivitiesSections from "./ActivitiesSections";
 import {
+  createEventCategory,
   deleteActivityEvent,
+  deleteEventCategory,
   getActivityDecisionData,
+  getEventCategories,
   getActivityEvents,
   getCurrentBudgetYearId,
   saveActivityEvent,
+  updateEventCategory,
   type ActivityRecommendation,
   type CompletedEventPerformance,
   type ActivityEvent,
+  type EventCategory,
   type SaveActivityEventPayload,
 } from "./ActivitiesService";
 
@@ -34,6 +39,7 @@ export default function Activities() {
   const [selectedPastEvent, setSelectedPastEvent] = useState<ActivityEvent | null>(null);
   const [selectedPerformanceEventId, setSelectedPerformanceEventId] = useState<number | null>(null);
   const [events, setEvents] = useState<ActivityEvent[]>([]);
+  const [eventCategories, setEventCategories] = useState<EventCategory[]>([]);
   const [completedEventPerformance, setCompletedEventPerformance] = useState<CompletedEventPerformance[]>([]);
   const [recommendations, setRecommendations] = useState<ActivityRecommendation[]>([]);
   const [budgetYearId, setBudgetYearId] = useState<number | null>(null);
@@ -49,11 +55,12 @@ export default function Activities() {
     eventName: string,
     eventCategory: string,
   ): ActivityEvent => {
+    const fallbackCategory = eventCategories[0]?.name ?? "";
     return {
       allocated_budget: 0,
       budget_items: [],
       budget_year_id: budgetYearId,
-      category: eventCategory || "Sports",
+      category: eventCategory || fallbackCategory,
       cover_image: null,
       created_at: null,
       created_by: null,
@@ -67,20 +74,26 @@ export default function Activities() {
       location: null,
       status: "draft",
     };
-  }, [budgetYearId]);
+  }, [budgetYearId, eventCategories]);
 
   async function loadActivities() {
     setIsLoading(true);
     setErrorMessage(null);
 
-    const [{ data: activityData, error }, { data: budgetData }, decisionData] =
+    const [
+      { data: activityData, error },
+      { data: budgetData },
+      decisionData,
+      { data: categoryData, error: categoryError },
+    ] =
       await Promise.all([
         getActivityEvents(),
         getCurrentBudgetYearId(),
         getActivityDecisionData(),
+        getEventCategories(),
       ]);
 
-    const loadError = error;
+    const loadError = error || categoryError;
 
     if (loadError) {
       setErrorMessage(loadError.message);
@@ -89,6 +102,7 @@ export default function Activities() {
     }
 
     setEvents(activityData);
+    setEventCategories(categoryData);
     setCompletedEventPerformance(decisionData.error ? [] : decisionData.data.completedEventPerformance);
     setRecommendations(decisionData.error ? [] : decisionData.data.topSuggestedEvents);
     setBudgetYearId(budgetData?.budget_year_id ?? null);
@@ -127,6 +141,58 @@ export default function Activities() {
 
     setErrorMessage(null);
     const { error } = await deleteActivityEvent(eventId);
+
+    if (error) {
+      setErrorMessage(error.message);
+      return;
+    }
+
+    await loadActivities();
+  }
+
+  async function handleCreateCategory(name: string) {
+    setIsSaving(true);
+    setErrorMessage(null);
+    const { error } = await createEventCategory(name);
+    setIsSaving(false);
+
+    if (error) {
+      setErrorMessage(error.message);
+      return;
+    }
+
+    await loadActivities();
+  }
+
+  async function handleUpdateCategory(categoryId: number, name: string) {
+    setIsSaving(true);
+    setErrorMessage(null);
+    const { error } = await updateEventCategory(categoryId, name);
+    setIsSaving(false);
+
+    if (error) {
+      setErrorMessage(error.message);
+      return;
+    }
+
+    await loadActivities();
+  }
+
+  async function handleDeleteCategory(categoryId: number) {
+    const category = eventCategories.find((item) => item.category_id === categoryId);
+    const inUse = category
+      ? events.some((event) => event.category.toLowerCase() === category.name.toLowerCase())
+      : false;
+
+    if (inUse) {
+      setErrorMessage("This category is already used by an event. Rename it instead of deleting it.");
+      return;
+    }
+
+    setIsSaving(true);
+    setErrorMessage(null);
+    const { error } = await deleteEventCategory(categoryId);
+    setIsSaving(false);
 
     if (error) {
       setErrorMessage(error.message);
@@ -209,6 +275,7 @@ export default function Activities() {
           recommendations={recommendations}
           selectedDate={selectedScheduleDate}
           onAddCatalogEvent={() => setModalMode("catalog")}
+          onManageCategories={() => setModalMode("categories")}
           onCreateFromRecommendation={(recommendation) => {
             setSelectedActivity(recommendationToDraftEvent(
               recommendation.event_name,
@@ -254,9 +321,13 @@ export default function Activities() {
         isSaving={isSaving}
         scheduleDate={selectedScheduleDate}
         completedEventPerformance={completedEventPerformance}
+        eventCategories={eventCategories}
         selectedActivity={selectedActivity}
         selectedPastEvent={selectedPastEvent}
         selectedPerformanceEventId={selectedPerformanceEventId}
+        onCreateCategory={handleCreateCategory}
+        onDeleteCategory={handleDeleteCategory}
+        onUpdateCategory={handleUpdateCategory}
       />
     </div>
   );

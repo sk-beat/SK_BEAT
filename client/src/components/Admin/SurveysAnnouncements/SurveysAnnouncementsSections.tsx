@@ -245,6 +245,7 @@ function buildFeedbackInsightCards(summary: FeedbackInsightsSummary | null) {
 
 export function EventFeedbackSection() {
   const [feedbackRecords, setFeedbackRecords] = useState<AdminEventFeedbackRecord[]>([]);
+  const [feedbackInsights, setFeedbackInsights] = useState<FeedbackInsightsSummary | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
   const [search, setSearch] = useState("");
@@ -257,17 +258,21 @@ export function EventFeedbackSection() {
     setIsLoading(true);
     setErrorMessage(null);
 
-    const { data, error } = await getAdminEventFeedbackRecords();
+    const [feedbackResult, insightResult] = await Promise.all([
+      getAdminEventFeedbackRecords(),
+      getFeedbackInsightsSummary(),
+    ]);
 
-    if (error) {
+    if (feedbackResult.error || insightResult.error) {
       setErrorMessage("Unable to load feedback records.");
       setFeedbackRecords([]);
     } else {
-      setFeedbackRecords(data);
+      setFeedbackRecords(feedbackResult.data);
+      setFeedbackInsights(insightResult.data);
       console.log("[Event Feedback] Loaded", {
-        totalRows: data.length,
-        guestRows: data.filter((item) => item.is_guest).length,
-        registeredRows: data.filter((item) => !item.is_guest).length,
+        totalRows: feedbackResult.data.length,
+        guestRows: feedbackResult.data.filter((item) => item.is_guest).length,
+        registeredRows: feedbackResult.data.filter((item) => !item.is_guest).length,
       });
     }
 
@@ -309,6 +314,7 @@ export function EventFeedbackSection() {
   const totalPages = Math.max(1, Math.ceil(filteredFeedbackRecords.length / pageSize));
   const currentPage = Math.min(page, totalPages);
   const visibleFeedbackRecords = filteredFeedbackRecords.slice((currentPage - 1) * pageSize, currentPage * pageSize);
+  const feedbackInsightCards = buildFeedbackInsightCards(feedbackInsights);
 
   return (
     <div className="flex-1 p-8">
@@ -319,6 +325,33 @@ export function EventFeedbackSection() {
         <p className="mt-1 text-sm text-slate-500">
           Feedback submitted by registered users and guests after events
         </p>
+        <div className="mt-4 rounded-xl border border-slate-200 bg-slate-50 p-5">
+          <h3 className="text-sm font-semibold uppercase tracking-[0.1em] text-slate-500">
+            Feedback insights
+          </h3>
+          {feedbackInsightCards.length > 0 ? (
+            <div className="mt-4 grid gap-4 xl:grid-cols-3">
+              {feedbackInsightCards.map((card) => (
+                <InsightCard
+                  description={card.description}
+                  icon={card.icon}
+                  key={card.id}
+                  title={card.title}
+                  tone={card.tone}
+                />
+              ))}
+            </div>
+          ) : (
+            <div className="mt-4 grid gap-4 xl:grid-cols-3">
+              <InsightCard
+                description="No feedback insights available yet."
+                icon={BanknoteIcon}
+                title="Feedback insights"
+                tone="info"
+              />
+            </div>
+          )}
+        </div>
         <div className="mt-4 grid gap-3 lg:grid-cols-[1fr_auto_auto]">
           <input
             className="w-full rounded-lg border border-slate-200 bg-white px-4 py-2.5 text-sm outline-none focus:border-[#1e3a5f] focus:ring-2 focus:ring-[#1e3a5f]/15"
@@ -417,7 +450,6 @@ export function EventFeedbackSection() {
 export function SurveyResponsesSection() {
   const [searchParams] = useSearchParams();
   const [responses, setResponses] = useState<AdminSurveyResponseDetail[]>([]);
-  const [feedbackInsights, setFeedbackInsights] = useState<FeedbackInsightsSummary | null>(null);
   const [suggestedEvents, setSuggestedEvents] = useState<TopSuggestedEvent[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
@@ -429,18 +461,16 @@ export function SurveyResponsesSection() {
     async function loadResponses() {
       setIsLoading(true);
       setErrorMessage(null);
-      const [responseResult, suggestedResult, feedbackResult] = await Promise.all([
+      const [responseResult, suggestedResult] = await Promise.all([
         getAdminSurveyResponseDetails({ search }),
         getTopSuggestedEvents(),
-        getFeedbackInsightsSummary(),
       ]);
 
       if (!isMounted) return;
-      const error = responseResult.error || suggestedResult.error || feedbackResult.error;
+      const error = responseResult.error || suggestedResult.error;
       if (error) setErrorMessage(error.message);
       setResponses(responseResult.data);
       setSuggestedEvents(suggestedResult.data);
-      setFeedbackInsights(feedbackResult.data);
       console.log("[Survey Results] Unified ranking", {
         officialCount: suggestedResult.data.filter((event) => event.source_type === "official").length,
         otherSuggestionCount: suggestedResult.data.filter((event) => event.source_type === "custom").length,
@@ -474,7 +504,6 @@ export function SurveyResponsesSection() {
       type: answer.question_text,
     })),
   );
-  const feedbackInsightCards = buildFeedbackInsightCards(feedbackInsights);
 
   return (
     <div className="flex-1 p-8">
@@ -558,35 +587,6 @@ export function SurveyResponsesSection() {
                 </p>
               ) : null}
             </div>
-          </div>
-        </div>
-        <div className="mt-4">
-          <div className="rounded-xl border border-slate-200 bg-slate-50 p-5">
-            <h3 className="text-sm font-semibold uppercase tracking-[0.1em] text-slate-500">
-              Feedback insights
-            </h3>
-            {feedbackInsightCards.length > 0 ? (
-              <div className="mt-4 grid gap-4 xl:grid-cols-3">
-                {feedbackInsightCards.map((card) => (
-                  <InsightCard
-                    description={card.description}
-                    icon={card.icon}
-                    key={card.id}
-                    title={card.title}
-                    tone={card.tone}
-                  />
-                ))}
-              </div>
-            ) : (
-              <div className="mt-4 grid gap-4 xl:grid-cols-3">
-                <InsightCard
-                  description="No feedback insights available yet."
-                  icon={BanknoteIcon}
-                  title="Feedback insights"
-                  tone="info"
-                />
-              </div>
-            )}
           </div>
         </div>
         <div className="mt-4">

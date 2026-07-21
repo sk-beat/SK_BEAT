@@ -48,6 +48,16 @@ export type ActivityEvent = {
   event_registrations?: { registration_id: number; attendance_status?: string | null }[];
 };
 
+export type EventCategory = {
+  category_id: number;
+  name: string;
+  description: string | null;
+  is_active: boolean;
+  sort_order: number;
+  created_at: string;
+  updated_at: string;
+};
+
 export type SaveActivityEventPayload = {
   event_id: number | null;
   budget_year_id: number | null;
@@ -76,6 +86,51 @@ export async function getActivityEvents() {
     .order("created_at", { ascending: false });
 
   return { data: (data ?? []) as ActivityEvent[], error };
+}
+
+export async function getEventCategories() {
+  const { data, error } = await supabase
+    .from("event_categories")
+    .select("category_id,name,description,is_active,sort_order,created_at,updated_at")
+    .order("sort_order", { ascending: true })
+    .order("name", { ascending: true });
+
+  return { data: (data ?? []) as EventCategory[], error };
+}
+
+export async function createEventCategory(name: string) {
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+  const { data, error } = await supabase
+    .from("event_categories")
+    .insert({
+      created_by: user?.id ?? null,
+      name: name.trim(),
+      sort_order: 100,
+    })
+    .select("category_id,name,description,is_active,sort_order,created_at,updated_at")
+    .single();
+
+  return { data: data as EventCategory | null, error };
+}
+
+export async function updateEventCategory(categoryId: number, name: string) {
+  const { data, error } = await supabase
+    .from("event_categories")
+    .update({ name: name.trim() })
+    .eq("category_id", categoryId)
+    .select("category_id,name,description,is_active,sort_order,created_at,updated_at")
+    .single();
+
+  return { data: data as EventCategory | null, error };
+}
+
+export async function deleteEventCategory(categoryId: number) {
+  return await supabase
+    .from("event_categories")
+    .delete()
+    .eq("category_id", categoryId);
 }
 
 export async function getActivityDecisionData() {

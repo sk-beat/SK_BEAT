@@ -245,7 +245,7 @@ export default function FinancialSections({
           onClick={onOpenAnnualBudget}
           type="button"
         >
-          Set Annual Budget
+          Set / Update Annual Budget
         </button>
       </div>
 

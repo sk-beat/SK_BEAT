@@ -331,29 +331,48 @@ function SurveyAnswerResultsCard() {
 
 function ParticipationTrendCard({ data }: { data: DashboardData }) {
   const rows = data.participationTrendByCategory;
-  const maxRegistered = Math.max(...rows.map((row) => row.registered_count), 1);
+  const categories = Array.from(new Set(rows.map((row) => row.category)));
+  const [selectedCategory, setSelectedCategory] = useState(categories[0] ?? "");
+  const selectedRows = rows.filter((row) => row.category === selectedCategory);
+  const maxRegistered = Math.max(...selectedRows.map((row) => row.registered_count), 1);
 
   return (
     <section className="mb-8 rounded-[14px] border border-[#1e3a5f]/20 bg-white p-6 shadow-sm">
-      <div className="mb-4">
-        <h2 className="m-0 text-sm font-semibold uppercase tracking-[0.1em] text-slate-400">
-          Participation Trend by Event Category
-        </h2>
-        <p className="mt-1 text-[0.8125rem] text-slate-400">
-          Registrations and attendance grouped by live event category.
-        </p>
+      <div className="mb-4 flex flex-wrap items-start justify-between gap-4">
+        <div>
+          <h2 className="m-0 text-sm font-semibold uppercase tracking-[0.1em] text-slate-400">
+            Participation Trend by Event Category
+          </h2>
+          <p className="mt-1 text-[0.8125rem] text-slate-400">
+            Monthly registrations and attendance from January to December.
+          </p>
+        </div>
+        <select
+          aria-label="Filter participation trend by event category"
+          className="rounded-md border border-slate-200 bg-white px-3 py-1.5 text-xs text-slate-700 outline-none"
+          disabled={categories.length === 0}
+          onChange={(event) => setSelectedCategory(event.target.value)}
+          value={selectedCategory}
+        >
+          {categories.length === 0 ? <option value="">No categories</option> : null}
+          {categories.map((category) => (
+            <option key={category} value={category}>
+              {category}
+            </option>
+          ))}
+        </select>
       </div>
 
-      {rows.length === 0 ? (
+      {selectedRows.length === 0 ? (
         <div className="rounded-lg border border-dashed border-slate-200 p-4 text-sm text-slate-500">
           No participation data is available yet.
         </div>
       ) : (
         <div className="space-y-3">
-          {rows.slice(0, 6).map((row) => (
-            <div className="grid gap-2 text-sm md:grid-cols-[180px_minmax(0,1fr)_180px]" key={row.category}>
+          {selectedRows.map((row) => (
+            <div className="grid gap-2 text-sm md:grid-cols-[72px_minmax(0,1fr)_190px]" key={`${row.category}-${row.month}`}>
               <div>
-                <p className="font-semibold text-slate-800">{row.category}</p>
+                <p className="font-semibold text-slate-800">{row.month_label}</p>
                 <p className="text-xs text-slate-400">
                   {row.event_count} event(s)
                 </p>
@@ -362,7 +381,7 @@ function ParticipationTrendCard({ data }: { data: DashboardData }) {
                 <div className="h-9 w-full overflow-hidden rounded-md bg-slate-100">
                   <div
                     className="h-full rounded-md bg-[#1e3a5f]"
-                    style={{ width: `${Math.max(6, (row.registered_count / maxRegistered) * 100)}%` }}
+                    style={{ width: `${row.registered_count === 0 ? 0 : Math.max(6, (row.registered_count / maxRegistered) * 100)}%` }}
                   />
                 </div>
               </div>

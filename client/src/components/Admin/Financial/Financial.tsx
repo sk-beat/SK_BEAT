@@ -11,6 +11,7 @@ import {
   getFinancialSummary,
   getFinancialTransactionsForCharts,
   saveFinancialTransaction,
+  updateAnnualBudget,
   type AnnualBudget,
   type FinancialEventBudget,
   type FinancialSummary,
@@ -119,23 +120,25 @@ export default function Financial() {
     setSelectedEvent(null);
   }
 
-  async function handleCreateAnnualBudget(amount: number) {
+  async function handleSaveAnnualBudget(amount: number) {
     setIsSaving(true);
     setErrorMessage("");
 
     try {
-      const { error } = await createAnnualBudget(amount);
+      const { error } = selectedBudget
+        ? await updateAnnualBudget(selectedBudget.budget_year_id, amount)
+        : await createAnnualBudget(amount);
 
       if (error) {
         throw error;
       }
 
-      setSuccessMessage("Annual budget created.");
+      setSuccessMessage(selectedBudget ? "Annual budget updated." : "Annual budget created.");
       closeModal();
-      await loadFinancialData(null);
+      await loadFinancialData(selectedBudget?.budget_year_id ?? null);
     } catch (error) {
       setErrorMessage(
-        error instanceof Error ? error.message : "Unable to create annual budget.",
+        error instanceof Error ? error.message : "Unable to save annual budget.",
       );
     } finally {
       setIsSaving(false);
@@ -215,7 +218,7 @@ export default function Financial() {
         isSaving={isSaving}
         mode={modalMode}
         onClose={closeModal}
-        onCreateAnnualBudget={handleCreateAnnualBudget}
+        onCreateAnnualBudget={handleSaveAnnualBudget}
         onSaveTransaction={handleSaveTransaction}
         selectedEvent={selectedEvent}
         transactions={transactions}

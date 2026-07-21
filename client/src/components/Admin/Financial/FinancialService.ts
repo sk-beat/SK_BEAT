@@ -161,6 +161,23 @@ export async function createAnnualBudget(amount: number) {
   };
 }
 
+export async function updateAnnualBudget(budgetYearId: number, amount: number) {
+  const { data, error } = await supabase.rpc("update_admin_annual_budget", {
+    p_budget_year_id: budgetYearId,
+    p_total_allocation: amount,
+  });
+
+  return {
+    data: data
+      ? (toNumberRecord(data, [
+          "total_allocation",
+          "remaining_balance",
+        ]) as AnnualBudget)
+      : null,
+    error,
+  };
+}
+
 export async function getFinancialSummary(budgetYearId: number) {
   const { data, error } = await supabase
     .from("financial_summary_by_budget_year")

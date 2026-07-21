@@ -97,6 +97,7 @@ type ActivitiesSectionActions = {
   onDeleteCatalogEvent: (eventId: number) => void;
   onEditCatalogEvent: (activity: ActivityEvent) => void;
   onCreateFromRecommendation: (recommendation: ActivityRecommendation) => void;
+  onManageCategories: () => void;
   onOpenPastFeedbackQr: (event: ActivityEvent) => void;
   onOpenPerformance: (eventId: number) => void;
   onOpenRegistrations: (event: ActivityEvent) => void;
@@ -645,6 +646,7 @@ function ActivitiesListPanel({
   onAddCatalogEvent,
   onDeleteCatalogEvent,
   onEditCatalogEvent,
+  onManageCategories,
   onOpenPastFeedbackQr,
   onOpenRegistrations,
   onCreateFromRecommendation,
@@ -660,6 +662,7 @@ function ActivitiesListPanel({
   | "onOpenPastFeedbackQr"
   | "onOpenRegistrations"
   | "onCreateFromRecommendation"
+  | "onManageCategories"
   | "recommendations"
 >) {
   const [currentPage, setCurrentPage] = useState(1);
@@ -686,10 +689,15 @@ function ActivitiesListPanel({
             Top 3 recommendations ranked by distinct Youth survey support.
           </p>
         </div>
-        <button className="inline-flex items-center gap-2 rounded-lg bg-[#1e3a5f] px-5 py-2.5 text-sm font-medium text-white hover:bg-[#2a4a6f]" onClick={onAddCatalogEvent} type="button">
-          <PlusIcon className="h-4 w-4" />
-          Add New Event
-        </button>
+        <div className="flex flex-wrap gap-2">
+          <button className="rounded-lg border border-slate-200 bg-white px-4 py-2.5 text-sm font-medium text-[#1e3a5f] hover:bg-blue-50" onClick={onManageCategories} type="button">
+            Categories
+          </button>
+          <button className="inline-flex items-center gap-2 rounded-lg bg-[#1e3a5f] px-5 py-2.5 text-sm font-medium text-white hover:bg-[#2a4a6f]" onClick={onAddCatalogEvent} type="button">
+            <PlusIcon className="h-4 w-4" />
+            Add New Event
+          </button>
+        </div>
       </div>
 
       <div className="mb-5 rounded-xl border border-slate-200 bg-slate-50 p-4">
@@ -873,6 +881,7 @@ export default function ActivitiesSections({
   onDeleteCatalogEvent,
   onEditCatalogEvent,
   onCreateFromRecommendation,
+  onManageCategories,
   onOpenPastFeedbackQr,
   onOpenPerformance,
   onOpenRegistrations,
@@ -915,6 +924,7 @@ export default function ActivitiesSections({
         onDeleteCatalogEvent={onDeleteCatalogEvent}
         onEditCatalogEvent={onEditCatalogEvent}
         onCreateFromRecommendation={onCreateFromRecommendation}
+        onManageCategories={onManageCategories}
         onOpenPastFeedbackQr={onOpenPastFeedbackQr}
         onOpenRegistrations={onOpenRegistrations}
         recommendations={recommendations}

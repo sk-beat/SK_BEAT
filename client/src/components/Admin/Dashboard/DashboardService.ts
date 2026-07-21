@@ -27,11 +27,13 @@ export type DashboardPopulationGroup = {
   count: number;
 };
 
-export type DashboardParticipationTrend = {
+export type DashboardParticipationTrendMonth = {
   attendance_count: number;
   category: string;
   event_count: number;
   expected_attendees: number;
+  month: number;
+  month_label: string;
   participation_rate: number | null;
   registered_count: number;
 };
@@ -57,7 +59,7 @@ export type DashboardData = {
   publishedAnnouncementsCount: number;
   recentEvents: DashboardEvent[];
   decisionInsights: DecisionInsight[];
-  participationTrendByCategory: DashboardParticipationTrend[];
+  participationTrendByCategory: DashboardParticipationTrendMonth[];
   preferredActivityTypes: PreferredActivityType[];
   topSuggestedEvents: TopSuggestedEvent[];
 };
@@ -115,23 +117,43 @@ function todayValue() {
   return new Date().toISOString().slice(0, 10);
 }
 
+const monthLabels = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
+
 function buildParticipationTrendByCategory(eventRows: EventRow[]) {
-  const grouped = new Map<string, DashboardParticipationTrend>();
+  const categories = Array.from(
+    new Set(
+      eventRows
+        .filter((event) => event.status !== "draft")
+        .map((event) => event.category?.trim() || "Uncategorized"),
+    ),
+  ).sort((first, second) => first.localeCompare(second));
+  const grouped = new Map<string, DashboardParticipationTrendMonth>();
+
+  categories.forEach((category) => {
+    monthLabels.forEach((monthLabel, index) => {
+      const month = index + 1;
+      grouped.set(`${category}-${month}`, {
+        attendance_count: 0,
+        category,
+        event_count: 0,
+        expected_attendees: 0,
+        month,
+        month_label: monthLabel,
+        participation_rate: null,
+        registered_count: 0,
+      });
+    });
+  });
 
   eventRows
-    .filter((event) => event.status !== "draft")
+    .filter((event) => event.status !== "draft" && event.event_date)
     .forEach((event) => {
       const category = event.category?.trim() || "Uncategorized";
-      const current =
-        grouped.get(category) ??
-        {
-          attendance_count: 0,
-          category,
-          event_count: 0,
-          expected_attendees: 0,
-          participation_rate: null,
-          registered_count: 0,
-        };
+      const eventDate = new Date(`${event.event_date}T00:00:00`);
+      const month = Number.isNaN(eventDate.getTime()) ? null : eventDate.getMonth() + 1;
+      if (!month) return;
+      const current = grouped.get(`${category}-${month}`);
+      if (!current) return;
       const registrations = event.event_registrations ?? [];
 
       current.event_count += 1;
@@ -142,7 +164,6 @@ function buildParticipationTrendByCategory(eventRows: EventRow[]) {
       current.attendance_count += registrations.filter(
         (registration) => registration.attendance_status === "attended",
       ).length;
-      grouped.set(category, current);
     });
 
   return Array.from(grouped.values())
@@ -155,8 +176,8 @@ function buildParticipationTrendByCategory(eventRows: EventRow[]) {
     }))
     .sort(
       (first, second) =>
-        second.registered_count - first.registered_count ||
-        first.category.localeCompare(second.category),
+        first.category.localeCompare(second.category) ||
+        first.month - second.month,
     );
 }
 

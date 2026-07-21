@@ -122,6 +122,19 @@ export default function FinancialModals({
     return () => window.clearTimeout(timeout);
   }, [mode, selectedEvent]);
 
+  useEffect(() => {
+    if (mode !== "annual-budget") {
+      return;
+    }
+
+    const timeout = window.setTimeout(() => {
+      setBudgetInput(annualBudget?.total_allocation ?? "");
+      setFormError("");
+    }, 0);
+
+    return () => window.clearTimeout(timeout);
+  }, [annualBudget, mode]);
+
   async function saveExpense() {
     const numericAmount = Number(amount);
 
@@ -334,7 +347,7 @@ export default function FinancialModals({
           <>
             <button
               className="rounded-lg bg-[#1e3a5f] px-4 py-2 text-sm font-medium text-white hover:bg-[#2a4a6f] disabled:cursor-not-allowed disabled:opacity-60"
-              disabled={annualBudget !== null || isSaving}
+              disabled={isSaving}
               onClick={async () => {
                 if (budgetInput === "" || budgetInput <= 0) {
                   setFormError("Annual budget must be greater than zero.");
@@ -346,7 +359,7 @@ export default function FinancialModals({
               }}
               type="button"
             >
-              {isSaving ? "Saving..." : "Save"}
+              {isSaving ? "Saving..." : annualBudget ? "Update Budget" : "Save"}
             </button>
             <button
               className="rounded-lg border border-slate-200 px-4 py-2 text-sm font-medium text-slate-700 hover:bg-slate-50"
@@ -361,15 +374,13 @@ export default function FinancialModals({
         maxWidthClass="max-w-md"
         onClose={onClose}
         open={mode === "annual-budget"}
-        title="Set Annual Budget"
+        title={annualBudget ? "Update Annual Budget" : "Set Annual Budget"}
       >
         <div className="grid gap-4">
           {annualBudget ? (
-            <span className="rounded-lg bg-emerald-700/80 p-2">
-              <p className="text-center text-xs font-medium text-white">
-                There is already an annual budget set for the selected year
-              </p>
-            </span>
+            <div className="rounded-lg border border-blue-100 bg-blue-50 px-4 py-3 text-sm text-[#1e3a5f]">
+              Updating this amount refreshes the financial summary, available-to-spend, and utilization values for the selected budget year.
+            </div>
           ) : null}
           {formError ? (
             <p className="text-sm font-medium text-red-600">{formError}</p>

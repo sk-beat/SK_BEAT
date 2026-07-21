@@ -9,11 +9,12 @@ import type {
   ActivityEventStatus,
   CompletedEventPerformance,
   ActivityExpense,
+  EventCategory,
   SaveActivityEventPayload,
 } from "./ActivitiesService";
 import { getAdminEventRegistrations } from "./ActivitiesService";
 
-export type ActivitiesModalMode = "catalog" | "schedule" | "feedback-qr" | "registrations" | "performance" | null;
+export type ActivitiesModalMode = "catalog" | "schedule" | "categories" | "feedback-qr" | "registrations" | "performance" | null;
 
 type ActivitiesModalsProps = {
   budgetYearId: number | null;
@@ -24,6 +25,10 @@ type ActivitiesModalsProps = {
   onSave: (payload: SaveActivityEventPayload) => Promise<void>;
   scheduleDate: string;
   completedEventPerformance: CompletedEventPerformance[];
+  eventCategories: EventCategory[];
+  onCreateCategory: (name: string) => Promise<void>;
+  onDeleteCategory: (categoryId: number) => Promise<void>;
+  onUpdateCategory: (categoryId: number, name: string) => Promise<void>;
   selectedPerformanceEventId: number | null;
   selectedActivity: ActivityEvent | null;
   selectedPastEvent: ActivityEvent | null;
@@ -311,6 +316,7 @@ function RequiredMark() {
 
 function CatalogEventModal({
   budgetYearId,
+  eventCategories,
   events,
   isSaving,
   onClose,
@@ -318,7 +324,7 @@ function CatalogEventModal({
   selectedActivity,
 }: Pick<
   ActivitiesModalsProps,
-  "budgetYearId" | "events" | "isSaving" | "onClose" | "onSave" | "selectedActivity"
+  "budgetYearId" | "eventCategories" | "events" | "isSaving" | "onClose" | "onSave" | "selectedActivity"
 >) {
   const [eventChoice, setEventChoice] = useState<"new" | "existing">(
     selectedActivity?.event_id ? "existing" : "new",
@@ -497,11 +503,17 @@ function CatalogEventModal({
             value={form.category}
           >
             <option value="" disabled>Select event category</option>
-            <option value="Sports">Sports</option>
-            <option value="Training">Training</option>
-            <option value="Community Service">Community Service</option>
-            <option value="Health & Wellness">Health & Wellness</option>
-            <option value="Cultural">Cultural</option>
+            {eventCategories
+              .filter((category) => category.is_active || category.name === form.category)
+              .map((category) => (
+                <option key={category.category_id} value={category.name}>
+                  {category.name}
+                </option>
+              ))}
+            {form.category &&
+            !eventCategories.some((category) => category.name === form.category) ? (
+              <option value={form.category}>{form.category}</option>
+            ) : null}
           </select>
         </label>
 
@@ -1004,6 +1016,168 @@ function ScheduleEventModal({
   );
 }
 
+function EventCategoriesModal({
+  eventCategories,
+  isSaving,
+  onClose,
+  onCreateCategory,
+  onDeleteCategory,
+  onUpdateCategory,
+}: Pick<
+  ActivitiesModalsProps,
+  | "eventCategories"
+  | "isSaving"
+  | "onClose"
+  | "onCreateCategory"
+  | "onDeleteCategory"
+  | "onUpdateCategory"
+>) {
+  const [newCategory, setNewCategory] = useState("");
+  const [editingId, setEditingId] = useState<number | null>(null);
+  const [editingName, setEditingName] = useState("");
+  const [errorMessage, setErrorMessage] = useState("");
+
+  async function addCategory() {
+    const name = newCategory.trim();
+    if (!name) {
+      setErrorMessage("Category name is required.");
+      return;
+    }
+
+    await onCreateCategory(name);
+    setNewCategory("");
+    setErrorMessage("");
+  }
+
+  async function saveEdit() {
+    const name = editingName.trim();
+    if (!editingId || !name) {
+      setErrorMessage("Category name is required.");
+      return;
+    }
+
+    await onUpdateCategory(editingId, name);
+    setEditingId(null);
+    setEditingName("");
+    setErrorMessage("");
+  }
+
+  return (
+    <AdminModal
+      footer={
+        <button
+          className="rounded-lg bg-[#1e3a5f] px-4 py-2 text-sm font-medium text-white hover:bg-[#2a4a6f]"
+          onClick={onClose}
+          type="button"
+        >
+          Done
+        </button>
+      }
+      maxWidthClass="max-w-2xl"
+      onClose={onClose}
+      open
+      title="Event Categories"
+    >
+      <div className="grid gap-4">
+        {errorMessage ? (
+          <p className="rounded-lg border border-red-200 bg-red-50 px-4 py-3 text-sm font-medium text-red-700">
+            {errorMessage}
+          </p>
+        ) : null}
+        <div className="grid gap-3 sm:grid-cols-[1fr_auto]">
+          <input
+            className={inputClass}
+            disabled={isSaving}
+            onChange={(event) => setNewCategory(event.target.value)}
+            placeholder="New event category"
+            value={newCategory}
+          />
+          <button
+            className="rounded-lg bg-[#1e3a5f] px-4 py-2.5 text-sm font-semibold text-white hover:bg-[#2a4a6f] disabled:cursor-not-allowed disabled:opacity-60"
+            disabled={isSaving}
+            onClick={addCategory}
+            type="button"
+          >
+            Add Category
+          </button>
+        </div>
+
+        <div className="divide-y divide-slate-100 overflow-hidden rounded-xl border border-slate-200">
+          {eventCategories.length === 0 ? (
+            <p className="p-4 text-sm text-slate-500">No categories yet.</p>
+          ) : null}
+          {eventCategories.map((category) => (
+            <div className="grid gap-3 p-4 sm:grid-cols-[1fr_auto]" key={category.category_id}>
+              {editingId === category.category_id ? (
+                <input
+                  className={inputClass}
+                  disabled={isSaving}
+                  onChange={(event) => setEditingName(event.target.value)}
+                  value={editingName}
+                />
+              ) : (
+                <div>
+                  <p className="font-semibold text-slate-800">{category.name}</p>
+                  <p className="text-xs text-slate-400">
+                    {category.is_active ? "Active" : "Inactive"}
+                  </p>
+                </div>
+              )}
+              <div className="flex flex-wrap gap-2">
+                {editingId === category.category_id ? (
+                  <>
+                    <button
+                      className="rounded-lg bg-[#1e3a5f] px-3 py-2 text-sm font-medium text-white"
+                      disabled={isSaving}
+                      onClick={saveEdit}
+                      type="button"
+                    >
+                      Save
+                    </button>
+                    <button
+                      className="rounded-lg border border-slate-200 px-3 py-2 text-sm font-medium text-slate-700"
+                      disabled={isSaving}
+                      onClick={() => {
+                        setEditingId(null);
+                        setEditingName("");
+                      }}
+                      type="button"
+                    >
+                      Cancel
+                    </button>
+                  </>
+                ) : (
+                  <>
+                    <button
+                      className="rounded-lg border border-slate-200 px-3 py-2 text-sm font-medium text-slate-700 hover:bg-slate-50"
+                      disabled={isSaving}
+                      onClick={() => {
+                        setEditingId(category.category_id);
+                        setEditingName(category.name);
+                      }}
+                      type="button"
+                    >
+                      Edit
+                    </button>
+                    <button
+                      className="rounded-lg border border-red-200 px-3 py-2 text-sm font-medium text-red-600 hover:bg-red-50"
+                      disabled={isSaving}
+                      onClick={() => onDeleteCategory(category.category_id)}
+                      type="button"
+                    >
+                      Delete
+                    </button>
+                  </>
+                )}
+              </div>
+            </div>
+          ))}
+        </div>
+      </div>
+    </AdminModal>
+  );
+}
+
 function RegistrationsModal({
   onClose,
   selectedActivity,
@@ -1225,6 +1399,10 @@ export default function ActivitiesModals({
   selectedPerformanceEventId,
   selectedActivity,
   selectedPastEvent,
+  eventCategories,
+  onCreateCategory,
+  onDeleteCategory,
+  onUpdateCategory,
 }: ActivitiesModalsProps) {
   const feedbackUrl = selectedPastEvent
     ? `${window.location.origin}/event-feedback/${selectedPastEvent.event_id}`
@@ -1238,11 +1416,23 @@ export default function ActivitiesModals({
       {mode === "catalog" ? (
         <CatalogEventModal
           budgetYearId={budgetYearId}
+          eventCategories={eventCategories}
           events={events}
           isSaving={isSaving}
           onClose={onClose}
           onSave={onSave}
           selectedActivity={selectedActivity}
+        />
+      ) : null}
+
+      {mode === "categories" ? (
+        <EventCategoriesModal
+          eventCategories={eventCategories}
+          isSaving={isSaving}
+          onClose={onClose}
+          onCreateCategory={onCreateCategory}
+          onDeleteCategory={onDeleteCategory}
+          onUpdateCategory={onUpdateCategory}
         />
       ) : null}
 

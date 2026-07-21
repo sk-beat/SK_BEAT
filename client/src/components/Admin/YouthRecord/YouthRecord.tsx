@@ -9,6 +9,7 @@ import YouthRecordToolbar from "./YouthRecordToolbar";
 import { type CreateYouthRecord, type UpdateYouthRecord, type YouthRecord as YouthRecordType } from "./youthRecordData";
 import { sendYouthWelcomeEmail } from "../../../services/emailService";
 import { addYouth, deleteYouth, getYouthRecords, lockYouth, recordYouthWelcomeEmailResult, unlockYouth, updateYouth } from "./YouthRecordService";
+import { openOfficialPdfReport } from "../../../utils/pdfExport";
 
 type AccountAction = "lock" | "unlock" | null;
 type ToastState = { message: string; tone: "success" | "error" } | null;
@@ -112,68 +113,38 @@ const filteredRecords = records.filter((record) => {
   return matchesSearch && matchesScholar && matchesEducation;
 });
 
-function escapeCsvCell(value: string | number | null | undefined) {
-  const stringValue = String(value ?? "");
-  return `"${stringValue.split('"').join('""')}"`;
-}
-
 function exportYouthRecords() {
   if (filteredRecords.length === 0) {
     window.alert("No youth records to export.");
     return;
   }
 
-  const headers = [
-    "Profile ID",
-    "Full Name",
-    "Email",
-    "Age",
-    "Birthday",
-    "Gender",
-    "Purok",
-    "Address",
-    "Educational Status",
-    "Account Access",
-    "Lock Reason",
-    "Scholar Status",
-    "Contact Number",
-    "Created At",
-  ];
-
-  const rows = filteredRecords.map((record) => [
-    record.profile_id,
-    record.fullname,
-    record.email,
-    calculateAge(record.date_of_birth) ?? "",
-    record.date_of_birth ?? "",
-    record.gender,
-    record.purok,
-    record.address_line,
-    record.educational_status,
-    record.status === "active" ? "Active" : "Locked",
-    record.account_lock_reason ?? "",
-    record.scholar_status,
-    record.contact_number,
-    record.created_at,
-  ]);
-
-  const csv = [headers, ...rows]
-    .map((row) => row.map(escapeCsvCell).join(","))
-    .join("\n");
-  const csvWithBom = `\uFEFF${csv}`;
-  const url = `data:text/csv;charset=utf-8,${encodeURIComponent(csvWithBom)}`;
-  const link = document.createElement("a");
-
-  link.setAttribute("href", url);
-  link.setAttribute(
-    "download",
-    `youth-records-${new Date().toISOString().slice(0, 10)}.csv`,
-  );
-  link.download = `youth-records-${new Date().toISOString().slice(0, 10)}.csv`;
-  link.style.display = "none";
-  document.body.appendChild(link);
-  link.click();
-  document.body.removeChild(link);
+  try {
+    openOfficialPdfReport({
+      columns: [
+        { header: "#", value: (_record, index) => index + 1 },
+        { header: "Full Name", value: (record) => record.fullname },
+        { header: "Email", value: (record) => record.email },
+        { header: "Age", value: (record) => calculateAge(record.date_of_birth) ?? "-" },
+        { header: "Gender", value: (record) => record.gender },
+        { header: "Purok", value: (record) => record.purok },
+        { header: "Education", value: (record) => record.educational_status },
+        { header: "Access", value: (record) => getAccountAccessLabel(record) },
+        { header: "Contact", value: (record) => record.contact_number },
+      ],
+      fileName: `youth-records-${new Date().toISOString().slice(0, 10)}.pdf`,
+      rows: filteredRecords,
+      subtitle: "Filtered Kabataan profile records",
+      summary: [
+        { label: "Total Records", value: filteredRecords.length },
+        { label: "Scholar Filter", value: scholarFilter || "All" },
+        { label: "Education Filter", value: educationFilter || "All" },
+      ],
+      title: "Youth Records Report",
+    });
+  } catch (error) {
+    window.alert(error instanceof Error ? error.message : "Unable to export youth records.");
+  }
 }
 
   

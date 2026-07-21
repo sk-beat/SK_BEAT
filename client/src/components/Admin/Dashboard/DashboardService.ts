@@ -27,6 +27,15 @@ export type DashboardPopulationGroup = {
   count: number;
 };
 
+export type DashboardParticipationTrend = {
+  attendance_count: number;
+  category: string;
+  event_count: number;
+  expected_attendees: number;
+  participation_rate: number | null;
+  registered_count: number;
+};
+
 export type DashboardData = {
   fiscalYear: number | null;
   totalYouth: number;
@@ -48,6 +57,7 @@ export type DashboardData = {
   publishedAnnouncementsCount: number;
   recentEvents: DashboardEvent[];
   decisionInsights: DecisionInsight[];
+  participationTrendByCategory: DashboardParticipationTrend[];
   preferredActivityTypes: PreferredActivityType[];
   topSuggestedEvents: TopSuggestedEvent[];
 };
@@ -103,6 +113,51 @@ function countByValue<T>(rows: T[], getValue: (row: T) => string | null | undefi
 
 function todayValue() {
   return new Date().toISOString().slice(0, 10);
+}
+
+function buildParticipationTrendByCategory(eventRows: EventRow[]) {
+  const grouped = new Map<string, DashboardParticipationTrend>();
+
+  eventRows
+    .filter((event) => event.status !== "draft")
+    .forEach((event) => {
+      const category = event.category?.trim() || "Uncategorized";
+      const current =
+        grouped.get(category) ??
+        {
+          attendance_count: 0,
+          category,
+          event_count: 0,
+          expected_attendees: 0,
+          participation_rate: null,
+          registered_count: 0,
+        };
+      const registrations = event.event_registrations ?? [];
+
+      current.event_count += 1;
+      current.expected_attendees += event.expected_attendees ?? 0;
+      current.registered_count += registrations.filter((registration) =>
+        ["registered", "attended"].includes(registration.attendance_status ?? "registered"),
+      ).length;
+      current.attendance_count += registrations.filter(
+        (registration) => registration.attendance_status === "attended",
+      ).length;
+      grouped.set(category, current);
+    });
+
+  return Array.from(grouped.values())
+    .map((row) => ({
+      ...row,
+      participation_rate:
+        row.expected_attendees > 0
+          ? Math.round((row.registered_count / row.expected_attendees) * 100)
+          : null,
+    }))
+    .sort(
+      (first, second) =>
+        second.registered_count - first.registered_count ||
+        first.category.localeCompare(second.category),
+    );
 }
 
 export async function getDashboardData(): Promise<{
@@ -191,6 +246,7 @@ export async function getDashboardData(): Promise<{
       genderGroups: countByValue(profileRows, (profile) => profile.gender),
       ongoingEventsCount: Number(metrics.ongoing_events ?? 0),
       oversubscribedAllocation: Number(metrics.oversubscribed_allocation ?? 0),
+      participationTrendByCategory: buildParticipationTrendByCategory(eventRows),
       preferredActivityTypes: preferred.error ? [] : preferred.data,
       publishedAnnouncementsCount: Number(metrics.published_announcements ?? announcements.count ?? 0),
       publishedSurveysCount: Number(metrics.published_surveys ?? surveys.count ?? 0),

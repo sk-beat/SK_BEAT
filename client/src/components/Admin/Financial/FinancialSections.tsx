@@ -229,7 +229,7 @@ export default function FinancialSections({
           onClick={onExportData}
           type="button"
         >
-          Export data
+          Export PDF
         </button>
 
         <button

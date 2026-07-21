@@ -135,6 +135,16 @@ function App() {
                 </ProtectedRoute>
               }
             />
+            <Route
+              path="officials"
+              element={
+                <ProtectedRoute allowedRoles={["kabataan"]}>
+                  <PageTitle title="SK Officials">
+                    <AdminOfficialsPage />
+                  </PageTitle>
+                </ProtectedRoute>
+              }
+            />
           </Route>
 
           <Route

@@ -39,11 +39,12 @@ type FormErrors = Partial<
     | "gender"
     | "address"
     | "purok"
+    | "contact"
     | "email"
-     | "education"
-     | "scholar"
-     | "profileImage"
-     | "delete",
+    | "education"
+    | "scholar"
+    | "profileImage"
+    | "delete",
     string
   >
 >;
@@ -56,10 +57,14 @@ function Field({
   value,
   disabled,
   onChange,
+  inputMode,
+  maxLength,
 }: {
   disabled?: boolean;
   error?: string;
+  inputMode?: React.HTMLAttributes<HTMLInputElement>["inputMode"];
   label: string;
+  maxLength?: number;
   onChange: (event: React.ChangeEvent<HTMLInputElement>) => void;
   placeholder?: string;
   type?: string;
@@ -76,6 +81,8 @@ function Field({
           error ? "border-red-300 focus:border-red-400 focus:ring-red-100" : "",
         ].join(" ")}
         disabled={disabled}
+        inputMode={inputMode}
+        maxLength={maxLength}
         onChange={onChange}
         placeholder={placeholder}
         type={type}
@@ -148,6 +155,14 @@ function Detail({ label, value }: { label: string; value?: string | number }) {
 
 function isValidEmail(value: string) {
   return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(value);
+}
+
+function isValidContactNumber(value: string) {
+  return /^09\d{9}$/.test(value.trim());
+}
+
+function normalizeContactNumberInput(value: string) {
+  return value.replace(/\D/g, "").slice(0, 11);
 }
 
 function getLockReasonLabel(record: YouthRecord | null) {
@@ -257,6 +272,7 @@ export default function YouthRecordModals({
     const nextErrors: FormErrors = {};
     const trimmedName = name.trim();
     const trimmedAddress = address.trim();
+    const trimmedContact = contact.trim();
     const trimmedPurok = purok.trim();
     const trimmedEmail = email.trim();
 
@@ -283,6 +299,12 @@ export default function YouthRecordModals({
 
     if (!trimmedAddress) {
       nextErrors.address = "Address is required.";
+    }
+
+    if (!trimmedContact) {
+      nextErrors.contact = "Contact number is required.";
+    } else if (!isValidContactNumber(trimmedContact)) {
+      nextErrors.contact = "Contact number must be 11 digits and start with 09.";
     }
 
     if (!education) {
@@ -517,18 +539,26 @@ export default function YouthRecordModals({
           ) : (
             <Field
               disabled={loading}
+              error={errors.contact}
+              inputMode="numeric"
               label="Contact Number"
-              onChange={(event) => setContact(event.target.value)}
-              placeholder="Optional contact number"
+              maxLength={11}
+              onChange={(event) => setContact(normalizeContactNumberInput(event.target.value))}
+              placeholder="09XXXXXXXXX"
+              type="tel"
               value={contact}
             />
           )}
           {!isEdit ? (
             <Field
               disabled={loading}
+              error={errors.contact}
+              inputMode="numeric"
               label="Contact Number"
-              onChange={(event) => setContact(event.target.value)}
-              placeholder="Optional contact number"
+              maxLength={11}
+              onChange={(event) => setContact(normalizeContactNumberInput(event.target.value))}
+              placeholder="09XXXXXXXXX"
+              type="tel"
               value={contact}
             />
           ) : null}

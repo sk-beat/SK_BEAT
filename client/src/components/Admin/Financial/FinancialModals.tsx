@@ -3,6 +3,7 @@ import AdminModal from "../shared/AdminModal";
 import ModernFileInput from "../shared/ModernFileInput";
 import {
   type AnnualBudget,
+  downloadEventExpensePdf,
   type FinancialEventBudget,
   type FinancialTransaction,
   type FinancialTransactionPayload,
@@ -172,6 +173,20 @@ export default function FinancialModals({
       transaction_id: null,
       transaction_type: "expense",
     });
+  }
+
+  function exportEventExpenses() {
+    if (!selectedEvent) {
+      setFormError("Select an event before exporting expenses.");
+      return;
+    }
+
+    try {
+      downloadEventExpensePdf(selectedEvent, eventRecords);
+      setFormError("");
+    } catch (error) {
+      setFormError(error instanceof Error ? error.message : "Unable to export event expenses.");
+    }
   }
 
   return (
@@ -479,6 +494,7 @@ export default function FinancialModals({
               </h3>
               <button
                 className="inline-flex items-center gap-2 rounded-lg border border-slate-200 bg-white px-4 py-2 text-sm font-medium text-slate-700 hover:bg-slate-50"
+                onClick={exportEventExpenses}
                 type="button"
               >
                 <DownloadIcon className="h-4 w-4" />

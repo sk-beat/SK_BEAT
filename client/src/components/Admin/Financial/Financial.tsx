@@ -5,7 +5,7 @@ import FinancialHeader from "./FinancialHeader";
 import FinancialModals, { type FinancialModalMode } from "./FinancialModals";
 import {
   createAnnualBudget,
-  downloadFinancialTransactionsCsv,
+  downloadFinancialTransactionsPdf,
   getAnnualBudgets,
   getFinancialEventBudgets,
   getFinancialSummary,
@@ -167,8 +167,8 @@ export default function Financial() {
 
   function handleExportData() {
     try {
-      const fileName = downloadFinancialTransactionsCsv(transactions);
-      setSuccessMessage(`Exported ${transactions.length} financial record(s) to ${fileName}.`);
+      const fileName = downloadFinancialTransactionsPdf(transactions, selectedBudget?.fiscal_year);
+      setSuccessMessage(`Opened ${transactions.length} financial record(s) in ${fileName}.`);
       setErrorMessage("");
     } catch (error) {
       setErrorMessage(error instanceof Error ? error.message : "Unable to export financial data.");

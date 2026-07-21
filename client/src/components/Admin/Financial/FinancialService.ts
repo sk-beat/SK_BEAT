@@ -1,4 +1,5 @@
 import { supabase } from "@/lib/supabase";
+import { openOfficialPdfReport } from "../../../utils/pdfExport";
 
 export type FinancialTransactionType =
   | "expense"
@@ -273,60 +274,88 @@ export async function getFinancialTransactionsForCharts(budgetYearId: number) {
   };
 }
 
-function escapeCsvValue(value: string | number | null | undefined) {
-  const text = value === null || value === undefined ? "" : String(value);
-  return /[",\r\n]/.test(text) ? `"${text.replace(/"/g, '""')}"` : text;
-}
-
-function formatCsvDate(value: string | null | undefined) {
-  if (!value) return "";
+function formatReportDate(value: string | null | undefined) {
+  if (!value) return "-";
   const date = new Date(value);
-  return Number.isNaN(date.getTime()) ? value : date.toISOString();
+  return Number.isNaN(date.getTime())
+    ? value
+    : new Intl.DateTimeFormat("en-PH", {
+        day: "2-digit",
+        month: "short",
+        year: "numeric",
+      }).format(date);
 }
 
-export function buildFinancialTransactionsCsv(transactions: FinancialTransaction[]) {
-  const headers = [
-    "Transaction ID",
-    "Date",
-    "Event",
-    "Category",
-    "Description",
-    "Amount",
-    "Status",
-    "Created By",
-    "Created At",
-  ];
-  const rows = transactions.map((transaction) => [
-    transaction.transaction_id,
-    transaction.transaction_date,
-    transaction.events?.event_name ?? "",
-    transaction.category,
-    transaction.description ?? "",
-    transaction.amount,
-    transaction.status,
-    transaction.admins?.fullname ?? transaction.created_by,
-    formatCsvDate(transaction.created_at),
-  ]);
-
-  return [headers, ...rows]
-    .map((row) => row.map(escapeCsvValue).join(","))
-    .join("\r\n");
+function formatPeso(value: number) {
+  return new Intl.NumberFormat("en-PH", {
+    currency: "PHP",
+    maximumFractionDigits: 2,
+    style: "currency",
+  }).format(value);
 }
 
-export function downloadFinancialTransactionsCsv(transactions: FinancialTransaction[]) {
-  const csv = `\uFEFF${buildFinancialTransactionsCsv(transactions)}`;
+function labelize(value: string) {
+  return value
+    .split("_")
+    .map((part) => part.charAt(0).toUpperCase() + part.slice(1))
+    .join(" ");
+}
+
+export function downloadFinancialTransactionsPdf(
+  transactions: FinancialTransaction[],
+  fiscalYear?: number | null,
+) {
   const today = new Date().toISOString().slice(0, 10);
-  const fileName = `sk-beat-financial-export-${today}.csv`;
-  const blob = new Blob([csv], { type: "text/csv;charset=utf-8" });
-  const url = URL.createObjectURL(blob);
-  const link = document.createElement("a");
-  link.href = url;
-  link.download = fileName;
-  document.body.appendChild(link);
-  link.click();
-  link.remove();
-  URL.revokeObjectURL(url);
-  return fileName;
+  const totalAmount = transactions.reduce((sum, transaction) => sum + transaction.amount, 0);
+
+  return openOfficialPdfReport({
+    columns: [
+      { header: "#", value: (_row, index) => index + 1 },
+      { header: "Date", value: (row) => formatReportDate(row.transaction_date) },
+      { header: "Event", value: (row) => row.events?.event_name ?? "General expense" },
+      { header: "Category", value: (row) => row.category },
+      { header: "Description", value: (row) => row.description ?? "-" },
+      { header: "Status", value: (row) => labelize(row.status) },
+      { align: "right", header: "Amount", value: (row) => formatPeso(row.amount) },
+    ],
+    fileName: `sk-beat-financial-report-${today}.pdf`,
+    rows: transactions,
+    subtitle: fiscalYear ? `Budget Year ${fiscalYear}` : "Selected budget year",
+    summary: [
+      { label: "Records", value: transactions.length },
+      { label: "Total Amount", value: formatPeso(totalAmount) },
+      { label: "Report Type", value: "Financial Transactions" },
+    ],
+    title: "Financial Transaction Report",
+  });
+}
+
+export function downloadEventExpensePdf(
+  event: FinancialEventBudget,
+  transactions: FinancialTransaction[],
+) {
+  const today = new Date().toISOString().slice(0, 10);
+  const totalAmount = transactions.reduce((sum, transaction) => sum + transaction.amount, 0);
+
+  return openOfficialPdfReport({
+    columns: [
+      { header: "#", value: (_row, index) => index + 1 },
+      { header: "Date", value: (row) => formatReportDate(row.transaction_date) },
+      { header: "Description", value: (row) => row.description ?? row.category },
+      { header: "Reference", value: (row) => row.reference_number ?? "-" },
+      { header: "Status", value: (row) => labelize(row.status) },
+      { align: "right", header: "Amount", value: (row) => formatPeso(row.amount) },
+    ],
+    fileName: `sk-beat-event-expenses-${event.event_id}-${today}.pdf`,
+    rows: transactions,
+    subtitle: `${event.event_name} | ${formatReportDate(event.event_date)}`,
+    summary: [
+      { label: "Allocated Budget", value: formatPeso(event.allocated_budget) },
+      { label: "Recorded Expenses", value: formatPeso(totalAmount) },
+      { label: "Remaining Budget", value: formatPeso(event.remaining_event_budget) },
+    ],
+    title: "Event Expense Report",
+  });
 }
 
 export async function saveFinancialTransaction(

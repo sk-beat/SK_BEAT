@@ -248,7 +248,7 @@ function rangesOverlap(
 
 function eventToForm(event: ActivityEvent | null): EventFormState {
   return {
-    category: event?.category ?? "Sports",
+    category: event?.category ?? "",
     description: event?.description ?? "",
     event_date: event?.event_date ?? "",
     event_id: event?.event_id || null,
@@ -355,6 +355,10 @@ function CatalogEventModal({
   }
 
   async function handleSave() {
+    if (!form.event_name.trim() || !form.category.trim()) {
+      return;
+    }
+
     const expenses: ActivityExpense[] = budgetRows
       .filter((row) => row.expense_type.trim() !== "")
       .map((row) => ({
@@ -368,7 +372,7 @@ function CatalogEventModal({
 
     await onSave({
       budget_year_id: budgetYearId,
-      category: form.category,
+      category: form.category.trim(),
       description: form.description.trim() || null,
       event_date: form.event_date || null,
       event_id: eventChoice === "existing" ? form.event_id : null,
@@ -395,7 +399,7 @@ function CatalogEventModal({
           </button>
           <button
             className="rounded-lg bg-[#1e3a5f] px-4 py-2 text-sm font-medium text-white hover:bg-[#2a4a6f] disabled:cursor-not-allowed disabled:opacity-60"
-            disabled={isSaving || form.event_name.trim() === ""}
+            disabled={isSaving || form.event_name.trim() === "" || form.category.trim() === ""}
             onClick={handleSave}
             type="button"
           >
@@ -485,18 +489,19 @@ function CatalogEventModal({
 
         <label className="block">
           <span className="mb-1.5 block text-sm font-medium text-slate-700">
-            Category <RequiredMark />
+            Event Category <RequiredMark />
           </span>
           <select
             className={inputClass}
             onChange={(event) => updateForm("category", event.target.value)}
             value={form.category}
           >
-            <option>Sports</option>
-            <option>Training</option>
-            <option>Community Service</option>
-            <option>Health & Wellness</option>
-            <option>Cultural</option>
+            <option value="" disabled>Select event category</option>
+            <option value="Sports">Sports</option>
+            <option value="Training">Training</option>
+            <option value="Community Service">Community Service</option>
+            <option value="Health & Wellness">Health & Wellness</option>
+            <option value="Cultural">Cultural</option>
           </select>
         </label>
 

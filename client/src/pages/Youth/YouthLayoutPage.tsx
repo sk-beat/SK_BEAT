@@ -1,4 +1,4 @@
-import { LogOut, Megaphone } from "lucide-react";
+import { LogOut, Megaphone, Menu, Users } from "lucide-react";
 import { Link, NavLink, Navigate, Outlet, useLocation, useNavigate } from "react-router-dom";
 import { useAuth } from "../../auth/useAuth";
 import skLogo from "../../assets/sklogo.png";
@@ -15,6 +15,7 @@ export default function YouthLayoutPage() {
   const [isLogoutDialogOpen, setIsLogoutDialogOpen] = useState(false);
   const [isLoggingOut, setIsLoggingOut] = useState(false);
   const [logoutError, setLogoutError] = useState<string | null>(null);
+  const [isUserMenuOpen, setIsUserMenuOpen] = useState(false);
   const isFirstLoginYouth = role === "kabataan" && user?.mustChangePassword;
   const isProfileRoute = location.pathname === "/youth/profile";
 
@@ -91,15 +92,44 @@ export default function YouthLayoutPage() {
             >
               <Megaphone className="h-5 w-5" />
             </button>
-            <button
-              aria-label="Logout"
-              className="flex h-10 w-10 items-center justify-center rounded-full bg-white/10 text-white transition hover:bg-white/15"
-              onClick={openLogoutDialog}
-              title="Logout"
-              type="button"
-            >
-              <LogOut className="h-5 w-5" />
-            </button>
+            <div className="relative">
+              <button
+                aria-expanded={isUserMenuOpen}
+                aria-label="Open youth menu"
+                className="flex h-10 w-10 items-center justify-center rounded-full bg-white/10 text-white transition hover:bg-white/15"
+                onClick={() => setIsUserMenuOpen((current) => !current)}
+                title="Menu"
+                type="button"
+              >
+                <Menu className="h-5 w-5" />
+              </button>
+              {isUserMenuOpen ? (
+                <div className="absolute right-0 mt-2 w-48 overflow-hidden rounded-xl border border-white/10 bg-white py-1 text-sm text-slate-800 shadow-xl">
+                  <button
+                    className="flex w-full items-center gap-2 px-4 py-2.5 text-left font-medium hover:bg-slate-50"
+                    onClick={() => {
+                      setIsUserMenuOpen(false);
+                      navigate("/youth/officials");
+                    }}
+                    type="button"
+                  >
+                    <Users className="h-4 w-4 text-[#0b1f3b]" />
+                    SK Officials
+                  </button>
+                  <button
+                    className="flex w-full items-center gap-2 px-4 py-2.5 text-left font-medium text-red-600 hover:bg-red-50"
+                    onClick={() => {
+                      setIsUserMenuOpen(false);
+                      openLogoutDialog();
+                    }}
+                    type="button"
+                  >
+                    <LogOut className="h-4 w-4" />
+                    Logout
+                  </button>
+                </div>
+              ) : null}
+            </div>
           </div>
         </div>
       </header>

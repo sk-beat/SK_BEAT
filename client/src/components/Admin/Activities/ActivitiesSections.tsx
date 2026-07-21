@@ -145,6 +145,34 @@ function StatusBadge({ status }: { status: ActivityEventStatus }) {
   );
 }
 
+function getInsightToneClasses(severity: DecisionInsight["severity"]) {
+  if (severity === "critical") {
+    return {
+      card: "border-red-200 bg-red-50/80",
+      icon: "bg-red-100 text-red-700",
+    };
+  }
+
+  if (severity === "opportunity") {
+    return {
+      card: "border-emerald-200 bg-emerald-50/80",
+      icon: "bg-emerald-100 text-emerald-700",
+    };
+  }
+
+  if (severity === "info") {
+    return {
+      card: "border-blue-200 bg-blue-50/80",
+      icon: "bg-blue-100 text-blue-700",
+    };
+  }
+
+  return {
+    card: "border-amber-200 bg-amber-50/80",
+    icon: "bg-amber-100 text-amber-700",
+  };
+}
+
 function formatTime(time: string | null): string {
   if (!time) {
     return "No time set";
@@ -518,27 +546,31 @@ function EventInsightsPanel({
           Survey-based signals from Youth responses and live event registrations
         </p>
       </div>
-      <div className="flex flex-col gap-3">
-        {insights.map((insight) => (
-          <article className="flex gap-3 rounded-xl border border-slate-200 bg-amber-100/40 p-4 shadow-sm" key={insight.id}>
-            <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg bg-amber-100 text-amber-700">
-              <AlertIcon className="h-5 w-5" />
-            </div>
-            <div>
-              <h3 className="text-sm font-semibold text-slate-800">{insight.title}</h3>
-              <p className="mt-1 text-xs leading-relaxed text-slate-500">{insight.description}</p>
-              {canRunDecisionInsightAction(insight) ? (
-                <button
-                  className="mt-2 inline-flex items-center gap-1 text-xs font-semibold text-[#1e3a5f] hover:underline"
-                  onClick={() => runInsightAction(insight)}
-                  type="button"
-                >
-                  {insight.actionLabel} <ArrowRightIcon className="h-3.5 w-3.5" />
-                </button>
-              ) : null}
-            </div>
-          </article>
-        ))}
+      <div className="flex max-h-[390px] flex-col gap-3 overflow-y-auto pr-1">
+        {insights.slice(0, 3).map((insight) => {
+          const toneClasses = getInsightToneClasses(insight.severity);
+
+          return (
+            <article className={`flex gap-3 rounded-xl border p-4 shadow-sm ${toneClasses.card}`} key={insight.id}>
+              <div className={`flex h-10 w-10 shrink-0 items-center justify-center rounded-lg ${toneClasses.icon}`}>
+                <AlertIcon className="h-5 w-5" />
+              </div>
+              <div>
+                <h3 className="text-sm font-semibold text-slate-800">{insight.title}</h3>
+                <p className="mt-1 text-xs leading-relaxed text-slate-500">{insight.description}</p>
+                {canRunDecisionInsightAction(insight) ? (
+                  <button
+                    className="mt-2 inline-flex items-center gap-1 text-xs font-semibold text-[#1e3a5f] hover:underline"
+                    onClick={() => runInsightAction(insight)}
+                    type="button"
+                  >
+                    {insight.actionLabel} <ArrowRightIcon className="h-3.5 w-3.5" />
+                  </button>
+                ) : null}
+              </div>
+            </article>
+          );
+        })}
       </div>
     </section>
   );
@@ -556,8 +588,7 @@ function UpcomingEventsPanel({ events }: Pick<ActivitiesSectionsProps, "events">
       const firstDate = first.event_date ?? "9999-12-31";
       const secondDate = second.event_date ?? "9999-12-31";
       return firstDate.localeCompare(secondDate);
-    })
-    .slice(0, 4);
+    });
 
   return (
     <section className="rounded-xl border border-slate-200 bg-white p-5 shadow-sm">
@@ -569,7 +600,7 @@ function UpcomingEventsPanel({ events }: Pick<ActivitiesSectionsProps, "events">
           Scheduled and ongoing activities from live event records
         </p>
       </div>
-      <div className="flex flex-col gap-3">
+      <div className="flex max-h-[300px] flex-col gap-3 overflow-y-auto pr-1">
         {upcomingEvents.length === 0 ? (
           <div className="rounded-lg border border-dashed border-slate-300 bg-slate-50 p-4 text-sm text-slate-500">
             No upcoming scheduled or ongoing events yet.

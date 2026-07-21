@@ -20,6 +20,7 @@ import {
   getTopSuggestedEvents,
   type AdminSurveyResponseDetail,
   type FeedbackInsightsSummary,
+  type SurveyResponseAnswer,
   type TopSuggestedEvent,
 } from "./SurveyInsightsService";
 import {
@@ -82,6 +83,19 @@ function formatDate(value: string | null) {
 
 function formatRating(value: number | null) {
   return typeof value === "number" ? value.toFixed(2).replace(/\.00$/, "") : "-";
+}
+
+function formatSurveyAnswer(answer: SurveyResponseAnswer) {
+  const selectedOptions = answer.selected_options.map((option) => {
+    const optionText = option.option_text.trim();
+    const customText = answer.answer_text?.trim();
+
+    return optionText.toLowerCase() === "other" && customText
+      ? `Other: ${customText}`
+      : option.option_text;
+  });
+
+  return selectedOptions.join(", ") || answer.answer_text || "-";
 }
 
 function normalizeFeedback(value: string | null | undefined) {
@@ -452,10 +466,7 @@ export function SurveyResponsesSection() {
 
   const answerRows = responses.flatMap((response) =>
     response.answers.map((answer, index) => ({
-      answer:
-        answer.selected_options.map((option) => option.option_text).join(", ") ||
-        answer.answer_text ||
-        "-",
+      answer: formatSurveyAnswer(answer),
       date: formatDate(response.submitted_at),
       id: `${response.response_id}-${index}`,
       respondent: response.fullname,

@@ -329,6 +329,60 @@ function SurveyAnswerResultsCard() {
   );
 }
 
+function ParticipationTrendCard({ data }: { data: DashboardData }) {
+  const rows = data.participationTrendByCategory;
+  const maxRegistered = Math.max(...rows.map((row) => row.registered_count), 1);
+
+  return (
+    <section className="mb-8 rounded-[14px] border border-[#1e3a5f]/20 bg-white p-6 shadow-sm">
+      <div className="mb-4">
+        <h2 className="m-0 text-sm font-semibold uppercase tracking-[0.1em] text-slate-400">
+          Participation Trend by Event Category
+        </h2>
+        <p className="mt-1 text-[0.8125rem] text-slate-400">
+          Registrations and attendance grouped by live event category.
+        </p>
+      </div>
+
+      {rows.length === 0 ? (
+        <div className="rounded-lg border border-dashed border-slate-200 p-4 text-sm text-slate-500">
+          No participation data is available yet.
+        </div>
+      ) : (
+        <div className="space-y-3">
+          {rows.slice(0, 6).map((row) => (
+            <div className="grid gap-2 text-sm md:grid-cols-[180px_minmax(0,1fr)_180px]" key={row.category}>
+              <div>
+                <p className="font-semibold text-slate-800">{row.category}</p>
+                <p className="text-xs text-slate-400">
+                  {row.event_count} event(s)
+                </p>
+              </div>
+              <div className="flex items-center">
+                <div className="h-9 w-full overflow-hidden rounded-md bg-slate-100">
+                  <div
+                    className="h-full rounded-md bg-[#1e3a5f]"
+                    style={{ width: `${Math.max(6, (row.registered_count / maxRegistered) * 100)}%` }}
+                  />
+                </div>
+              </div>
+              <div className="text-right text-xs font-medium text-slate-500 max-md:text-left">
+                <p>
+                  {row.registered_count} registered / {row.expected_attendees} expected
+                </p>
+                <p>
+                  {row.attendance_count} attended
+                  {row.participation_rate === null ? "" : ` - ${row.participation_rate}% fill`}
+                </p>
+              </div>
+            </div>
+          ))}
+        </div>
+      )}
+    </section>
+  );
+}
+
 function InsightsPanel({ data }: { data: DashboardData }) {
   const insights = data.decisionInsights.length
     ? data.decisionInsights.map((insight) => ({
@@ -634,6 +688,7 @@ export default function DashboardSections() {
         <SurveyAnswerResultsCard />
       </section>
 
+      <ParticipationTrendCard data={data} />
       <InsightsPanel data={data} />
       <UpcomingEvents data={data} />
     </div>

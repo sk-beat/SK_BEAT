@@ -331,13 +331,40 @@ function SurveyAnswerResultsCard() {
 
 function ParticipationTrendCard({ data }: { data: DashboardData }) {
   const rows = data.participationTrendByCategory;
-  const categories = Array.from(new Set(rows.map((row) => row.category)));
-  const [selectedCategory, setSelectedCategory] = useState(categories[0] ?? "");
-  const activeCategory = categories.includes(selectedCategory)
-    ? selectedCategory
-    : categories[0] ?? "";
-  const selectedRows = rows.filter((row) => row.category === activeCategory);
-  const maxRegistered = Math.max(...selectedRows.map((row) => row.registered_count), 1);
+  const years = Array.from(new Set(rows.map((row) => row.year))).sort((first, second) => second - first);
+  const [selectedYear, setSelectedYear] = useState(years[0] ?? new Date().getFullYear());
+  const activeYear = years.includes(selectedYear) ? selectedYear : years[0] ?? new Date().getFullYear();
+  const yearRows = rows.filter((row) => row.year === activeYear);
+  const categories = Array.from(new Set(yearRows.map((row) => row.category)));
+  const colors = ["#1e3a5f", "#26ba9a", "#dc2626", "#7c3aed", "#f59e0b", "#0284c7", "#be185d", "#16a34a"];
+  const chartWidth = 760;
+  const chartHeight = 280;
+  const padding = { bottom: 38, left: 42, right: 18, top: 18 };
+  const plotWidth = chartWidth - padding.left - padding.right;
+  const plotHeight = chartHeight - padding.top - padding.bottom;
+  const maxRegistered = Math.max(...yearRows.map((row) => row.registered_count), 1);
+  const monthRows = Array.from({ length: 12 }, (_, index) => rows.find((row) => row.month === index + 1)?.month_label ?? "");
+  const lineSeries = categories.map((category, index) => {
+    const monthlyRows = Array.from({ length: 12 }, (_, monthIndex) =>
+      yearRows.find((row) => row.category === category && row.month === monthIndex + 1) ?? null,
+    );
+    const points = monthlyRows.map((row, monthIndex) => {
+      const x = padding.left + (monthIndex / 11) * plotWidth;
+      const y = padding.top + plotHeight - ((row?.registered_count ?? 0) / maxRegistered) * plotHeight;
+      return {
+        label: monthRows[monthIndex] ?? "",
+        registered: row?.registered_count ?? 0,
+        x,
+        y,
+      };
+    });
+
+    return {
+      category,
+      color: colors[index % colors.length],
+      points,
+    };
+  });
 
   return (
     <section className="mb-8 rounded-[14px] border border-[#1e3a5f]/20 bg-white p-6 shadow-sm">
@@ -347,58 +374,99 @@ function ParticipationTrendCard({ data }: { data: DashboardData }) {
             Participation Trend by Event Category
           </h2>
           <p className="mt-1 text-[0.8125rem] text-slate-400">
-            Monthly registrations and attendance from January to December.
+            Monthly registration trend from January to December, grouped by event category.
           </p>
         </div>
         <select
-          aria-label="Filter participation trend by event category"
+          aria-label="Filter participation trend by year"
           className="rounded-md border border-slate-200 bg-white px-3 py-1.5 text-xs text-slate-700 outline-none"
-          disabled={categories.length === 0}
-          onChange={(event) => setSelectedCategory(event.target.value)}
-          value={activeCategory}
+          disabled={years.length === 0}
+          onChange={(event) => setSelectedYear(Number(event.target.value))}
+          value={activeYear}
         >
-          {categories.length === 0 ? <option value="">No categories</option> : null}
-          {categories.map((category) => (
-            <option key={category} value={category}>
-              {category}
+          {years.length === 0 ? <option value={activeYear}>No event years</option> : null}
+          {years.map((year) => (
+            <option key={year} value={year}>
+              {year}
             </option>
           ))}
         </select>
       </div>
 
-      {selectedRows.length === 0 ? (
+      {categories.length === 0 ? (
         <div className="rounded-lg border border-dashed border-slate-200 p-4 text-sm text-slate-500">
           No participation data is available yet.
         </div>
       ) : (
-        <div className="space-y-3">
-          {selectedRows.map((row) => (
-            <div className="grid gap-2 text-sm md:grid-cols-[72px_minmax(0,1fr)_190px]" key={`${row.category}-${row.month}`}>
-              <div>
-                <p className="font-semibold text-slate-800">{row.month_label}</p>
-                <p className="text-xs text-slate-400">
-                  {row.event_count} event(s)
-                </p>
-              </div>
-              <div className="flex items-center">
-                <div className="h-9 w-full overflow-hidden rounded-md bg-slate-100">
-                  <div
-                    className="h-full rounded-md bg-[#1e3a5f]"
-                    style={{ width: `${row.registered_count === 0 ? 0 : Math.max(6, (row.registered_count / maxRegistered) * 100)}%` }}
+        <div>
+          <div className="overflow-x-auto">
+            <svg
+              aria-label={`Participation trend line graph for ${activeYear}`}
+              className="min-w-[720px]"
+              role="img"
+              viewBox={`0 0 ${chartWidth} ${chartHeight}`}
+            >
+              {[0, 0.25, 0.5, 0.75, 1].map((tick) => {
+                const y = padding.top + plotHeight - tick * plotHeight;
+                return (
+                  <g key={tick}>
+                    <line
+                      stroke="#e2e8f0"
+                      strokeDasharray={tick === 0 ? undefined : "4 4"}
+                      x1={padding.left}
+                      x2={chartWidth - padding.right}
+                      y1={y}
+                      y2={y}
+                    />
+                    <text fill="#64748b" fontSize="10" textAnchor="end" x={padding.left - 8} y={y + 3}>
+                      {Math.round(maxRegistered * tick)}
+                    </text>
+                  </g>
+                );
+              })}
+              {monthRows.map((month, index) => {
+                const x = padding.left + (index / 11) * plotWidth;
+                return (
+                  <text fill="#64748b" fontSize="10" key={month} textAnchor="middle" x={x} y={chartHeight - 12}>
+                    {month}
+                  </text>
+                );
+              })}
+              {lineSeries.map((series) => (
+                <g key={series.category}>
+                  <polyline
+                    fill="none"
+                    points={series.points.map((point) => `${point.x},${point.y}`).join(" ")}
+                    stroke={series.color}
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                    strokeWidth="3"
                   />
-                </div>
-              </div>
-              <div className="text-right text-xs font-medium text-slate-500 max-md:text-left">
-                <p>
-                  {row.registered_count} registered / {row.expected_attendees} expected
-                </p>
-                <p>
-                  {row.attendance_count} attended
-                  {row.participation_rate === null ? "" : ` - ${row.participation_rate}% fill`}
-                </p>
-              </div>
-            </div>
-          ))}
+                  {series.points.map((point) => (
+                    <circle
+                      cx={point.x}
+                      cy={point.y}
+                      fill="white"
+                      key={`${series.category}-${point.label}`}
+                      r="3.5"
+                      stroke={series.color}
+                      strokeWidth="2"
+                    >
+                      <title>{`${series.category} ${point.label}: ${point.registered} registered`}</title>
+                    </circle>
+                  ))}
+                </g>
+              ))}
+            </svg>
+          </div>
+          <div className="mt-4 flex flex-wrap gap-3">
+            {lineSeries.map((series) => (
+              <span className="inline-flex items-center gap-2 text-xs font-medium text-slate-600" key={series.category}>
+                <span className="h-2.5 w-2.5 rounded-full" style={{ backgroundColor: series.color }} />
+                {series.category}
+              </span>
+            ))}
+          </div>
         </div>
       )}
     </section>

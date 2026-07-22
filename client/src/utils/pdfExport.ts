@@ -139,9 +139,9 @@ function drawTableHeader<T>(
   y: number,
 ) {
   let x = marginX;
-  pdf.setFillColor(11, 31, 59);
-  pdf.rect(marginX, y, pageWidth - marginX * 2, rowHeight, "F");
-  pdf.setTextColor(255, 255, 255);
+  pdf.setDrawColor(11, 31, 59);
+  pdf.rect(marginX, y, pageWidth - marginX * 2, rowHeight, "S");
+  pdf.setTextColor(11, 31, 59);
   pdf.setFont("helvetica", "bold");
   pdf.setFontSize(6.3);
 
@@ -166,9 +166,8 @@ function drawTableRow<T>(
   y: number,
 ) {
   let x = marginX;
-  pdf.setFillColor(rowIndex % 2 === 0 ? 255 : 248, rowIndex % 2 === 0 ? 255 : 250, rowIndex % 2 === 0 ? 255 : 252);
   pdf.setDrawColor(203, 213, 225);
-  pdf.rect(marginX, y, pageWidth - marginX * 2, rowHeight, "FD");
+  pdf.rect(marginX, y, pageWidth - marginX * 2, rowHeight, "S");
   pdf.setTextColor(17, 24, 39);
   pdf.setFont("helvetica", "normal");
   pdf.setFontSize(6.7);
@@ -224,9 +223,8 @@ export async function downloadOfficialPdfReport<T>({
     y = drawTableHeader(pdf, columns, columnWidths, y);
 
     if (pageRows.length === 0) {
-      pdf.setFillColor(248, 250, 252);
       pdf.setDrawColor(203, 213, 225);
-      pdf.rect(marginX, y, tableWidth, rowHeight * 2, "FD");
+      pdf.rect(marginX, y, tableWidth, rowHeight * 2, "S");
       pdf.setTextColor(100, 116, 139);
       pdf.setFontSize(8);
       pdf.text("No records available.", pageWidth / 2, y + 11, { align: "center" });

@@ -36,6 +36,7 @@ export type DashboardParticipationTrendMonth = {
   month_label: string;
   participation_rate: number | null;
   registered_count: number;
+  year: number;
 };
 
 export type DashboardData = {
@@ -125,6 +126,19 @@ function todayValue() {
 const monthLabels = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
 
 function buildParticipationTrendByCategory(eventRows: EventRow[], categoryRows: EventCategoryRow[]) {
+  const currentYear = new Date().getFullYear();
+  const years = Array.from(
+    new Set(
+      eventRows
+        .map((event) => {
+          if (!event.event_date) return null;
+          const eventDate = new Date(`${event.event_date}T00:00:00`);
+          return Number.isNaN(eventDate.getTime()) ? null : eventDate.getFullYear();
+        })
+        .filter((year): year is number => typeof year === "number"),
+    ),
+  );
+  const trendYears = years.length > 0 ? years.sort((first, second) => second - first) : [currentYear];
   const categories = Array.from(
     new Set(
       [
@@ -141,17 +155,20 @@ function buildParticipationTrendByCategory(eventRows: EventRow[], categoryRows: 
   const grouped = new Map<string, DashboardParticipationTrendMonth>();
 
   categories.forEach((category) => {
-    monthLabels.forEach((monthLabel, index) => {
-      const month = index + 1;
-      grouped.set(`${category}-${month}`, {
-        attendance_count: 0,
-        category,
-        event_count: 0,
-        expected_attendees: 0,
-        month,
-        month_label: monthLabel,
-        participation_rate: null,
-        registered_count: 0,
+    trendYears.forEach((year) => {
+      monthLabels.forEach((monthLabel, index) => {
+        const month = index + 1;
+        grouped.set(`${year}-${category}-${month}`, {
+          attendance_count: 0,
+          category,
+          event_count: 0,
+          expected_attendees: 0,
+          month,
+          month_label: monthLabel,
+          participation_rate: null,
+          registered_count: 0,
+          year,
+        });
       });
     });
   });
@@ -162,8 +179,10 @@ function buildParticipationTrendByCategory(eventRows: EventRow[], categoryRows: 
       const category = event.category?.trim() || "Uncategorized";
       const eventDate = new Date(`${event.event_date}T00:00:00`);
       const month = Number.isNaN(eventDate.getTime()) ? null : eventDate.getMonth() + 1;
+      const year = Number.isNaN(eventDate.getTime()) ? null : eventDate.getFullYear();
       if (!month) return;
-      const current = grouped.get(`${category}-${month}`);
+      if (!year) return;
+      const current = grouped.get(`${year}-${category}-${month}`);
       if (!current) return;
       const registrations = event.event_registrations ?? [];
 
@@ -187,6 +206,7 @@ function buildParticipationTrendByCategory(eventRows: EventRow[], categoryRows: 
     }))
     .sort(
       (first, second) =>
+        second.year - first.year ||
         first.category.localeCompare(second.category) ||
         first.month - second.month,
     );

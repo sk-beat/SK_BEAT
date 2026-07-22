@@ -97,7 +97,7 @@ function drawHeader(
     });
   }
 
-  pdf.setTextColor(100, 116, 139);
+  pdf.setTextColor(0, 0, 0);
   pdf.setFontSize(7);
   pdf.text(`Generated ${formatGeneratedDate(generatedAt)}`, pageWidth - marginX, contentTop + 13, {
     align: "right",
@@ -117,9 +117,9 @@ function drawSummary(
 
   summary.slice(0, 3).forEach((item, index) => {
     const x = marginX + index * (cardWidth + cardGap);
-    pdf.setDrawColor(203, 213, 225);
+    pdf.setDrawColor(0, 0, 0);
     pdf.rect(x, y, cardWidth, cardHeight, "S");
-    pdf.setTextColor(100, 116, 139);
+    pdf.setTextColor(0, 0, 0);
     pdf.setFont("helvetica", "bold");
     pdf.setFontSize(6.5);
     pdf.text(item.label.toUpperCase(), x + 2.5, y + 4.5, { maxWidth: cardWidth - 5 });
@@ -138,16 +138,16 @@ function drawTableHeader<T>(
   y: number,
 ) {
   let x = marginX;
-  pdf.setDrawColor(11, 31, 59);
+  pdf.setDrawColor(0, 0, 0);
   pdf.rect(marginX, y, pageWidth - marginX * 2, rowHeight, "S");
-  pdf.setTextColor(11, 31, 59);
+  pdf.setTextColor(0, 0, 0);
   pdf.setFont("helvetica", "bold");
   pdf.setFontSize(6.3);
 
   columns.forEach((column, index) => {
     const width = columnWidths[index] ?? 0;
-    pdf.text(column.header.toUpperCase(), column.align === "right" ? x + width - 2 : x + 2, y + 5, {
-      align: column.align ?? "left",
+    pdf.text(column.header.toUpperCase(), x + width / 2, y + 5, {
+      align: "center",
       maxWidth: width - 4,
     });
     x += width;
@@ -165,9 +165,9 @@ function drawTableRow<T>(
   y: number,
 ) {
   let x = marginX;
-  pdf.setDrawColor(203, 213, 225);
+  pdf.setDrawColor(0, 0, 0);
   pdf.rect(marginX, y, pageWidth - marginX * 2, rowHeight, "S");
-  pdf.setTextColor(17, 24, 39);
+  pdf.setTextColor(0, 0, 0);
   pdf.setFont("helvetica", "normal");
   pdf.setFontSize(6.7);
 
@@ -175,8 +175,8 @@ function drawTableRow<T>(
     const width = columnWidths[columnIndex] ?? 0;
     const cellText = valueText(column.value(row, rowIndex));
     const lines = pdf.splitTextToSize(cellText, width - 4).slice(0, 2);
-    pdf.text(lines, column.align === "right" ? x + width - 2 : x + 2, y + 3.4, {
-      align: column.align ?? "left",
+    pdf.text(lines, x + width / 2, y + 3.4, {
+      align: "center",
       maxWidth: width - 4,
     });
     x += width;
@@ -222,9 +222,9 @@ export async function downloadOfficialPdfReport<T>({
     y = drawTableHeader(pdf, columns, columnWidths, y);
 
     if (pageRows.length === 0) {
-      pdf.setDrawColor(203, 213, 225);
+      pdf.setDrawColor(0, 0, 0);
       pdf.rect(marginX, y, tableWidth, rowHeight * 2, "S");
-      pdf.setTextColor(100, 116, 139);
+      pdf.setTextColor(0, 0, 0);
       pdf.setFontSize(8);
       pdf.text("No records available.", pageWidth / 2, y + 11, { align: "center" });
     } else {
@@ -234,7 +234,7 @@ export async function downloadOfficialPdfReport<T>({
       });
     }
 
-    pdf.setTextColor(100, 116, 139);
+    pdf.setTextColor(0, 0, 0);
     pdf.setFontSize(7);
     pdf.text(`Page ${pageNumber}`, pageWidth / 2, pageHeight - 10, { align: "center" });
     pageNumber += 1;

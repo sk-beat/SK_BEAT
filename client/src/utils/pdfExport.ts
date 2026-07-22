@@ -117,9 +117,8 @@ function drawSummary(
 
   summary.slice(0, 3).forEach((item, index) => {
     const x = marginX + index * (cardWidth + cardGap);
-    pdf.setFillColor(248, 250, 252);
     pdf.setDrawColor(203, 213, 225);
-    pdf.rect(x, y, cardWidth, cardHeight, "FD");
+    pdf.rect(x, y, cardWidth, cardHeight, "S");
     pdf.setTextColor(100, 116, 139);
     pdf.setFont("helvetica", "bold");
     pdf.setFontSize(6.5);

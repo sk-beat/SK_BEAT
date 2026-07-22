@@ -146,6 +146,9 @@ function drawTableHeader<T>(
 
   columns.forEach((column, index) => {
     const width = columnWidths[index] ?? 0;
+    if (index > 0) {
+      pdf.line(x, y, x, y + rowHeight);
+    }
     pdf.text(column.header.toUpperCase(), x + width / 2, y + 5, {
       align: "center",
       maxWidth: width - 4,
@@ -175,6 +178,9 @@ function drawTableRow<T>(
     const width = columnWidths[columnIndex] ?? 0;
     const cellText = valueText(column.value(row, rowIndex));
     const lines = pdf.splitTextToSize(cellText, width - 4).slice(0, 2);
+    if (columnIndex > 0) {
+      pdf.line(x, y, x, y + rowHeight);
+    }
     pdf.text(lines, x + width / 2, y + 3.4, {
       align: "center",
       maxWidth: width - 4,

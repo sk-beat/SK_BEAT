@@ -338,7 +338,7 @@ function ParticipationTrendCard({ data }: { data: DashboardData }) {
   const categories = Array.from(new Set(yearRows.map((row) => row.category)));
   const colors = ["#1e3a5f", "#26ba9a", "#dc2626", "#7c3aed", "#f59e0b", "#0284c7", "#be185d", "#16a34a"];
   const chartWidth = 760;
-  const chartHeight = 280;
+  const chartHeight = 200;
   const padding = {
   top: 40,
   bottom: 60,

@@ -345,10 +345,6 @@ function ParticipationTrendCard({ data }: { data: DashboardData }) {
   left: 42,
   right: 18,
   };
-  const ticks = Array.from(
-  { length: maxRegistered + 1 },
-  (_, i) => i
-);
   const plotWidth = chartWidth - padding.left - padding.right;
   const plotHeight = chartHeight - padding.top - padding.bottom;
   const maxRegistered = Math.max(...yearRows.map((row) => row.registered_count), 1);
@@ -415,33 +411,24 @@ function ParticipationTrendCard({ data }: { data: DashboardData }) {
               role="img"
               viewBox={`0 0 ${chartWidth} ${chartHeight}`}
             >
-              {ticks.map((value) => {
-  const y =
-    padding.top +
-    plotHeight -
-    (value / maxRegistered) * plotHeight;
-
-  return (
-    <g key={value}>
-      <line
-        x1={padding.left}
-        x2={chartWidth - padding.right}
-        y1={y}
-        y2={y}
-        stroke="#e2e8f0"
-      />
-      <text
-        x={padding.left - 8}
-        y={y + 3}
-        textAnchor="end"
-        fontSize="10"
-        fill="#64748b"
-      >
-        {value}
-      </text>
-    </g>
-  );
-})}
+               {[0, 0.25, 0.5, 0.75, 1].map((tick) => {
+                const y = padding.top + plotHeight - tick * plotHeight;
+                return (
+                  <g key={tick}>
+                    <line
+                      stroke="#e2e8f0"
+                      strokeDasharray={tick === 0 ? undefined : "4 4"}
+                      x1={padding.left}
+                      x2={chartWidth - padding.right}
+                      y1={y}
+                      y2={y}
+                    />
+                    <text fill="#64748b" fontSize="10" textAnchor="end" x={padding.left - 8} y={y + 3}>
+                      {Math.round(maxRegistered * tick)}
+                    </text>
+                  </g>
+                );
+              })}
               {monthRows.map((month, index) => {
                 const x = padding.left + (index / 11) * plotWidth;
                 return (

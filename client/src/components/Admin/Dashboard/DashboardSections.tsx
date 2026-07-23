@@ -339,7 +339,12 @@ function ParticipationTrendCard({ data }: { data: DashboardData }) {
   const colors = ["#1e3a5f", "#26ba9a", "#dc2626", "#7c3aed", "#f59e0b", "#0284c7", "#be185d", "#16a34a"];
   const chartWidth = 760;
   const chartHeight = 280;
-  const padding = { bottom: 38, left: 42, right: 18, top: 18 };
+  const padding = {
+  top: 40,
+  bottom: 60,
+  left: 42,
+  right: 18,
+  };
   const plotWidth = chartWidth - padding.left - padding.right;
   const plotHeight = chartHeight - padding.top - padding.bottom;
   const maxRegistered = Math.max(...yearRows.map((row) => row.registered_count), 1);

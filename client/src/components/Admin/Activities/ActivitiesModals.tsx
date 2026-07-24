@@ -337,6 +337,7 @@ function CatalogEventModal({
   const [budgetRows, setBudgetRows] = useState<BudgetRow[]>(
     eventToBudgetRows(selectedActivity),
   );
+  const isEditingExistingActivity = Boolean(selectedActivity?.event_id);
   const expectedAttendees = getExpectedAttendees(form.expected_attendees);
   const suggestedItems = getSuggestedItems(form.event_name, form.category);
   const selectedExistingEvent = events.find((item) => String(item.event_id) === selectedExistingId) ?? null;
@@ -395,7 +396,7 @@ function CatalogEventModal({
       category: form.category.trim(),
       description: form.description.trim() || null,
       event_date: form.event_date || null,
-      event_id: eventChoice === "existing" ? form.event_id : null,
+      event_id: isEditingExistingActivity ? form.event_id : null,
       event_name: form.event_name.trim(),
       event_time: form.event_time || null,
       expected_attendees: Number(form.expected_attendees) || 0,

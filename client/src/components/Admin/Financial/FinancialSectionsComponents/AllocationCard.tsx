@@ -15,6 +15,18 @@ function formatPeso(value: number) {
   }).format(value);
 }
 
+function formatPercent(value: number) {
+  if (value === 0) {
+    return "0%";
+  }
+
+  if (Math.abs(value) < 1) {
+    return `${value.toFixed(2)}%`;
+  }
+
+  return `${value.toFixed(1)}%`;
+}
+
 function AllocationCard({ eventBudgets, selectedBudget }: AllocationCardProps) {
   const totalBudget = selectedBudget?.total_allocation ?? 0;
   const categoryTotals = eventBudgets
@@ -32,12 +44,16 @@ function AllocationCard({ eventBudgets, selectedBudget }: AllocationCardProps) {
       percent: totalBudget === 0 ? 0 : (amount / totalBudget) * 100,
     }))
     .sort((first, second) => second.amount - first.amount);
+  const allocatedTotal = rows.reduce((total, row) => total + row.amount, 0);
+  const allocatedPercent = totalBudget === 0 ? 0 : (allocatedTotal / totalBudget) * 100;
+  const unallocatedPercent = Math.max(0, 100 - allocatedPercent);
 
   const gradient =
-    rows.length === 0
+    totalBudget === 0 || rows.length === 0
       ? "#e2e8f0 0 100%"
-      : rows
-          .reduce<{ cursor: number; parts: string[] }>(
+      : [
+          ...rows
+            .reduce<{ cursor: number; parts: string[] }>(
             (state, row) => {
               const start = state.cursor;
               const end = state.cursor + row.percent;
@@ -47,7 +63,9 @@ function AllocationCard({ eventBudgets, selectedBudget }: AllocationCardProps) {
             },
             { cursor: 0, parts: [] },
           )
-          .parts.join(",");
+            .parts,
+          `#e2e8f0 ${allocatedPercent}% ${allocatedPercent + unallocatedPercent}%`,
+        ].join(",");
 
   return (
     <section className="rounded-[14px] border border-slate-200 bg-white p-6 shadow-sm">
@@ -76,9 +94,9 @@ function AllocationCard({ eventBudgets, selectedBudget }: AllocationCardProps) {
 
           <div className="absolute inset-0 flex flex-col items-center justify-center">
             <span className="text-2xl font-bold">
-              {rows.length === 0 ? "0%" : "100%"}
+              {formatPercent(allocatedPercent)}
             </span>
-            <span className="text-xs text-slate-500">Allocated mix</span>
+            <span className="text-xs text-slate-500">Allocated</span>
           </div>
         </div>
 
@@ -101,7 +119,7 @@ function AllocationCard({ eventBudgets, selectedBudget }: AllocationCardProps) {
                 <span className="text-slate-500">{formatPeso(item.amount)}</span>
 
                 <span className="text-slate-500">
-                  ({item.percent.toFixed(1)}%)
+                  ({formatPercent(item.percent)})
                 </span>
               </div>
             ))

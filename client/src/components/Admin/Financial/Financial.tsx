@@ -20,7 +20,7 @@ import {
 } from "./FinancialService";
 import FinancialSections from "./FinancialSections";
 
-function getCompletedEventFinancialSummary(
+function getFinancialSummaryWithCompletedAllocations(
   summary: FinancialSummary | null,
   eventBudgets: FinancialEventBudget[],
 ) {
@@ -33,16 +33,10 @@ function getCompletedEventFinancialSummary(
     (sum, event) => sum + event.allocated_budget,
     0,
   );
-  const totalCompletedSpending = completedEventBudgets.reduce(
-    (sum, event) => sum + event.completed_spending,
-    0,
-  );
 
   return {
     ...summary,
-    available_to_spend: summary.total_annual_budget - totalCompletedSpending,
     total_allocated_budget: totalAllocatedBudget,
-    total_completed_spending: totalCompletedSpending,
     unallocated_budget: summary.total_annual_budget - totalAllocatedBudget,
   };
 }
@@ -164,7 +158,7 @@ export default function Financial() {
         }
 
         setEventBudgets(eventData ?? []);
-        setSummary(getCompletedEventFinancialSummary(summaryData, eventData ?? []));
+        setSummary(getFinancialSummaryWithCompletedAllocations(summaryData, eventData ?? []));
         setTransactions(transactionData ?? []);
       } catch (error) {
         setErrorMessage(

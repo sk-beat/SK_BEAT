@@ -281,6 +281,47 @@ function eventToBudgetRows(event: ActivityEvent | null): BudgetRow[] {
   }));
 }
 
+function getEventTemplateKey(event: Pick<ActivityEvent, "category" | "event_name">) {
+  return `${event.event_name.trim().toLowerCase()}::${event.category.trim().toLowerCase()}`;
+}
+
+function compareEventRecency(first: ActivityEvent, second: ActivityEvent) {
+  const firstDate = first.event_date ? new Date(`${first.event_date}T00:00:00`).getTime() : 0;
+  const secondDate = second.event_date ? new Date(`${second.event_date}T00:00:00`).getTime() : 0;
+
+  if (firstDate !== secondDate) {
+    return secondDate - firstDate;
+  }
+
+  const firstCreated = first.created_at ? new Date(first.created_at).getTime() : 0;
+  const secondCreated = second.created_at ? new Date(second.created_at).getTime() : 0;
+
+  if (firstCreated !== secondCreated) {
+    return secondCreated - firstCreated;
+  }
+
+  return second.event_id - first.event_id;
+}
+
+function getLatestCompletedIdenticalEvent(
+  events: ActivityEvent[],
+  referenceEvent: ActivityEvent | null,
+) {
+  if (!referenceEvent) {
+    return null;
+  }
+
+  const referenceKey = getEventTemplateKey(referenceEvent);
+
+  return [...events]
+    .filter(
+      (event) =>
+        event.status === "completed" &&
+        getEventTemplateKey(event) === referenceKey,
+    )
+    .sort(compareEventRecency)[0] ?? null;
+}
+
 function Field({
   label,
   onChange,
@@ -340,13 +381,24 @@ function CatalogEventModal({
   const isEditingExistingActivity = Boolean(selectedActivity?.event_id);
   const expectedAttendees = getExpectedAttendees(form.expected_attendees);
   const suggestedItems = getSuggestedItems(form.event_name, form.category);
+  const existingEventOptions = Array.from(
+    events
+      .reduce<Map<string, ActivityEvent>>((options, event) => {
+        const key = getEventTemplateKey(event);
+        const current = options.get(key);
+
+        if (!current || compareEventRecency(event, current) < 0) {
+          options.set(key, event);
+        }
+
+        return options;
+      }, new Map())
+      .values(),
+  ).sort((first, second) => first.event_name.localeCompare(second.event_name));
   const selectedExistingEvent = events.find((item) => String(item.event_id) === selectedExistingId) ?? null;
-  const recentIdenticalEvent = selectedExistingEvent
-    ? completedEventPerformance.find(
-        (event) =>
-          event.event_name.trim().toLowerCase() === selectedExistingEvent.event_name.trim().toLowerCase() &&
-          event.category.trim().toLowerCase() === selectedExistingEvent.category.trim().toLowerCase(),
-      ) ?? null
+  const latestCompletedTemplateEvent = getLatestCompletedIdenticalEvent(events, selectedExistingEvent);
+  const recentIdenticalEvent = latestCompletedTemplateEvent
+    ? completedEventPerformance.find((event) => event.event_id === latestCompletedTemplateEvent.event_id) ?? null
     : null;
   const recentExpenseTotal = recentIdenticalEvent?.completed_spending ?? 0;
 
@@ -369,10 +421,16 @@ function CatalogEventModal({
 
   function selectExistingEvent(eventId: string) {
     const event = events.find((item) => String(item.event_id) === eventId) ?? null;
+    const sourceEvent = getLatestCompletedIdenticalEvent(events, event) ?? event;
 
     setSelectedExistingId(eventId);
-    setForm(eventToForm(event));
-    setBudgetRows(eventToBudgetRows(event));
+    setForm({
+      ...eventToForm(sourceEvent),
+      event_date: event?.event_date ?? "",
+      event_time: event?.event_time ?? "09:00",
+      status: "draft",
+    });
+    setBudgetRows(eventToBudgetRows(sourceEvent));
   }
 
   async function handleSave() {
@@ -480,12 +538,15 @@ function CatalogEventModal({
               value={selectedExistingId}
             >
               <option value="">Select event</option>
-              {events.map((event) => (
+              {existingEventOptions.map((event) => (
                 <option key={event.event_id} value={event.event_id}>
-                  {event.event_name}
+                  {event.event_name} - {event.category}
                 </option>
               ))}
             </select>
+            <span className="mt-1 block text-xs text-slate-400">
+              If a completed identical event exists, its latest budget breakdown will be copied.
+            </span>
           </label>
         ) : null}
 

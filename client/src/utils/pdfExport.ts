@@ -38,27 +38,27 @@ function formatGeneratedDate(date: Date) {
   }).format(date);
 }
 
-function loadImage(src: string) {
-  return new Promise<HTMLImageElement>((resolve, reject) => {
-    const image = new Image();
-    image.onload = () => resolve(image);
-    image.onerror = () => reject(new Error("Unable to load PDF template image."));
-    image.src = src;
-  });
-}
+async function loadPngDataUrl(src: string) {
+  const response = await fetch(src);
 
-function imageToDataUrl(image: HTMLImageElement) {
-  const canvas = document.createElement("canvas");
-  canvas.width = image.naturalWidth || image.width;
-  canvas.height = image.naturalHeight || image.height;
-  const context = canvas.getContext("2d");
-
-  if (!context) {
-    throw new Error("Unable to prepare PDF template.");
+  if (!response.ok) {
+    throw new Error("Unable to load PDF template image.");
   }
 
-  context.drawImage(image, 0, 0);
-  return canvas.toDataURL("image/png");
+  const blob = await response.blob();
+
+  return new Promise<string>((resolve, reject) => {
+    const reader = new FileReader();
+    reader.onload = () => {
+      if (typeof reader.result === "string") {
+        resolve(reader.result);
+      } else {
+        reject(new Error("Unable to prepare PDF template."));
+      }
+    };
+    reader.onerror = () => reject(new Error("Unable to prepare PDF template."));
+    reader.readAsDataURL(blob);
+  });
 }
 
 function getColumnWidths<T>(columns: Array<PdfReportColumn<T>>, tableWidth: number) {
@@ -198,8 +198,7 @@ export async function downloadOfficialPdfReport<T>({
   subtitle,
   title,
 }: PdfReportOptions<T>) {
-  const template = await loadImage(skPdfTemplate);
-  const templateDataUrl = imageToDataUrl(template);
+  const templateDataUrl = await loadPngDataUrl(skPdfTemplate);
   const pdf = new jsPDF({
     format: "a4",
     orientation: "portrait",

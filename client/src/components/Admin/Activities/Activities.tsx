@@ -294,6 +294,11 @@ export default function Activities() {
         return;
       }
 
+      if (event.status === "completed") {
+        setErrorMessage("Completed events cannot be edited.");
+        return;
+      }
+
       setSelectedActivity(event);
       setModalMode("catalog");
     });
@@ -323,6 +328,11 @@ export default function Activities() {
             setModalMode("catalog");
           }}
           onEditCatalogEvent={(activity) => {
+            if (activity.status === "completed") {
+              setErrorMessage("Completed events cannot be edited.");
+              return;
+            }
+
             setSelectedActivity(activity);
             setModalMode("catalog");
           }}

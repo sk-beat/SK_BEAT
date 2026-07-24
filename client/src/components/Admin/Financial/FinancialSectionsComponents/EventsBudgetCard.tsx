@@ -1,7 +1,10 @@
+import { useState } from "react";
 import type { FinancialEventBudget } from "../FinancialService";
 
 type EventsBudgetsCardProps = {
+  canAddExpense: boolean;
   eventBudgets: FinancialEventBudget[];
+  onExportEventExpense: () => void;
   onOpenEventExpense: (event: FinancialEventBudget) => void;
 };
 
@@ -22,30 +25,64 @@ function percentUsed(event: FinancialEventBudget) {
 }
 
 export default function EventsBudgetsCard({
+  canAddExpense,
   eventBudgets,
+  onExportEventExpense,
   onOpenEventExpense,
 }: EventsBudgetsCardProps) {
+  const [statusFilter, setStatusFilter] = useState<"scheduled" | "completed">("scheduled");
+  const visibleEventBudgets = eventBudgets.filter((event) => event.status === statusFilter);
+  const completedEvents = eventBudgets.filter((event) => event.status === "completed");
+
   return (
     <section className="rounded-[14px] border border-slate-200 bg-white p-6 shadow-sm">
-      <h2 className="text-sm font-semibold uppercase tracking-[0.1em] text-slate-400">
-        Event Budgets
-      </h2>
+      <div className="flex flex-wrap items-start justify-between gap-3">
+        <div>
+          <h2 className="text-sm font-semibold uppercase tracking-[0.1em] text-slate-400">
+            Event Budgets
+          </h2>
 
-      <p className="mt-1 text-xs text-slate-400">
-        Allocated budget and completed spending by activity
-      </p>
+          <p className="mt-1 text-xs text-slate-400">
+            Allocated budget and completed spending by activity
+          </p>
+        </div>
+
+        <div className="flex flex-wrap items-end gap-2">
+          <label className="flex flex-col gap-1 text-[0.6875rem] font-semibold uppercase tracking-[0.08em] text-slate-400">
+            Filter
+            <select
+              className="min-w-32 rounded-lg border border-slate-200 bg-white px-3 py-2 text-xs font-medium normal-case tracking-normal text-slate-700 outline-none"
+              onChange={(event) => setStatusFilter(event.target.value as "scheduled" | "completed")}
+              value={statusFilter}
+            >
+              <option value="scheduled">Scheduled</option>
+              <option value="completed">Completed</option>
+            </select>
+          </label>
+
+          <button
+            className="rounded-lg border border-slate-200 bg-white px-4 py-2 text-xs font-medium text-[#1e3a5f] hover:bg-blue-50 disabled:cursor-not-allowed disabled:bg-slate-50 disabled:text-slate-400"
+            disabled={completedEvents.length === 0}
+            onClick={onExportEventExpense}
+            title={completedEvents.length === 0 ? "No completed events to export." : "Export completed event expenses"}
+            type="button"
+          >
+            Export
+          </button>
+        </div>
+      </div>
 
       <div className="mt-5 flex max-h-[520px] flex-col gap-4 overflow-y-auto pr-1">
-        {eventBudgets.length === 0 ? (
+        {visibleEventBudgets.length === 0 ? (
           <p className="rounded-xl bg-slate-50 px-4 py-8 text-center text-sm text-slate-400">
-            No event budgets for this year.
+            No {statusFilter} event budgets for this year.
           </p>
         ) : (
-          eventBudgets.map((event) => {
+          visibleEventBudgets.map((event) => {
             const used = percentUsed(event);
             const barWidth = Math.min(Math.abs(used), 100);
             const overBudget = event.remaining_event_budget < 0;
-            const canAddExpense = event.status === "scheduled";
+            const canAddExpenseForEvent = canAddExpense && event.status === "scheduled";
 
             return (
               <article
@@ -104,9 +141,15 @@ export default function EventsBudgetsCard({
                 <div className="mt-3 flex flex-wrap gap-2">
                   <button
                     className="rounded-lg border border-slate-200 bg-white px-3 py-2 text-xs font-medium text-[#1e3a5f] hover:bg-blue-50 disabled:cursor-not-allowed disabled:bg-slate-50 disabled:text-slate-400"
-                    disabled={!canAddExpense}
+                    disabled={!canAddExpenseForEvent}
                     onClick={() => onOpenEventExpense(event)}
-                    title={canAddExpense ? "Add expense" : "Expenses can only be added to scheduled events."}
+                    title={
+                      !canAddExpense
+                        ? "The annual budget is fully used."
+                        : canAddExpenseForEvent
+                          ? "Add expense"
+                          : "Expenses can only be added to scheduled events."
+                    }
                     type="button"
                   >
                     Add Expense

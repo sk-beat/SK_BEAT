@@ -316,6 +316,7 @@ function RequiredMark() {
 
 function CatalogEventModal({
   budgetYearId,
+  completedEventPerformance,
   eventCategories,
   events,
   isSaving,
@@ -324,7 +325,7 @@ function CatalogEventModal({
   selectedActivity,
 }: Pick<
   ActivitiesModalsProps,
-  "budgetYearId" | "eventCategories" | "events" | "isSaving" | "onClose" | "onSave" | "selectedActivity"
+  "budgetYearId" | "completedEventPerformance" | "eventCategories" | "events" | "isSaving" | "onClose" | "onSave" | "selectedActivity"
 >) {
   const [eventChoice, setEventChoice] = useState<"new" | "existing">(
     selectedActivity?.event_id ? "existing" : "new",
@@ -338,6 +339,20 @@ function CatalogEventModal({
   );
   const expectedAttendees = getExpectedAttendees(form.expected_attendees);
   const suggestedItems = getSuggestedItems(form.event_name, form.category);
+  const selectedExistingEvent = events.find((item) => String(item.event_id) === selectedExistingId) ?? null;
+  const recentIdenticalEvent = selectedExistingEvent
+    ? completedEventPerformance.find(
+        (event) =>
+          event.event_id === selectedExistingEvent.event_id ||
+          (
+            event.event_name.trim().toLowerCase() === selectedExistingEvent.event_name.trim().toLowerCase() &&
+            event.category.trim().toLowerCase() === selectedExistingEvent.category.trim().toLowerCase()
+          ),
+      ) ?? null
+    : null;
+  const recentExpenseTotal = recentIdenticalEvent?.completed_spending ??
+    selectedExistingEvent?.event_expenses.reduce((total, expense) => total + Number(expense.amount ?? 0), 0) ??
+    0;
 
   const allocatedBudget = useMemo(
     () =>
@@ -347,6 +362,10 @@ function CatalogEventModal({
       ),
     [budgetRows, expectedAttendees],
   );
+  const budgetAdjustment = selectedExistingEvent ? recentExpenseTotal - selectedExistingEvent.allocated_budget : 0;
+  const adjustedReferenceBudget = selectedExistingEvent
+    ? selectedExistingEvent.allocated_budget + budgetAdjustment
+    : allocatedBudget;
 
   function updateForm(field: keyof EventFormState, value: string) {
     setForm((current) => ({ ...current, [field]: value }));
@@ -555,6 +574,32 @@ function CatalogEventModal({
               </strong>
             </div>
           </div>
+
+          {selectedExistingEvent ? (
+            <div className="mb-3 rounded-lg border border-[#1e3a5f]/10 bg-white px-4 py-3 text-sm text-slate-600">
+              <div className="flex flex-wrap items-center justify-between gap-3">
+                <span>
+                  Recent identical event expenses:{" "}
+                  <strong className="text-slate-800">{formatPeso(recentExpenseTotal)}</strong>
+                </span>
+                <span>
+                  Saved allocation:{" "}
+                  <strong className="text-slate-800">{formatPeso(selectedExistingEvent.allocated_budget)}</strong>
+                </span>
+              </div>
+              {budgetAdjustment === 0 ? (
+                <p className="mt-2 text-xs font-medium text-emerald-600">
+                  Recent expense matches the saved allocation. No budget adjustment needed.
+                </p>
+              ) : (
+                <p className={["mt-2 text-xs font-medium", budgetAdjustment > 0 ? "text-red-600" : "text-emerald-600"].join(" ")}>
+                  {budgetAdjustment > 0
+                    ? `Recent expenses exceeded the saved allocation. Suggested adjustment: +${formatPeso(budgetAdjustment)} (${formatPeso(selectedExistingEvent.allocated_budget)} + ${formatPeso(budgetAdjustment)} = ${formatPeso(adjustedReferenceBudget)}).`
+                    : `Recent expenses did not use the full allocation. Suggested adjustment: -${formatPeso(Math.abs(budgetAdjustment))} (${formatPeso(selectedExistingEvent.allocated_budget)} - ${formatPeso(Math.abs(budgetAdjustment))} = ${formatPeso(adjustedReferenceBudget)}).`}
+                </p>
+              )}
+            </div>
+          ) : null}
 
           <div className="space-y-2">
             {budgetRows.map((row, index) => {
@@ -1416,6 +1461,7 @@ export default function ActivitiesModals({
       {mode === "catalog" ? (
         <CatalogEventModal
           budgetYearId={budgetYearId}
+          completedEventPerformance={completedEventPerformance}
           eventCategories={eventCategories}
           events={events}
           isSaving={isSaving}

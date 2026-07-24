@@ -12,12 +12,14 @@ import {
 export type FinancialModalMode =
   | "add-expense"
   | "annual-budget"
+  | "export-event-expense"
   | "event-expense"
   | null;
 
 type FinancialModalsProps = {
   annualBudget: AnnualBudget | null;
   budgetYearId: number | null;
+  canAddExpense: boolean;
   eventBudgets: FinancialEventBudget[];
   isSaving: boolean;
   mode: FinancialModalMode;
@@ -72,6 +74,7 @@ function DownloadIcon({ className }: { className?: string }) {
 export default function FinancialModals({
   annualBudget,
   budgetYearId,
+  canAddExpense,
   eventBudgets,
   isSaving,
   mode,
@@ -87,6 +90,7 @@ export default function FinancialModals({
   const [date, setDate] = useState(today());
   const [description, setDescription] = useState("");
   const [eventId, setEventId] = useState<number | "">("");
+  const [exportEventId, setExportEventId] = useState<number | "">("");
   const [formError, setFormError] = useState("");
   const [notes, setNotes] = useState("");
   const [receiptPath, setReceiptPath] = useState("");
@@ -105,7 +109,11 @@ export default function FinancialModals({
     () => eventBudgets.filter((event) => event.status === "scheduled"),
     [eventBudgets],
   );
-  const canAddExpenseForSelectedEvent = !selectedEvent || selectedEvent.status === "scheduled";
+  const completedEventBudgets = useMemo(
+    () => eventBudgets.filter((event) => event.status === "completed"),
+    [eventBudgets],
+  );
+  const canAddExpenseForSelectedEvent = canAddExpense && (!selectedEvent || selectedEvent.status === "scheduled");
 
   useEffect(() => {
     if (mode !== "add-expense" && mode !== "event-expense") {
@@ -140,8 +148,26 @@ export default function FinancialModals({
     return () => window.clearTimeout(timeout);
   }, [annualBudget, mode]);
 
+  useEffect(() => {
+    if (mode !== "export-event-expense") {
+      return;
+    }
+
+    const timeout = window.setTimeout(() => {
+      setExportEventId(completedEventBudgets[0]?.event_id ?? "");
+      setFormError("");
+    }, 0);
+
+    return () => window.clearTimeout(timeout);
+  }, [completedEventBudgets, mode]);
+
   async function saveExpense() {
     const numericAmount = Number(amount);
+
+    if (!canAddExpense) {
+      setFormError("The annual budget is fully used. Add expense is disabled.");
+      return;
+    }
 
     if (!budgetYearId) {
       setFormError("Create or select a budget year first.");
@@ -217,6 +243,27 @@ export default function FinancialModals({
     }
   }
 
+  async function exportSelectedCompletedEventExpenses() {
+    const event = exportEventId === ""
+      ? null
+      : completedEventBudgets.find((item) => item.event_id === exportEventId) ?? null;
+
+    if (!event) {
+      setFormError("Select a completed event before exporting.");
+      return;
+    }
+
+    try {
+      await downloadEventExpensePdf(
+        event,
+        transactions.filter((transaction) => transaction.event_id === event.event_id),
+      );
+      setFormError("");
+    } catch (error) {
+      setFormError(error instanceof Error ? error.message : "Unable to export event expenses.");
+    }
+  }
+
   return (
     <>
       <AdminModal
@@ -232,7 +279,7 @@ export default function FinancialModals({
             </button>
             <button
               className="rounded-lg bg-[#1e3a5f] px-4 py-2 text-sm font-medium text-white hover:bg-[#2a4a6f] disabled:cursor-not-allowed disabled:opacity-60"
-              disabled={isSaving}
+              disabled={isSaving || !canAddExpense}
               onClick={saveExpense}
               type="button"
             >
@@ -250,6 +297,11 @@ export default function FinancialModals({
               {formError}
             </div>
           ) : null}
+          {!canAddExpense ? (
+            <div className="rounded-lg border border-amber-200 bg-amber-50 px-4 py-3 text-sm font-medium text-amber-700 md:col-span-2">
+              The annual budget is fully used. Add expense is disabled.
+            </div>
+          ) : null}
 
           <label className="block">
             <span className="mb-1.5 block text-sm font-medium text-slate-700">
@@ -257,6 +309,7 @@ export default function FinancialModals({
             </span>
             <input
               className={inputClass}
+              disabled={!canAddExpense}
               onChange={(event) => setDescription(event.target.value)}
               value={description}
             />
@@ -268,6 +321,7 @@ export default function FinancialModals({
             </span>
             <input
               className={inputClass}
+              disabled={!canAddExpense}
               min="0.01"
               onChange={(event) => setAmount(event.target.value)}
               step="0.01"
@@ -282,6 +336,7 @@ export default function FinancialModals({
             </span>
             <input
               className={inputClass}
+              disabled={!canAddExpense}
               onChange={(event) => setDate(event.target.value)}
               type="date"
               value={date}
@@ -294,6 +349,7 @@ export default function FinancialModals({
             </span>
             <input
               className={inputClass}
+              disabled={!canAddExpense}
               onChange={(event) => setCategory(event.target.value)}
               placeholder="Sports, Training, Supplies"
               value={category}
@@ -306,6 +362,7 @@ export default function FinancialModals({
             </span>
             <select
               className={inputClass}
+              disabled={!canAddExpense}
               onChange={(event) => {
                 const nextEventId = event.target.value === "" ? "" : Number(event.target.value);
                 const nextEvent = nextEventId === ""
@@ -332,6 +389,7 @@ export default function FinancialModals({
             </span>
             <input
               className={inputClass}
+              disabled={!canAddExpense}
               onChange={(event) => setReferenceNumber(event.target.value)}
               value={referenceNumber}
             />
@@ -343,6 +401,7 @@ export default function FinancialModals({
             </span>
             <input
               className={inputClass}
+              disabled={!canAddExpense}
               onChange={(event) => setReceiptPath(event.target.value)}
               value={receiptPath}
             />
@@ -354,6 +413,7 @@ export default function FinancialModals({
             </span>
             <textarea
               className={`${inputClass} min-h-24 resize-none`}
+              disabled={!canAddExpense}
               onChange={(event) => setNotes(event.target.value)}
               value={notes}
             />
@@ -460,7 +520,7 @@ export default function FinancialModals({
             </h3>
             {!canAddExpenseForSelectedEvent ? (
               <div className="mb-4 rounded-lg border border-amber-200 bg-amber-50 px-4 py-3 text-sm font-medium text-amber-700">
-                Expenses can only be added while the event is scheduled.
+                {canAddExpense ? "Expenses can only be added while the event is scheduled." : "The annual budget is fully used. Add expense is disabled."}
               </div>
             ) : null}
             {formError ? (
@@ -571,6 +631,60 @@ export default function FinancialModals({
               )}
             </div>
           </section>
+        </div>
+      </AdminModal>
+
+      <AdminModal
+        footer={
+          <>
+            <button
+              className="rounded-lg border border-slate-200 px-4 py-2 text-sm font-medium text-slate-700 hover:bg-slate-50"
+              onClick={onClose}
+              type="button"
+            >
+              Cancel
+            </button>
+            <button
+              className="rounded-lg bg-[#1e3a5f] px-4 py-2 text-sm font-medium text-white hover:bg-[#2a4a6f] disabled:cursor-not-allowed disabled:opacity-60"
+              disabled={exportEventId === "" || completedEventBudgets.length === 0}
+              onClick={exportSelectedCompletedEventExpenses}
+              type="button"
+            >
+              Export
+            </button>
+          </>
+        }
+        maxWidthClass="max-w-md"
+        onClose={onClose}
+        open={mode === "export-event-expense"}
+        title="Export Completed Event"
+      >
+        <div className="grid gap-4">
+          {formError ? (
+            <div className="rounded-lg border border-red-200 bg-red-50 px-4 py-3 text-sm font-medium text-red-700">
+              {formError}
+            </div>
+          ) : null}
+          <label className="block">
+            <span className="mb-1.5 block text-sm font-medium text-slate-700">
+              Completed Event
+            </span>
+            <select
+              className={inputClass}
+              disabled={completedEventBudgets.length === 0}
+              onChange={(event) => setExportEventId(event.target.value === "" ? "" : Number(event.target.value))}
+              value={exportEventId}
+            >
+              {completedEventBudgets.length === 0 ? (
+                <option value="">No completed events</option>
+              ) : null}
+              {completedEventBudgets.map((event) => (
+                <option key={event.event_id} value={event.event_id}>
+                  {event.event_name}
+                </option>
+              ))}
+            </select>
+          </label>
         </div>
       </AdminModal>
     </>

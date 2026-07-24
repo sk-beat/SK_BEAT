@@ -109,6 +109,7 @@ export default function Financial() {
       null,
     [annualBudgets, budgetYearId],
   );
+  const canAddExpense = summary ? summary.available_to_spend > 0 : false;
 
   const loadFinancialData = useCallback(
     async (nextBudgetYearId = budgetYearId) => {
@@ -257,6 +258,7 @@ export default function Financial() {
           errorMessage={errorMessage}
           eventBudgets={eventBudgets}
           isLoading={isLoading}
+          canAddExpense={canAddExpense}
           onAddExpense={() => {
             setSelectedEvent(null);
             setModalMode("add-expense");
@@ -267,6 +269,10 @@ export default function Financial() {
           }}
           onOpenAnnualBudget={() => setModalMode("annual-budget")}
           onExportData={handleExportData}
+          onOpenEventExpenseExport={() => {
+            setSelectedEvent(null);
+            setModalMode("export-event-expense");
+          }}
           onOpenEventExpense={(event) => {
             setSelectedEvent(event);
             setModalMode("event-expense");
@@ -280,6 +286,7 @@ export default function Financial() {
       <FinancialModals
         annualBudget={selectedBudget}
         budgetYearId={budgetYearId}
+        canAddExpense={canAddExpense}
         eventBudgets={eventBudgets}
         isSaving={isSaving}
         mode={modalMode}

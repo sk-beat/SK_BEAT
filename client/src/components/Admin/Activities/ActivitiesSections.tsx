@@ -672,14 +672,16 @@ function ActivitiesListPanel({
   | "recommendations"
 >) {
   const [currentPage, setCurrentPage] = useState(1);
+  const [statusFilter, setStatusFilter] = useState<"all" | "draft" | "scheduled" | "completed">("all");
   const topRecommendations = [
     ...recommendations.filter((item) => !item.is_already_planned),
     ...recommendations.filter((item) => item.is_already_planned),
   ].slice(0, 3);
   const pastEvents = events.filter((event) => event.status === "completed");
-  const totalPages = Math.max(1, Math.ceil(events.length / pageSize));
+  const filteredEvents = events.filter((event) => statusFilter === "all" || event.status === statusFilter);
+  const totalPages = Math.max(1, Math.ceil(filteredEvents.length / pageSize));
   const safeCurrentPage = Math.min(currentPage, totalPages);
-  const paginatedEvents = events.slice(
+  const paginatedEvents = filteredEvents.slice(
     (safeCurrentPage - 1) * pageSize,
     safeCurrentPage * pageSize,
   );
@@ -764,15 +766,34 @@ function ActivitiesListPanel({
         </div>
       ) : null}
 
+      <div className="mb-4 flex flex-wrap items-center justify-between gap-3">
+        <label className="flex items-center gap-2 text-sm font-medium text-slate-500">
+          Filter status
+          <select
+            className="rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm text-slate-700 outline-none"
+            onChange={(event) => {
+              setStatusFilter(event.target.value as "all" | "draft" | "scheduled" | "completed");
+              setCurrentPage(1);
+            }}
+            value={statusFilter}
+          >
+            <option value="all">All</option>
+            <option value="draft">Draft</option>
+            <option value="scheduled">Scheduled</option>
+            <option value="completed">Completed</option>
+          </select>
+        </label>
+      </div>
+
       <ul className="flex list-none flex-col gap-3 p-0">
         {isLoading ? (
           <li className="rounded-xl border border-slate-200 bg-white p-4 text-sm text-slate-500">
             Loading events...
           </li>
         ) : null}
-        {!isLoading && events.length === 0 ? (
+        {!isLoading && filteredEvents.length === 0 ? (
           <li className="rounded-xl border border-dashed border-slate-300 bg-white p-4 text-sm text-slate-500">
-            No activities yet. Add a new event to get started.
+            No activities match this filter.
           </li>
         ) : null}
         {paginatedEvents.map((item) => (
@@ -793,7 +814,13 @@ function ActivitiesListPanel({
               </span>
             </div>
             <div className="flex gap-2">
-              <button className="rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm text-slate-800 hover:bg-slate-50" onClick={() => onEditCatalogEvent(item)} type="button">
+              <button
+                className="rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm text-slate-800 hover:bg-slate-50 disabled:cursor-not-allowed disabled:bg-slate-50 disabled:text-slate-400"
+                disabled={item.status === "completed"}
+                onClick={() => onEditCatalogEvent(item)}
+                title={item.status === "completed" ? "Completed events cannot be edited." : "Edit event"}
+                type="button"
+              >
                 Edit
               </button>
               <button className="rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm text-slate-800 hover:bg-slate-50" onClick={() => onOpenRegistrations(item)} type="button">
@@ -813,12 +840,12 @@ function ActivitiesListPanel({
         ))}
       </ul>
 
-      {events.length > pageSize ? (
+      {filteredEvents.length > pageSize ? (
         <div className="mt-4 flex flex-wrap items-center justify-between gap-3 border-t border-slate-200 pt-4">
           <p className="text-sm text-slate-500">
             Showing {(safeCurrentPage - 1) * pageSize + 1}-
-            {Math.min(safeCurrentPage * pageSize, events.length)} of{" "}
-            {events.length} activities
+            {Math.min(safeCurrentPage * pageSize, filteredEvents.length)} of{" "}
+            {filteredEvents.length} activities
           </p>
           <div className="flex items-center gap-2">
             <button

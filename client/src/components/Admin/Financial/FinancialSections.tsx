@@ -13,6 +13,7 @@ import {
 type FinancialSectionActions = {
   annualBudgets: AnnualBudget[];
   budgetYearId: number | null;
+  canAddExpense: boolean;
   errorMessage: string;
   eventBudgets: FinancialEventBudget[];
   isLoading: boolean;
@@ -21,6 +22,7 @@ type FinancialSectionActions = {
   onExportData: () => void;
   onOpenAnnualBudget: () => void;
   onOpenEventExpense: (event: FinancialEventBudget) => void;
+  onOpenEventExpenseExport: () => void;
   selectedBudget: AnnualBudget | null;
   successMessage: string;
   summary: FinancialSummary | null;
@@ -171,6 +173,7 @@ function ExpenseHistoryTable({
 export default function FinancialSections({
   annualBudgets,
   budgetYearId,
+  canAddExpense,
   errorMessage,
   eventBudgets,
   isLoading,
@@ -179,12 +182,14 @@ export default function FinancialSections({
   onExportData,
   onOpenAnnualBudget,
   onOpenEventExpense,
+  onOpenEventExpenseExport,
   selectedBudget,
   successMessage,
   summary,
   transactions,
 }: FinancialSectionActions) {
   const hasScheduledEvents = eventBudgets.some((event) => event.status === "scheduled");
+  const canOpenExpense = hasScheduledEvents && canAddExpense;
 
   return (
     <div className="flex-1 p-8">
@@ -236,9 +241,15 @@ export default function FinancialSections({
 
         <button
           className="rounded-lg border border-slate-200 bg-white px-5 py-2.5 text-sm font-medium text-[#1e3a5f] hover:bg-blue-50 disabled:cursor-not-allowed disabled:bg-slate-50 disabled:text-slate-400"
-          disabled={!hasScheduledEvents}
+          disabled={!canOpenExpense}
           onClick={onAddExpense}
-          title={hasScheduledEvents ? "Add expense" : "Add expense is available only for scheduled events."}
+          title={
+            !canAddExpense
+              ? "The annual budget is fully used."
+              : hasScheduledEvents
+                ? "Add expense"
+                : "Add expense is available only for scheduled events."
+          }
           type="button"
         >
           Add Expense
@@ -265,7 +276,9 @@ export default function FinancialSections({
 
       <div className="mt-6 grid grid-cols-[minmax(0,1.4fr)_minmax(300px,0.9fr)] gap-6 max-xl:grid-cols-1">
         <EventsBudgetsCard
+          canAddExpense={canAddExpense}
           eventBudgets={eventBudgets}
+          onExportEventExpense={onOpenEventExpenseExport}
           onOpenEventExpense={onOpenEventExpense}
         />
 

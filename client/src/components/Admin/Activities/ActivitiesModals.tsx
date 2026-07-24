@@ -343,16 +343,11 @@ function CatalogEventModal({
   const recentIdenticalEvent = selectedExistingEvent
     ? completedEventPerformance.find(
         (event) =>
-          event.event_id === selectedExistingEvent.event_id ||
-          (
-            event.event_name.trim().toLowerCase() === selectedExistingEvent.event_name.trim().toLowerCase() &&
-            event.category.trim().toLowerCase() === selectedExistingEvent.category.trim().toLowerCase()
-          ),
+          event.event_name.trim().toLowerCase() === selectedExistingEvent.event_name.trim().toLowerCase() &&
+          event.category.trim().toLowerCase() === selectedExistingEvent.category.trim().toLowerCase(),
       ) ?? null
     : null;
-  const recentExpenseTotal = recentIdenticalEvent?.completed_spending ??
-    selectedExistingEvent?.event_expenses.reduce((total, expense) => total + Number(expense.amount ?? 0), 0) ??
-    0;
+  const recentExpenseTotal = recentIdenticalEvent?.completed_spending ?? 0;
 
   const allocatedBudget = useMemo(
     () =>
@@ -362,9 +357,9 @@ function CatalogEventModal({
       ),
     [budgetRows, expectedAttendees],
   );
-  const budgetAdjustment = selectedExistingEvent ? recentExpenseTotal - selectedExistingEvent.allocated_budget : 0;
-  const adjustedReferenceBudget = selectedExistingEvent
-    ? selectedExistingEvent.allocated_budget + budgetAdjustment
+  const budgetAdjustment = recentIdenticalEvent ? recentExpenseTotal - recentIdenticalEvent.allocated_budget : 0;
+  const adjustedReferenceBudget = recentIdenticalEvent
+    ? recentIdenticalEvent.allocated_budget + budgetAdjustment
     : allocatedBudget;
 
   function updateForm(field: keyof EventFormState, value: string) {
@@ -583,19 +578,23 @@ function CatalogEventModal({
                   <strong className="text-slate-800">{formatPeso(recentExpenseTotal)}</strong>
                 </span>
                 <span>
-                  Saved allocation:{" "}
-                  <strong className="text-slate-800">{formatPeso(selectedExistingEvent.allocated_budget)}</strong>
+                  Completed event allocation:{" "}
+                  <strong className="text-slate-800">{recentIdenticalEvent ? formatPeso(recentIdenticalEvent.allocated_budget) : "No completed match"}</strong>
                 </span>
               </div>
-              {budgetAdjustment === 0 ? (
+              {!recentIdenticalEvent ? (
+                <p className="mt-2 text-xs font-medium text-slate-500">
+                  No completed identical event was found, so no recent-expense adjustment is applied.
+                </p>
+              ) : budgetAdjustment === 0 ? (
                 <p className="mt-2 text-xs font-medium text-emerald-600">
                   Recent expense matches the saved allocation. No budget adjustment needed.
                 </p>
               ) : (
                 <p className={["mt-2 text-xs font-medium", budgetAdjustment > 0 ? "text-red-600" : "text-emerald-600"].join(" ")}>
                   {budgetAdjustment > 0
-                    ? `Recent expenses exceeded the saved allocation. Suggested adjustment: +${formatPeso(budgetAdjustment)} (${formatPeso(selectedExistingEvent.allocated_budget)} + ${formatPeso(budgetAdjustment)} = ${formatPeso(adjustedReferenceBudget)}).`
-                    : `Recent expenses did not use the full allocation. Suggested adjustment: -${formatPeso(Math.abs(budgetAdjustment))} (${formatPeso(selectedExistingEvent.allocated_budget)} - ${formatPeso(Math.abs(budgetAdjustment))} = ${formatPeso(adjustedReferenceBudget)}).`}
+                    ? `Recent expenses exceeded the completed event allocation. Suggested adjustment: +${formatPeso(budgetAdjustment)} (${formatPeso(recentIdenticalEvent.allocated_budget)} + ${formatPeso(budgetAdjustment)} = ${formatPeso(adjustedReferenceBudget)}).`
+                    : `Recent expenses did not use the full completed event allocation. Suggested adjustment: -${formatPeso(Math.abs(budgetAdjustment))} (${formatPeso(recentIdenticalEvent.allocated_budget)} - ${formatPeso(Math.abs(budgetAdjustment))} = ${formatPeso(adjustedReferenceBudget)}).`}
                 </p>
               )}
             </div>
@@ -943,7 +942,7 @@ function ScheduleEventModal({
       category: selectedEvent.category,
       description: selectedEvent.description,
       event_date: date || null,
-      event_id: selectedEvent.event_id,
+      event_id: null,
       event_name: selectedEvent.event_name,
       event_time: `${startTime}-${endTime}`,
       expected_attendees: selectedEvent.expected_attendees ?? 0,

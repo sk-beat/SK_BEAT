@@ -355,12 +355,13 @@ function ParticipationTrendCard({ data }: { data: DashboardData }) {
   const plotHeight = chartHeight - padding.top - padding.bottom;
   const maxRegistered = Math.max(...visibleRows.map((row) => row.registered_count), 0);
   const yAxisMax = Math.max(1, Math.ceil(maxRegistered));
-  const tickValues = maxRegistered === 0
-    ? [0]
-    : Array.from(
-        { length: Math.min(yAxisMax, 4) + 1 },
-        (_, index) => Math.round((yAxisMax / Math.min(yAxisMax, 4)) * index),
-      ).filter((tick, index, values) => index === 0 || tick !== values[index - 1]);
+  const tickStep = yAxisMax <= 4 ? 1 : Math.ceil(yAxisMax / 4);
+  const tickValues = Array.from(
+    new Set([
+      ...Array.from({ length: Math.floor(yAxisMax / tickStep) + 1 }, (_, index) => index * tickStep),
+      yAxisMax,
+    ]),
+  ).filter((tick) => tick <= yAxisMax);
   const monthRows = Array.from({ length: 12 }, (_, index) => rows.find((row) => row.month === index + 1)?.month_label ?? "");
   const lineSeries = visibleCategories.map((category, index) => {
     const monthlyRows = Array.from({ length: 12 }, (_, monthIndex) =>
@@ -395,34 +396,42 @@ function ParticipationTrendCard({ data }: { data: DashboardData }) {
             Monthly registration trend from January to December, grouped by event category.
           </p>
         </div>
-        <select
-          aria-label="Filter participation trend by year"
-          className="rounded-md border border-slate-200 bg-white px-3 py-1.5 text-xs text-slate-700 outline-none"
-          disabled={years.length === 0}
-          onChange={(event) => setSelectedYear(Number(event.target.value))}
-          value={activeYear}
-        >
-          {years.length === 0 ? <option value={activeYear}>No event years</option> : null}
-          {years.map((year) => (
-            <option key={year} value={year}>
-              {year}
-            </option>
-          ))}
-        </select>
-        <select
-          aria-label="Filter participation trend by category"
-          className="rounded-md border border-slate-200 bg-white px-3 py-1.5 text-xs text-slate-700 outline-none"
-          disabled={categories.length === 0}
-          onChange={(event) => setSelectedCategory(event.target.value)}
-          value={activeCategory}
-        >
-          <option value="all">All categories</option>
-          {categories.map((category) => (
-            <option key={category} value={category}>
-              {category}
-            </option>
-          ))}
-        </select>
+        <div className="flex flex-wrap items-end gap-3">
+          <label className="flex flex-col gap-1 text-[0.6875rem] font-semibold uppercase tracking-[0.08em] text-slate-400">
+            Filter by year
+            <select
+              aria-label="Filter participation trend by year"
+              className="min-w-28 rounded-md border border-slate-200 bg-white px-3 py-1.5 text-xs font-medium normal-case tracking-normal text-slate-700 outline-none"
+              disabled={years.length === 0}
+              onChange={(event) => setSelectedYear(Number(event.target.value))}
+              value={activeYear}
+            >
+              {years.length === 0 ? <option value={activeYear}>No event years</option> : null}
+              {years.map((year) => (
+                <option key={year} value={year}>
+                  {year}
+                </option>
+              ))}
+            </select>
+          </label>
+          <label className="flex flex-col gap-1 text-[0.6875rem] font-semibold uppercase tracking-[0.08em] text-slate-400">
+            Filter by category
+            <select
+              aria-label="Filter participation trend by category"
+              className="min-w-44 rounded-md border border-slate-200 bg-white px-3 py-1.5 text-xs font-medium normal-case tracking-normal text-slate-700 outline-none"
+              disabled={categories.length === 0}
+              onChange={(event) => setSelectedCategory(event.target.value)}
+              value={activeCategory}
+            >
+              <option value="all">All categories</option>
+              {categories.map((category) => (
+                <option key={category} value={category}>
+                  {category}
+                </option>
+              ))}
+            </select>
+          </label>
+        </div>
       </div>
 
       {visibleCategories.length === 0 ? (

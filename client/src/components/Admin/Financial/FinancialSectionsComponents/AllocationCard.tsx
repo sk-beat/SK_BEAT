@@ -18,7 +18,7 @@ function formatPeso(value: number) {
 function AllocationCard({ eventBudgets, selectedBudget }: AllocationCardProps) {
   const totalBudget = selectedBudget?.total_allocation ?? 0;
   const categoryTotals = eventBudgets
-    .filter((event) => event.status !== "cancelled")
+    .filter((event) => event.status === "completed")
     .reduce<Record<string, number>>((totals, event) => {
       totals[event.category] = (totals[event.category] ?? 0) + event.allocated_budget;
       return totals;
@@ -58,7 +58,7 @@ function AllocationCard({ eventBudgets, selectedBudget }: AllocationCardProps) {
           </h2>
 
           <p className="mt-1 text-xs text-slate-400">
-            Non-cancelled event allocations by category
+            Completed event allocations by category
           </p>
         </div>
 

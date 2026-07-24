@@ -14,7 +14,7 @@ function formatCompact(value: number) {
 
 function UtilizationCard({ eventBudgets }: UtilizationCardProps) {
   const rows = eventBudgets
-    .filter((event) => event.status !== "cancelled")
+    .filter((event) => event.status === "completed")
     .reduce<Record<string, { allocated: number; spent: number }>>(
       (totals, event) => {
         if (!totals[event.category]) {

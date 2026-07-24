@@ -1,5 +1,6 @@
 type ModernFileInputProps = {
   accept?: string;
+  disabled?: boolean;
   label?: string;
   multiple?: boolean;
 };
@@ -25,12 +26,18 @@ function UploadIcon({ className }: { className?: string }) {
 
 export default function ModernFileInput({
   accept,
+  disabled = false,
   label = "Upload file",
   multiple = false,
 }: ModernFileInputProps) {
   return (
-    <label className="group flex cursor-pointer items-center justify-between gap-3 rounded-lg border border-dashed border-slate-300 bg-slate-50 px-4 py-3 transition hover:border-[#1e3a5f] hover:bg-blue-50">
-      <input accept={accept} className="sr-only" multiple={multiple} type="file" />
+    <label
+      className={[
+        "group flex items-center justify-between gap-3 rounded-lg border border-dashed border-slate-300 bg-slate-50 px-4 py-3 transition hover:border-[#1e3a5f] hover:bg-blue-50",
+        disabled ? "cursor-not-allowed opacity-60 hover:border-slate-300 hover:bg-slate-50" : "cursor-pointer",
+      ].join(" ")}
+    >
+      <input accept={accept} className="sr-only" disabled={disabled} multiple={multiple} type="file" />
       <span className="flex min-w-0 items-center gap-3">
         <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg bg-white text-[#1e3a5f] shadow-sm ring-1 ring-slate-200 group-hover:ring-[#1e3a5f]/20">
           <UploadIcon className="h-5 w-5" />

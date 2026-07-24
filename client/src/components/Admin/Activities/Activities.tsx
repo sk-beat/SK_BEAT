@@ -30,6 +30,31 @@ function toDateInputValue(date: Date) {
   ].join("-");
 }
 
+function getEventDeleteErrorMessage(error: unknown) {
+  const message =
+    error instanceof Error
+      ? error.message
+      : typeof error === "object" && error !== null && "message" in error
+        ? String(error.message)
+        : String(error ?? "");
+  const normalizedMessage = message.toLowerCase();
+
+  if (normalizedMessage.includes("draft")) {
+    return "Only draft events can be deleted.";
+  }
+
+  if (
+    normalizedMessage.includes("foreign key") ||
+    normalizedMessage.includes("violates") ||
+    normalizedMessage.includes("registration") ||
+    normalizedMessage.includes("transaction")
+  ) {
+    return "This event already has related records and cannot be deleted. Cancel it instead.";
+  }
+
+  return "Unable to delete this event. Please try again.";
+}
+
 export default function Activities() {
   const { logout } = useAuth();
   const [modalMode, setModalMode] = useState<ActivitiesModalMode>(null);
@@ -133,6 +158,18 @@ export default function Activities() {
   }
 
   async function handleDeleteEvent(eventId: number) {
+    const event = events.find((item) => item.event_id === eventId);
+
+    if (!event) {
+      setErrorMessage("Event not found.");
+      return;
+    }
+
+    if (event.status !== "draft") {
+      setErrorMessage("Only draft events can be deleted. Cancel scheduled, ongoing, or completed events instead.");
+      return;
+    }
+
     const shouldDelete = window.confirm("Delete this event?");
 
     if (!shouldDelete) {
@@ -143,7 +180,7 @@ export default function Activities() {
     const { error } = await deleteActivityEvent(eventId);
 
     if (error) {
-      setErrorMessage(error.message);
+      setErrorMessage(getEventDeleteErrorMessage(error));
       return;
     }
 

@@ -66,7 +66,7 @@ function UtilizationSummaryCard({ summary }: UtilizationSummaryCardProps) {
       </h2>
 
       <p className="mt-1 text-xs text-slate-400">
-        Based on allocations and completed transactions
+        Based on completed event allocations and completed transactions
       </p>
 
       <Insight

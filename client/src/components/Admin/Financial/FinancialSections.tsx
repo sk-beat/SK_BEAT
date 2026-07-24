@@ -184,6 +184,8 @@ export default function FinancialSections({
   summary,
   transactions,
 }: FinancialSectionActions) {
+  const hasScheduledEvents = eventBudgets.some((event) => event.status === "scheduled");
+
   return (
     <div className="flex-1 p-8">
       {errorMessage ? (
@@ -233,8 +235,10 @@ export default function FinancialSections({
         </button>
 
         <button
-          className="rounded-lg border border-slate-200 bg-white px-5 py-2.5 text-sm font-medium text-[#1e3a5f] hover:bg-blue-50"
+          className="rounded-lg border border-slate-200 bg-white px-5 py-2.5 text-sm font-medium text-[#1e3a5f] hover:bg-blue-50 disabled:cursor-not-allowed disabled:bg-slate-50 disabled:text-slate-400"
+          disabled={!hasScheduledEvents}
           onClick={onAddExpense}
+          title={hasScheduledEvents ? "Add expense" : "Add expense is available only for scheduled events."}
           type="button"
         >
           Add Expense

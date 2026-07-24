@@ -45,6 +45,7 @@ export default function EventsBudgetsCard({
             const used = percentUsed(event);
             const barWidth = Math.min(Math.abs(used), 100);
             const overBudget = event.remaining_event_budget < 0;
+            const canAddExpense = event.status === "scheduled";
 
             return (
               <article
@@ -102,8 +103,10 @@ export default function EventsBudgetsCard({
 
                 <div className="mt-3 flex flex-wrap gap-2">
                   <button
-                    className="rounded-lg border border-slate-200 bg-white px-3 py-2 text-xs font-medium text-[#1e3a5f] hover:bg-blue-50"
+                    className="rounded-lg border border-slate-200 bg-white px-3 py-2 text-xs font-medium text-[#1e3a5f] hover:bg-blue-50 disabled:cursor-not-allowed disabled:bg-slate-50 disabled:text-slate-400"
+                    disabled={!canAddExpense}
                     onClick={() => onOpenEventExpense(event)}
+                    title={canAddExpense ? "Add expense" : "Expenses can only be added to scheduled events."}
                     type="button"
                   >
                     Add Expense

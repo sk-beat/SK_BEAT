@@ -20,6 +20,74 @@ import {
 } from "./FinancialService";
 import FinancialSections from "./FinancialSections";
 
+function getCompletedEventFinancialSummary(
+  summary: FinancialSummary | null,
+  eventBudgets: FinancialEventBudget[],
+) {
+  if (!summary) {
+    return null;
+  }
+
+  const completedEventBudgets = eventBudgets.filter((event) => event.status === "completed");
+  const totalAllocatedBudget = completedEventBudgets.reduce(
+    (sum, event) => sum + event.allocated_budget,
+    0,
+  );
+  const totalCompletedSpending = completedEventBudgets.reduce(
+    (sum, event) => sum + event.completed_spending,
+    0,
+  );
+
+  return {
+    ...summary,
+    available_to_spend: summary.total_annual_budget - totalCompletedSpending,
+    total_allocated_budget: totalAllocatedBudget,
+    total_completed_spending: totalCompletedSpending,
+    unallocated_budget: summary.total_annual_budget - totalAllocatedBudget,
+  };
+}
+
+function getFriendlyFinancialErrorMessage(error: unknown, fallback: string) {
+  const message =
+    error instanceof Error
+      ? error.message
+      : typeof error === "object" && error !== null && "message" in error
+        ? String(error.message)
+        : String(error ?? "");
+  const normalizedMessage = message.toLowerCase();
+
+  if (normalizedMessage.includes("scheduled event")) {
+    return "Expenses can only be added to scheduled events.";
+  }
+
+  if (normalizedMessage.includes("selected event does not exist")) {
+    return "Selected event no longer exists.";
+  }
+
+  if (normalizedMessage.includes("selected event does not belong")) {
+    return "Selected event does not belong to this budget year.";
+  }
+
+  if (normalizedMessage.includes("amount must be greater")) {
+    return "Amount must be greater than zero.";
+  }
+
+  if (normalizedMessage.includes("budget year")) {
+    return "Create or select a valid budget year first.";
+  }
+
+  if (
+    normalizedMessage.includes("duplicate key") ||
+    normalizedMessage.includes("violates") ||
+    normalizedMessage.includes("constraint") ||
+    normalizedMessage.includes("postgresterror")
+  ) {
+    return "Unable to complete this action. Please check the details and try again.";
+  }
+
+  return fallback;
+}
+
 export default function Financial() {
   const { logout } = useAuth();
   const [annualBudgets, setAnnualBudgets] = useState<AnnualBudget[]>([]);
@@ -95,13 +163,11 @@ export default function Financial() {
         }
 
         setEventBudgets(eventData ?? []);
-        setSummary(summaryData);
+        setSummary(getCompletedEventFinancialSummary(summaryData, eventData ?? []));
         setTransactions(transactionData ?? []);
       } catch (error) {
         setErrorMessage(
-          error instanceof Error
-            ? error.message
-            : "Unable to load financial data.",
+          getFriendlyFinancialErrorMessage(error, "Unable to load financial data."),
         );
       } finally {
         setIsLoading(false);
@@ -138,7 +204,7 @@ export default function Financial() {
       await loadFinancialData(selectedBudget?.budget_year_id ?? null);
     } catch (error) {
       setErrorMessage(
-        error instanceof Error ? error.message : "Unable to save annual budget.",
+        getFriendlyFinancialErrorMessage(error, "Unable to save annual budget."),
       );
     } finally {
       setIsSaving(false);
@@ -161,7 +227,7 @@ export default function Financial() {
       await loadFinancialData(payload.budget_year_id);
     } catch (error) {
       setErrorMessage(
-        error instanceof Error ? error.message : "Unable to save expense.",
+        getFriendlyFinancialErrorMessage(error, "Unable to save expense."),
       );
     } finally {
       setIsSaving(false);
@@ -174,7 +240,7 @@ export default function Financial() {
       setSuccessMessage(`Downloaded ${transactions.length} financial record(s) to ${fileName}.`);
       setErrorMessage("");
     } catch (error) {
-      setErrorMessage(error instanceof Error ? error.message : "Unable to export financial data.");
+      setErrorMessage(getFriendlyFinancialErrorMessage(error, "Unable to export financial data."));
       setSuccessMessage("");
     }
   }

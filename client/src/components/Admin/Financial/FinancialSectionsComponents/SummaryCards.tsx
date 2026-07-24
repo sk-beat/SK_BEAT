@@ -28,7 +28,7 @@ export default function SummaryCards({ isLoading, summary }: SummaryCardsProps) 
     {
       color: "bg-orange-100 text-orange-700",
       icon: PieChart,
-      note: "Event allocations",
+      note: "Completed event allocations",
       text: "text-[#1e3a5f]",
       title: "Allocated",
       value: summary?.total_allocated_budget ?? 0,

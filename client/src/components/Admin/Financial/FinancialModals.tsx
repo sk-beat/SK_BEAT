@@ -29,7 +29,7 @@ type FinancialModalsProps = {
 };
 
 const inputClass =
-  "w-full rounded-lg border border-slate-200 bg-white px-3 py-2.5 text-sm text-slate-800 outline-none focus:border-[#1e3a5f] focus:ring-2 focus:ring-[#1e3a5f]/15";
+  "w-full rounded-lg border border-slate-200 bg-white px-3 py-2.5 text-sm text-slate-800 outline-none focus:border-[#1e3a5f] focus:ring-2 focus:ring-[#1e3a5f]/15 disabled:cursor-not-allowed disabled:bg-slate-100 disabled:text-slate-500";
 
 function today() {
   return new Date().toISOString().slice(0, 10);
@@ -101,6 +101,11 @@ export default function FinancialModals({
         : [],
     [selectedEvent, transactions],
   );
+  const scheduledEventBudgets = useMemo(
+    () => eventBudgets.filter((event) => event.status === "scheduled"),
+    [eventBudgets],
+  );
+  const canAddExpenseForSelectedEvent = !selectedEvent || selectedEvent.status === "scheduled";
 
   useEffect(() => {
     if (mode !== "add-expense" && mode !== "event-expense") {
@@ -162,11 +167,21 @@ export default function FinancialModals({
       ? eventBudgets.find((event) => event.event_id === Number(eventId))
       : null;
 
+    if (!selectedEventOption) {
+      setFormError("Select a scheduled event before adding an expense.");
+      return;
+    }
+
     if (
       selectedEventOption &&
       selectedEventOption.budget_year_id !== budgetYearId
     ) {
       setFormError("Selected event does not belong to this budget year.");
+      return;
+    }
+
+    if (selectedEventOption.status !== "scheduled") {
+      setFormError("Expenses can only be added while the event is scheduled.");
       return;
     }
 
@@ -177,7 +192,7 @@ export default function FinancialModals({
       description: notes.trim()
         ? `${description.trim()} - ${notes.trim()}`
         : description.trim(),
-      event_id: eventId === "" ? null : Number(eventId),
+      event_id: Number(eventId),
       payment_method: null,
       receipt_path: receiptPath.trim() || null,
       reference_number: referenceNumber.trim() || null,
@@ -291,19 +306,23 @@ export default function FinancialModals({
             </span>
             <select
               className={inputClass}
-              onChange={(event) =>
-                setEventId(event.target.value === "" ? "" : Number(event.target.value))
-              }
+              onChange={(event) => {
+                const nextEventId = event.target.value === "" ? "" : Number(event.target.value);
+                const nextEvent = nextEventId === ""
+                  ? null
+                  : scheduledEventBudgets.find((item) => item.event_id === nextEventId) ?? null;
+
+                setEventId(nextEventId);
+                setCategory(nextEvent?.category ?? "");
+              }}
               value={eventId}
             >
-              <option value="">General expense</option>
-              {eventBudgets
-                .filter((event) => event.status !== "cancelled")
-                .map((event) => (
-                  <option key={event.event_id} value={event.event_id}>
-                    {event.event_name}
-                  </option>
-                ))}
+              <option value="">Select a scheduled event</option>
+              {scheduledEventBudgets.map((event) => (
+                <option key={event.event_id} value={event.event_id}>
+                  {event.event_name}
+                </option>
+              ))}
             </select>
           </label>
 
@@ -439,6 +458,11 @@ export default function FinancialModals({
             <h3 className="mb-4 text-base font-semibold text-slate-800">
               Add Expense
             </h3>
+            {!canAddExpenseForSelectedEvent ? (
+              <div className="mb-4 rounded-lg border border-amber-200 bg-amber-50 px-4 py-3 text-sm font-medium text-amber-700">
+                Expenses can only be added while the event is scheduled.
+              </div>
+            ) : null}
             {formError ? (
               <div className="mb-4 rounded-lg border border-red-200 bg-red-50 px-4 py-3 text-sm font-medium text-red-700">
                 {formError}
@@ -450,6 +474,7 @@ export default function FinancialModals({
               </span>
               <input
                 className={inputClass}
+                disabled={!canAddExpenseForSelectedEvent}
                 onChange={(event) => setDescription(event.target.value)}
                 placeholder="e.g. Venue rental, prizes"
                 type="text"
@@ -460,6 +485,7 @@ export default function FinancialModals({
               </span>
               <input
                 className={inputClass}
+                disabled={!canAddExpenseForSelectedEvent}
                 onChange={(event) => setAmount(event.target.value)}
                 placeholder="0.00"
                 type="number"
@@ -470,6 +496,7 @@ export default function FinancialModals({
               </span>
               <input
                 className={inputClass}
+                disabled={!canAddExpenseForSelectedEvent}
                 onChange={(event) => setDate(event.target.value)}
                 type="date"
                 value={date}
@@ -479,6 +506,7 @@ export default function FinancialModals({
               </span>
               <textarea
                 className={`${inputClass} min-h-20 resize-none`}
+                disabled={!canAddExpenseForSelectedEvent}
                 onChange={(event) => setNotes(event.target.value)}
                 placeholder="Where this was spent, OR details"
                 value={notes}
@@ -486,11 +514,15 @@ export default function FinancialModals({
               <span className="pt-2 text-sm font-medium text-slate-700">
                 Upload receipt / photo (optional)
               </span>
-              <ModernFileInput accept="image/*,.pdf" label="Upload receipt or photo" />
+              <ModernFileInput
+                accept="image/*,.pdf"
+                disabled={!canAddExpenseForSelectedEvent}
+                label="Upload receipt or photo"
+              />
             </div>
             <button
               className="mt-4 rounded-lg bg-[#1e3a5f] px-5 py-2.5 text-sm font-medium text-white hover:bg-[#2a4a6f] disabled:cursor-not-allowed disabled:opacity-60"
-              disabled={isSaving}
+              disabled={isSaving || !canAddExpenseForSelectedEvent}
               onClick={saveExpense}
               type="button"
             >

@@ -336,6 +336,12 @@ function ParticipationTrendCard({ data }: { data: DashboardData }) {
   const activeYear = years.includes(selectedYear) ? selectedYear : years[0] ?? new Date().getFullYear();
   const yearRows = rows.filter((row) => row.year === activeYear);
   const categories = Array.from(new Set(yearRows.map((row) => row.category)));
+  const [selectedCategory, setSelectedCategory] = useState("all");
+  const activeCategory = selectedCategory === "all" || categories.includes(selectedCategory)
+    ? selectedCategory
+    : "all";
+  const visibleCategories = activeCategory === "all" ? categories : [activeCategory];
+  const visibleRows = yearRows.filter((row) => activeCategory === "all" || row.category === activeCategory);
   const colors = ["#1e3a5f", "#26ba9a", "#dc2626", "#7c3aed", "#f59e0b", "#0284c7", "#be185d", "#16a34a"];
   const chartWidth = 760;
   const chartHeight = 200;
@@ -347,15 +353,22 @@ function ParticipationTrendCard({ data }: { data: DashboardData }) {
   };
   const plotWidth = chartWidth - padding.left - padding.right;
   const plotHeight = chartHeight - padding.top - padding.bottom;
-  const maxRegistered = Math.max(...yearRows.map((row) => row.registered_count), 1);
+  const maxRegistered = Math.max(...visibleRows.map((row) => row.registered_count), 0);
+  const yAxisMax = Math.max(1, Math.ceil(maxRegistered));
+  const tickValues = maxRegistered === 0
+    ? [0]
+    : Array.from(
+        { length: Math.min(yAxisMax, 4) + 1 },
+        (_, index) => Math.round((yAxisMax / Math.min(yAxisMax, 4)) * index),
+      ).filter((tick, index, values) => index === 0 || tick !== values[index - 1]);
   const monthRows = Array.from({ length: 12 }, (_, index) => rows.find((row) => row.month === index + 1)?.month_label ?? "");
-  const lineSeries = categories.map((category, index) => {
+  const lineSeries = visibleCategories.map((category, index) => {
     const monthlyRows = Array.from({ length: 12 }, (_, monthIndex) =>
       yearRows.find((row) => row.category === category && row.month === monthIndex + 1) ?? null,
     );
     const points = monthlyRows.map((row, monthIndex) => {
       const x = padding.left + (monthIndex / 11) * plotWidth;
-      const y = padding.top + plotHeight - ((row?.registered_count ?? 0) / maxRegistered) * plotHeight;
+      const y = padding.top + plotHeight - ((row?.registered_count ?? 0) / yAxisMax) * plotHeight;
       return {
         label: monthRows[monthIndex] ?? "",
         registered: row?.registered_count ?? 0,
@@ -396,9 +409,23 @@ function ParticipationTrendCard({ data }: { data: DashboardData }) {
             </option>
           ))}
         </select>
+        <select
+          aria-label="Filter participation trend by category"
+          className="rounded-md border border-slate-200 bg-white px-3 py-1.5 text-xs text-slate-700 outline-none"
+          disabled={categories.length === 0}
+          onChange={(event) => setSelectedCategory(event.target.value)}
+          value={activeCategory}
+        >
+          <option value="all">All categories</option>
+          {categories.map((category) => (
+            <option key={category} value={category}>
+              {category}
+            </option>
+          ))}
+        </select>
       </div>
 
-      {categories.length === 0 ? (
+      {visibleCategories.length === 0 ? (
         <div className="rounded-lg border border-dashed border-slate-200 p-4 text-sm text-slate-500">
           No participation data is available yet.
         </div>
@@ -411,8 +438,8 @@ function ParticipationTrendCard({ data }: { data: DashboardData }) {
               role="img"
               viewBox={`0 0 ${chartWidth} ${chartHeight}`}
             >
-               {[0, 0.25, 0.5, 0.75, 1].map((tick) => {
-                const y = padding.top + plotHeight - tick * plotHeight;
+               {tickValues.map((tick) => {
+                const y = padding.top + plotHeight - (tick / yAxisMax) * plotHeight;
                 return (
                   <g key={tick}>
                     <line
@@ -424,7 +451,7 @@ function ParticipationTrendCard({ data }: { data: DashboardData }) {
                       y2={y}
                     />
                     <text fill="#64748b" fontSize="10" textAnchor="end" x={padding.left - 8} y={y + 3}>
-                      {Math.round(maxRegistered * tick)}
+                      {tick}
                     </text>
                   </g>
                 );

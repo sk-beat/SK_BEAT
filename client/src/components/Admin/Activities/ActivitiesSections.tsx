@@ -799,7 +799,13 @@ function ActivitiesListPanel({
               <button className="rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm text-slate-800 hover:bg-slate-50" onClick={() => onOpenRegistrations(item)} type="button">
                 Registrations
               </button>
-              <button className="rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm text-red-600 hover:bg-red-50" onClick={() => onDeleteCatalogEvent(item.event_id)} type="button">
+              <button
+                className="rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm text-red-600 hover:bg-red-50 disabled:cursor-not-allowed disabled:bg-slate-50 disabled:text-slate-400"
+                disabled={item.status !== "draft"}
+                onClick={() => onDeleteCatalogEvent(item.event_id)}
+                title={item.status === "draft" ? "Delete draft event" : "Only draft events can be deleted."}
+                type="button"
+              >
                 Delete
               </button>
             </div>

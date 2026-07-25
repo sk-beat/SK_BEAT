@@ -619,7 +619,12 @@ function CatalogEventModal({
                 Budget rows are computed below as the event cost.
               </p>
             </div>
+             {selectedExistingEvent &&(
+                <>
             <div className="rounded-lg border border-[#1e3a5f]/15 bg-white px-3 py-2 text-right">
+             
+             
+                
               <span className="block text-[0.68rem] font-bold uppercase text-slate-400">
                 Suggested Budget
               </span>
@@ -628,6 +633,9 @@ function CatalogEventModal({
               </strong>
             </div>
           </div>
+         </>
+              )
+              }
 
           {selectedExistingEvent ? (
             <div className="mb-3 rounded-lg border border-[#1e3a5f]/10 bg-white px-4 py-3 text-sm text-slate-600">

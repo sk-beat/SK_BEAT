@@ -638,7 +638,7 @@ function CatalogEventModal({
           </div>
        
 
-          /* {selectedExistingEvent ? (
+          {/* {selectedExistingEvent ? (
             <div className="mb-3 rounded-lg border border-[#1e3a5f]/10 bg-white px-4 py-3 text-sm text-slate-600">
               <div className="flex flex-wrap items-center justify-between gap-3">
                 <span>
@@ -656,7 +656,7 @@ function CatalogEventModal({
                 </p>
               ) : null}
             </div>
-          ) : null} */
+          ) : null} */}
 
           <div className="space-y-2">
             {budgetRows.map((row, index) => {

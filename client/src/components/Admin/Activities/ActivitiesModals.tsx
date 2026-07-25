@@ -632,10 +632,11 @@ function CatalogEventModal({
                 {formatPeso(allocatedBudgetValue)}
               </strong>
             </div>
-          </div>
-         </>
+                    </>
               )
               }
+          </div>
+       
 
           {selectedExistingEvent ? (
             <div className="mb-3 rounded-lg border border-[#1e3a5f]/10 bg-white px-4 py-3 text-sm text-slate-600">

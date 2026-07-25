@@ -621,7 +621,7 @@ function CatalogEventModal({
             </div>
             <div className="rounded-lg border border-[#1e3a5f]/15 bg-white px-3 py-2 text-right">
               <span className="block text-[0.68rem] font-bold uppercase text-slate-400">
-                Allocated Budget
+                Suggested Budget
               </span>
               <strong className="text-sm text-[#1e3a5f]">
                 {formatPeso(allocatedBudgetValue)}

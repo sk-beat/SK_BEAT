@@ -410,10 +410,7 @@ function CatalogEventModal({
       ),
     [budgetRows, expectedAttendees],
   );
-  const budgetAdjustment = recentIdenticalEvent ? recentExpenseTotal - recentIdenticalEvent.allocated_budget : 0;
-  const adjustedReferenceBudget = recentIdenticalEvent
-    ? recentIdenticalEvent.allocated_budget + budgetAdjustment
-    : allocatedBudget;
+  const allocatedBudgetValue = recentIdenticalEvent ? recentExpenseTotal : allocatedBudget;
 
   function updateForm(field: keyof EventFormState, value: string) {
     setForm((current) => ({ ...current, [field]: value }));
@@ -619,7 +616,7 @@ function CatalogEventModal({
                 Budget Breakdown
               </h3>
               <p className="mt-1 text-xs text-slate-500">
-                Allocated budget is computed from the rows below.
+                Budget rows are computed below as the event cost.
               </p>
             </div>
             <div className="rounded-lg border border-[#1e3a5f]/15 bg-white px-3 py-2 text-right">
@@ -627,7 +624,7 @@ function CatalogEventModal({
                 Allocated Budget
               </span>
               <strong className="text-sm text-[#1e3a5f]">
-                {formatPeso(allocatedBudget)}
+                {formatPeso(allocatedBudgetValue)}
               </strong>
             </div>
           </div>
@@ -640,25 +637,15 @@ function CatalogEventModal({
                   <strong className="text-slate-800">{formatPeso(recentExpenseTotal)}</strong>
                 </span>
                 <span>
-                  Completed event allocation:{" "}
-                  <strong className="text-slate-800">{recentIdenticalEvent ? formatPeso(recentIdenticalEvent.allocated_budget) : "No completed match"}</strong>
+                  Latest completed match:{" "}
+                  <strong className="text-slate-800">{recentIdenticalEvent?.event_name ?? "None"}</strong>
                 </span>
               </div>
               {!recentIdenticalEvent ? (
                 <p className="mt-2 text-xs font-medium text-slate-500">
-                  No completed identical event was found, so no recent-expense adjustment is applied.
+                  No completed identical event was found, so the allocated budget uses the event cost.
                 </p>
-              ) : budgetAdjustment === 0 ? (
-                <p className="mt-2 text-xs font-medium text-emerald-600">
-                  Recent expense matches the saved allocation. No budget adjustment needed.
-                </p>
-              ) : (
-                <p className={["mt-2 text-xs font-medium", budgetAdjustment > 0 ? "text-red-600" : "text-emerald-600"].join(" ")}>
-                  {budgetAdjustment > 0
-                    ? `Recent expenses exceeded the completed event allocation. Suggested adjustment: +${formatPeso(budgetAdjustment)} (${formatPeso(recentIdenticalEvent.allocated_budget)} + ${formatPeso(budgetAdjustment)} = ${formatPeso(adjustedReferenceBudget)}).`
-                    : `Recent expenses did not use the full completed event allocation. Suggested adjustment: -${formatPeso(Math.abs(budgetAdjustment))} (${formatPeso(recentIdenticalEvent.allocated_budget)} - ${formatPeso(Math.abs(budgetAdjustment))} = ${formatPeso(adjustedReferenceBudget)}).`}
-                </p>
-              )}
+              ) : null}
             </div>
           ) : null}
 
@@ -885,6 +872,15 @@ function CatalogEventModal({
             <PlusIcon className="h-4 w-4" />
             Add Row
           </button>
+
+          <div className="mt-4 rounded-lg border border-[#1e3a5f]/10 bg-white px-4 py-3 text-right">
+            <span className="block text-[0.68rem] font-bold uppercase text-slate-400">
+              Event Cost
+            </span>
+            <strong className="text-base text-[#1e3a5f]">
+              {formatPeso(allocatedBudget)}
+            </strong>
+          </div>
         </div>
 
         <Field

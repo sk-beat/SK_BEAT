@@ -339,6 +339,14 @@ type ReferenceExpenseExportRow =
       date: string | null;
       description: string;
       eventName: string;
+      section: "Recorded Expenses Total";
+      status: string;
+    }
+  | {
+      amount: number;
+      date: string | null;
+      description: string;
+      eventName: string;
       section: "Event Budgets";
       status: string;
     };
@@ -382,6 +390,20 @@ function budgetToExportRow(budget: ActivityFinancialExportBudget): ReferenceExpe
   };
 }
 
+function recordedExpensesTotalToExportRow(
+  event: ActivityEvent,
+  total: number,
+): ReferenceExpenseExportRow {
+  return {
+    amount: total,
+    date: null,
+    description: "Total recorded paid expenses",
+    eventName: event.event_name,
+    section: "Recorded Expenses Total",
+    status: "Paid",
+  };
+}
+
 async function downloadReferenceEventExpenses(event: ActivityEvent) {
   const today = new Date().toISOString().slice(0, 10);
   const { data, error } = await getActivityFinancialExportData(event);
@@ -390,11 +412,14 @@ async function downloadReferenceEventExpenses(event: ActivityEvent) {
     throw error;
   }
 
+  const expenseRows = data.expenses.map(financialExpenseToExportRow);
+  const expenseTotal = data.expenses.reduce((sum, expense) => sum + expense.amount, 0);
+  const budgetTotal = data.budgets.reduce((sum, budget) => sum + budget.allocated_budget, 0);
   const rows: ReferenceExpenseExportRow[] = [
-    ...data.expenses.map(financialExpenseToExportRow),
+    ...expenseRows,
+    recordedExpensesTotalToExportRow(event, expenseTotal),
     ...data.budgets.map(budgetToExportRow),
   ];
-  const budgetTotal = data.budgets.reduce((sum, budget) => sum + budget.allocated_budget, 0);
 
   return downloadOfficialPdfReport({
     columns: [
@@ -421,8 +446,8 @@ async function downloadReferenceEventExpenses(event: ActivityEvent) {
     subtitle: formatCompletedEventTitle(event),
     summary: [
       { label: "Recorded Expense Rows", value: data.expenses.length },
+      { label: "Recorded Expense Total", value: formatReportAmount(expenseTotal) },
       { label: "Event Budget Total", value: formatReportAmount(budgetTotal) },
-      { label: "Budget Rows", value: data.budgets.length },
     ],
     title: "Recent Event Expense Reference",
   });
@@ -530,8 +555,11 @@ function CatalogEventModal({
   const isEditingExistingActivity = Boolean(selectedActivity?.event_id);
   const expectedAttendees = getExpectedAttendees(form.expected_attendees);
   const suggestedItems = getSuggestedItems(form.event_name, form.category);
+  const selectableExistingEvents = isEditingExistingActivity
+    ? events
+    : events.filter((event) => event.status === "completed");
   const existingEventOptions = Array.from(
-    events
+    selectableExistingEvents
       .reduce<Map<string, ActivityEvent>>((options, event) => {
         const key = getEventTemplateKey(event);
         const current = options.get(key);

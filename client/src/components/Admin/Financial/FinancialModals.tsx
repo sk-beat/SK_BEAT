@@ -93,6 +93,7 @@ export default function FinancialModals({
   const [exportEventId, setExportEventId] = useState<number | "">("");
   const [formError, setFormError] = useState("");
   const [notes, setNotes] = useState("");
+  const [referenceNumber, setReferenceNumber] = useState("");
 
   const eventRecords = useMemo(
     () =>
@@ -126,6 +127,7 @@ export default function FinancialModals({
       setEventId(selectedEvent?.event_id ?? "");
       setFormError("");
       setNotes("");
+      setReferenceNumber("");
     }, 0);
 
     return () => window.clearTimeout(timeout);
@@ -211,10 +213,12 @@ export default function FinancialModals({
       amount: numericAmount,
       budget_year_id: budgetYearId,
       category: category.trim(),
-      description: description.trim(),
+      description: notes.trim()
+        ? `${description.trim()} - ${notes.trim()}`
+        : description.trim(),
       event_id: Number(eventId),
-      notes: notes.trim() || null,
       payment_method: null,
+      reference_number: referenceNumber.trim() || null,
       status: "completed",
       transaction_date: date,
       transaction_id: null,
@@ -374,6 +378,18 @@ export default function FinancialModals({
                 </option>
               ))}
             </select>
+          </label>
+
+          <label className="block">
+            <span className="mb-1.5 block text-sm font-medium text-slate-700">
+              Reference Number
+            </span>
+            <input
+              className={inputClass}
+              disabled={!canAddExpense}
+              onChange={(event) => setReferenceNumber(event.target.value)}
+              value={referenceNumber}
+            />
           </label>
 
           <label className="block md:col-span-2">

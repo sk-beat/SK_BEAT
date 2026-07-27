@@ -327,7 +327,7 @@ type ReferenceExpenseExportRow =
     amount: number;
     date: string | null;
     description: string;
-    notes: string;
+    reference: string;
     status: string;
   };
 
@@ -351,7 +351,7 @@ function financialExpenseToExportRow(expense: ActivityFinancialExportExpense): R
     amount: expense.amount,
     date: expense.transaction_date,
     description: expense.description ?? expense.category,
-    notes: expense.notes ?? "-",
+    reference: expense.reference_number ?? "-",
     status: labelize(expense.status),
   };
 }
@@ -374,7 +374,7 @@ async function downloadReferenceEventExpenses(event: ActivityEvent) {
       { header: "#", value: (_row, index) => index + 1, width: 12 },
       { header: "Date", value: (row) => formatReportDate(row.date), width: 26 },
       { header: "Description", value: (row) => row.description },
-      { header: "Notes", value: (row) => row.notes, width: 30 },
+      { header: "Reference", value: (row) => row.reference, width: 30 },
       { header: "Status", value: (row) => row.status, width: 22 },
       { header: "Amount", value: (row) => formatReportAmount(row.amount), width: 28 },
     ],

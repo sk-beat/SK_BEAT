@@ -328,15 +328,7 @@ type ReferenceExpenseExportRow =
     date: string | null;
     description: string;
     notes: string;
-    status: string;
   };
-
-function labelize(value: string) {
-  return value
-    .split("_")
-    .map((part) => part.charAt(0).toUpperCase() + part.slice(1))
-    .join(" ");
-}
 
 function getErrorMessage(error: unknown) {
   return error instanceof Error
@@ -352,7 +344,6 @@ function financialExpenseToExportRow(expense: ActivityFinancialExportExpense): R
     date: expense.transaction_date,
     description: expense.description ?? expense.category,
     notes: expense.notes ?? "N/A",
-    status: labelize(expense.status),
   };
 }
 
@@ -375,7 +366,6 @@ async function downloadReferenceEventExpenses(event: ActivityEvent) {
       { header: "Date", value: (row) => formatReportDate(row.date), width: 26 },
       { header: "Description", value: (row) => row.description },
       { header: "Notes", value: (row) => row.notes, width: 30 },
-      { header: "Status", value: (row) => row.status, width: 22 },
       { header: "Amount", value: (row) => formatReportAmount(row.amount), width: 28 },
     ],
     fileName: `sk-beat-reference-expenses-${event.event_id}-${toFileSlug(event.event_name)}-${today}.pdf`,

@@ -320,13 +320,6 @@ export function formatFinancialEventTitle(
     : event.event_name;
 }
 
-function labelize(value: string) {
-  return value
-    .split("_")
-    .map((part) => part.charAt(0).toUpperCase() + part.slice(1))
-    .join(" ");
-}
-
 export function downloadFinancialTransactionsPdf(
   transactions: FinancialTransaction[],
   fiscalYear?: number | null,
@@ -341,7 +334,6 @@ export function downloadFinancialTransactionsPdf(
       { header: "Event", value: (row) => row.events?.event_name ?? "General expense" },
       { header: "Category", value: (row) => row.category },
       { header: "Description", value: (row) => row.description ?? "-" },
-      { header: "Status", value: (row) => labelize(row.status) },
       { align: "right", header: "Amount", value: (row) => formatReportAmount(row.amount), width: 30 },
     ],
     fileName: `sk-beat-financial-report-${today}.pdf`,
@@ -369,7 +361,6 @@ export function downloadEventExpensePdf(
       { header: "Date", value: (row) => formatReportDate(row.transaction_date) },
       { header: "Description", value: (row) => row.description ?? row.category },
       { header: "Notes", value: (row) => row.notes ?? "N/A" },
-      { header: "Status", value: (row) => labelize(row.status) },
       { align: "right", header: "Amount", value: (row) => formatReportAmount(row.amount), width: 30 },
     ],
     fileName: `sk-beat-event-expenses-${event.event_id}-${today}.pdf`,

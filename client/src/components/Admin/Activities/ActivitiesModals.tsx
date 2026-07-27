@@ -10,10 +10,15 @@ import type {
   ActivityEventStatus,
   CompletedEventPerformance,
   ActivityExpense,
+  ActivityFinancialExportBudget,
+  ActivityFinancialExportExpense,
   EventCategory,
   SaveActivityEventPayload,
 } from "./ActivitiesService";
-import { getAdminEventRegistrations } from "./ActivitiesService";
+import {
+  getActivityFinancialExportData,
+  getAdminEventRegistrations,
+} from "./ActivitiesService";
 
 export type ActivitiesModalMode = "catalog" | "schedule" | "categories" | "feedback-qr" | "registrations" | "performance" | null;
 
@@ -318,29 +323,93 @@ function eventToBudgetRows(event: ActivityEvent | null): BudgetRow[] {
   }));
 }
 
-function downloadReferenceEventExpenses(event: ActivityEvent) {
+type ReferenceExpenseExportRow =
+  | {
+      amount: number;
+      date: string | null;
+      description: string;
+      eventName: string;
+      section: "Recorded Expenses";
+      status: string;
+    }
+  | {
+      amount: number;
+      date: string | null;
+      description: string;
+      eventName: string;
+      section: "Event Budgets";
+      status: string;
+    };
+
+function labelize(value: string) {
+  return value
+    .split("_")
+    .map((part) => part.charAt(0).toUpperCase() + part.slice(1))
+    .join(" ");
+}
+
+function getErrorMessage(error: unknown) {
+  return error instanceof Error
+    ? error.message
+    : typeof error === "object" && error !== null && "message" in error
+      ? String(error.message)
+      : "Unable to export recent event expenses.";
+}
+
+function financialExpenseToExportRow(expense: ActivityFinancialExportExpense): ReferenceExpenseExportRow {
+  return {
+    amount: expense.amount,
+    date: expense.transaction_date,
+    description: expense.description ?? expense.category,
+    eventName: expense.events?.event_name ?? "Selected event",
+    section: "Recorded Expenses",
+    status: "Paid",
+  };
+}
+
+function budgetToExportRow(budget: ActivityFinancialExportBudget): ReferenceExpenseExportRow {
+  return {
+    amount: budget.allocated_budget,
+    date: budget.event_date,
+    description: "Total event budget",
+    eventName: budget.event_name,
+    section: "Event Budgets",
+    status: labelize(budget.status),
+  };
+}
+
+async function downloadReferenceEventExpenses(event: ActivityEvent) {
   const today = new Date().toISOString().slice(0, 10);
-  const totalAmount = event.event_expenses.reduce(
-    (sum, expense) => sum + Number(expense.amount || 0),
-    0,
-  );
+  const { data, error } = await getActivityFinancialExportData(event);
+
+  if (error) {
+    throw error;
+  }
+
+  const rows: ReferenceExpenseExportRow[] = [
+    ...data.expenses.map(financialExpenseToExportRow),
+    ...data.budgets.map(budgetToExportRow),
+  ];
+  const expenseTotal = data.expenses.reduce((sum, expense) => sum + expense.amount, 0);
+  const budgetTotal = data.budgets.reduce((sum, budget) => sum + budget.allocated_budget, 0);
 
   return downloadOfficialPdfReport({
     columns: [
       { header: "#", value: (_row, index) => index + 1, width: 12 },
-      { header: "Expense", value: (row) => row.expense_type },
-      { header: "Calculation", value: (row) => row.calculation_type.replace("_", " ") },
-      { header: "Unit Cost", value: (row) => formatReportAmount(row.unit_cost), width: 28 },
-      { header: "Quantity", value: (row) => formatReportAmount(row.quantity), width: 24 },
+      { header: "Section", value: (row) => row.section, width: 32 },
+      { header: "Event", value: (row) => row.eventName },
+      { header: "Date", value: (row) => formatReportDate(row.date), width: 26 },
+      { header: "Description", value: (row) => row.description },
+      { header: "Status", value: (row) => row.status, width: 24 },
       { header: "Amount", value: (row) => formatReportAmount(row.amount), width: 28 },
     ],
     fileName: `sk-beat-reference-expenses-${event.event_id}-${toFileSlug(event.event_name)}-${today}.pdf`,
-    rows: event.event_expenses,
+    rows,
     subtitle: formatCompletedEventTitle(event),
     summary: [
-      { label: "Event Date", value: formatReportDate(event.event_date) },
-      { label: "Allocated Budget", value: formatReportAmount(event.allocated_budget) },
-      { label: "Actual Expenses", value: formatReportAmount(totalAmount) },
+      { label: "Paid Expenses", value: formatReportAmount(expenseTotal) },
+      { label: "Event Budgets", value: formatReportAmount(budgetTotal) },
+      { label: "Records", value: rows.length },
     ],
     title: "Recent Event Expense Reference",
   });
@@ -443,6 +512,8 @@ function CatalogEventModal({
   const [budgetRows, setBudgetRows] = useState<BudgetRow[]>(
     eventToBudgetRows(selectedActivity),
   );
+  const [exportError, setExportError] = useState<string | null>(null);
+  const [isExporting, setIsExporting] = useState(false);
   const isEditingExistingActivity = Boolean(selectedActivity?.event_id);
   const expectedAttendees = getExpectedAttendees(form.expected_attendees);
   const suggestedItems = getSuggestedItems(form.event_name, form.category);
@@ -530,6 +601,19 @@ function CatalogEventModal({
       location: form.location.trim() || null,
       status: form.status,
     });
+  }
+
+  async function handleReferenceExport(event: ActivityEvent) {
+    setIsExporting(true);
+    setExportError(null);
+
+    try {
+      await downloadReferenceEventExpenses(event);
+    } catch (error) {
+      setExportError(getErrorMessage(error));
+    } finally {
+      setIsExporting(false);
+    }
   }
 
   return (
@@ -689,13 +773,21 @@ function CatalogEventModal({
                 Budget rows are computed below as the event cost.
               </p>
               {referenceExpenseEvent ? (
-                <button
-                  className="mt-3 rounded-lg border border-[#1e3a5f]/20 bg-white px-3 py-2 text-xs font-semibold text-[#1e3a5f] hover:bg-blue-50"
-                  onClick={() => void downloadReferenceEventExpenses(referenceExpenseEvent)}
-                  type="button"
-                >
-                  Export Recent Event Expenses
-                </button>
+                <>
+                  <button
+                    className="mt-3 rounded-lg border border-[#1e3a5f]/20 bg-white px-3 py-2 text-xs font-semibold text-[#1e3a5f] hover:bg-blue-50 disabled:cursor-not-allowed disabled:opacity-60"
+                    disabled={isExporting}
+                    onClick={() => void handleReferenceExport(referenceExpenseEvent)}
+                    type="button"
+                  >
+                    {isExporting ? "Exporting..." : "Export Recent Event Expenses"}
+                  </button>
+                  {exportError ? (
+                    <p className="mt-2 text-xs font-medium text-red-600">
+                      {exportError}
+                    </p>
+                  ) : null}
+                </>
               ) : null}
             </div>
              {selectedExistingEvent &&(

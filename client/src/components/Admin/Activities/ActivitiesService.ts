@@ -48,6 +48,39 @@ export type ActivityEvent = {
   event_registrations?: { registration_id: number; attendance_status?: string | null }[];
 };
 
+export type ActivityFinancialExportExpense = {
+  transaction_id: number;
+  event_id: number | null;
+  transaction_type: string;
+  category: string;
+  amount: number;
+  transaction_date: string;
+  status: string;
+  description: string | null;
+  reference_number: string | null;
+  events?: {
+    event_name: string;
+    allocated_budget: number;
+  } | null;
+};
+
+export type ActivityFinancialExportBudget = {
+  event_id: number;
+  budget_year_id: number | null;
+  event_name: string;
+  category: string;
+  status: string;
+  event_date: string | null;
+  allocated_budget: number;
+  completed_spending: number;
+  remaining_event_budget: number;
+};
+
+export type ActivityFinancialExportData = {
+  budgets: ActivityFinancialExportBudget[];
+  expenses: ActivityFinancialExportExpense[];
+};
+
 export type EventCategory = {
   category_id: number;
   name: string;
@@ -76,6 +109,19 @@ export type SaveActivityEventPayload = {
 type AnnualBudgetRow = {
   budget_year_id: number;
 };
+
+function toNumberRecord<T extends Record<string, unknown>>(
+  row: T,
+  fields: Array<keyof T>,
+) {
+  const next = { ...row };
+
+  fields.forEach((field) => {
+    next[field] = Number(next[field] ?? 0) as T[keyof T];
+  });
+
+  return next;
+}
 
 export async function getActivityEvents() {
   const { data, error } = await supabase
@@ -196,6 +242,54 @@ export async function getCurrentBudgetYearId() {
     .maybeSingle();
 
   return { data: data as AnnualBudgetRow | null, error };
+}
+
+export async function getActivityFinancialExportData(
+  event: Pick<ActivityEvent, "budget_year_id" | "event_id">,
+) {
+  const expenseQuery = supabase
+    .from("financial_transactions")
+    .select(
+      "transaction_id,event_id,transaction_type,category,amount,transaction_date,status,description,reference_number,events(event_name,allocated_budget)",
+    )
+    .eq("event_id", event.event_id)
+    .eq("transaction_type", "expense")
+    .eq("status", "completed")
+    .order("transaction_date", { ascending: true });
+
+  let budgetQuery = supabase
+    .from("financial_event_budget_status")
+    .select(
+      "event_id,budget_year_id,event_name,category,status,event_date,allocated_budget,completed_spending,remaining_event_budget",
+    )
+    .eq("event_id", event.event_id);
+
+  if (event.budget_year_id) {
+    budgetQuery = budgetQuery.eq("budget_year_id", event.budget_year_id);
+  }
+
+  const [
+    { data: expenses, error: expenseError },
+    { data: budgets, error: budgetError },
+  ] = await Promise.all([expenseQuery, budgetQuery]);
+
+  return {
+    data: {
+      budgets: (budgets ?? []).map((row) =>
+        toNumberRecord(row as unknown as ActivityFinancialExportBudget, [
+          "allocated_budget",
+          "completed_spending",
+          "remaining_event_budget",
+        ]),
+      ),
+      expenses: (expenses ?? []).map((row) =>
+        toNumberRecord(row as unknown as ActivityFinancialExportExpense, [
+          "amount",
+        ]),
+      ),
+    } as ActivityFinancialExportData,
+    error: expenseError || budgetError,
+  };
 }
 
 export async function saveActivityEvent(payload: SaveActivityEventPayload) {

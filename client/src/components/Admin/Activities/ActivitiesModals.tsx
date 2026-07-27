@@ -326,9 +326,11 @@ function eventToBudgetRows(event: ActivityEvent | null): BudgetRow[] {
 type ReferenceExpenseExportRow =
   | {
       amount: number;
+      category: string;
       date: string | null;
       description: string;
       eventName: string;
+      reference: string;
       section: "Recorded Expenses";
       status: string;
     }
@@ -359,9 +361,11 @@ function getErrorMessage(error: unknown) {
 function financialExpenseToExportRow(expense: ActivityFinancialExportExpense): ReferenceExpenseExportRow {
   return {
     amount: expense.amount,
+    category: expense.category,
     date: expense.transaction_date,
     description: expense.description ?? expense.category,
     eventName: expense.events?.event_name ?? "Selected event",
+    reference: expense.reference_number ?? "-",
     section: "Recorded Expenses",
     status: "Paid",
   };
@@ -390,16 +394,25 @@ async function downloadReferenceEventExpenses(event: ActivityEvent) {
     ...data.expenses.map(financialExpenseToExportRow),
     ...data.budgets.map(budgetToExportRow),
   ];
-  const expenseTotal = data.expenses.reduce((sum, expense) => sum + expense.amount, 0);
   const budgetTotal = data.budgets.reduce((sum, budget) => sum + budget.allocated_budget, 0);
 
   return downloadOfficialPdfReport({
     columns: [
       { header: "#", value: (_row, index) => index + 1, width: 12 },
-      { header: "Section", value: (row) => row.section, width: 32 },
-      { header: "Event", value: (row) => row.eventName },
+      { header: "Section", value: (row) => row.section, width: 30 },
+      { header: "Event", value: (row) => row.eventName, width: 34 },
       { header: "Date", value: (row) => formatReportDate(row.date), width: 26 },
+      {
+        header: "Category",
+        value: (row) => row.section === "Recorded Expenses" ? row.category : "-",
+        width: 24,
+      },
       { header: "Description", value: (row) => row.description },
+      {
+        header: "Reference",
+        value: (row) => row.section === "Recorded Expenses" ? row.reference : "-",
+        width: 24,
+      },
       { header: "Status", value: (row) => row.status, width: 24 },
       { header: "Amount", value: (row) => formatReportAmount(row.amount), width: 28 },
     ],
@@ -407,9 +420,9 @@ async function downloadReferenceEventExpenses(event: ActivityEvent) {
     rows,
     subtitle: formatCompletedEventTitle(event),
     summary: [
-      { label: "Paid Expenses", value: formatReportAmount(expenseTotal) },
-      { label: "Event Budgets", value: formatReportAmount(budgetTotal) },
-      { label: "Records", value: rows.length },
+      { label: "Recorded Expense Rows", value: data.expenses.length },
+      { label: "Event Budget Total", value: formatReportAmount(budgetTotal) },
+      { label: "Budget Rows", value: data.budgets.length },
     ],
     title: "Recent Event Expense Reference",
   });

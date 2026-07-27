@@ -1,5 +1,5 @@
 import { useState } from "react";
-import type { FinancialEventBudget } from "../FinancialService";
+import { formatFinancialEventTitle, type FinancialEventBudget } from "../FinancialService";
 
 type EventsBudgetsCardProps = {
   canAddExpense: boolean;
@@ -92,7 +92,7 @@ export default function EventsBudgetsCard({
                 <div className="flex items-center justify-between gap-4">
                   <div>
                     <h3 className="text-sm font-semibold text-slate-800">
-                      {event.event_name}
+                      {formatFinancialEventTitle(event)}
                     </h3>
                     <p className="mt-0.5 text-xs text-slate-400">
                       {event.category} - {event.status}

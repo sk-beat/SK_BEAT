@@ -311,6 +311,14 @@ function formatReportAmount(value: number) {
   }).format(value);
 }
 
+export function formatFinancialEventTitle(
+  event: Pick<FinancialEventBudget, "event_date" | "event_name" | "status">,
+) {
+  return event.status === "completed" && event.event_date
+    ? `${event.event_name} - ${formatReportDate(event.event_date)}`
+    : event.event_name;
+}
+
 function labelize(value: string) {
   return value
     .split("_")
@@ -365,7 +373,7 @@ export function downloadEventExpensePdf(
     ],
     fileName: `sk-beat-event-expenses-${event.event_id}-${today}.pdf`,
     rows: transactions,
-    subtitle: `${event.event_name} | ${formatReportDate(event.event_date)}`,
+    subtitle: formatFinancialEventTitle(event),
     summary: [
       { label: "Allocated Budget", value: formatReportAmount(event.allocated_budget) },
       { label: "Recorded Expenses", value: formatReportAmount(totalAmount) },

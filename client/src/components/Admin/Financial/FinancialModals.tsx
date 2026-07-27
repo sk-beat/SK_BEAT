@@ -4,6 +4,7 @@ import ModernFileInput from "../shared/ModernFileInput";
 import {
   type AnnualBudget,
   downloadEventExpensePdf,
+  formatFinancialEventTitle,
   type FinancialEventBudget,
   type FinancialTransaction,
   type FinancialTransactionPayload,
@@ -496,7 +497,7 @@ export default function FinancialModals({
           {selectedEvent ? (
             <div className="text-sm font-medium text-slate-400">
               <p>
-                {selectedEvent.event_name} - {selectedEvent.event_date ?? "No date"}
+                {formatFinancialEventTitle(selectedEvent)}
               </p>
               <p className="mt-2">
                 Allocated: {formatPeso(selectedEvent.allocated_budget)} | Used:{" "}
@@ -680,7 +681,7 @@ export default function FinancialModals({
               ) : null}
               {completedEventBudgets.map((event) => (
                 <option key={event.event_id} value={event.event_id}>
-                  {event.event_name}
+                  {formatFinancialEventTitle(event)}
                 </option>
               ))}
             </select>

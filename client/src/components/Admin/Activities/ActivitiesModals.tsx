@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useState } from "react";
 import { getProfileImageUrl } from "../../../utils/profileImages";
+import { downloadOfficialPdfReport } from "../../../utils/pdfExport";
 import ImageUploadField from "../../shared/ImageUploadField";
 import AdminModal from "../shared/AdminModal";
 import type {
@@ -157,6 +158,42 @@ function formatPeso(amount: number) {
   return `P${amount.toLocaleString("en-PH")}`;
 }
 
+function formatReportAmount(amount: number) {
+  return new Intl.NumberFormat("en-PH", {
+    maximumFractionDigits: 2,
+    minimumFractionDigits: 2,
+    useGrouping: true,
+  }).format(amount);
+}
+
+function formatReportDate(value: string | null | undefined) {
+  if (!value) return "-";
+  const date = new Date(value);
+
+  return Number.isNaN(date.getTime())
+    ? value
+    : new Intl.DateTimeFormat("en-PH", {
+        day: "2-digit",
+        month: "short",
+        year: "numeric",
+      }).format(date);
+}
+
+function formatCompletedEventTitle(event: Pick<ActivityEvent, "event_date" | "event_name" | "status">) {
+  return event.status === "completed" && event.event_date
+    ? `${event.event_name} - ${formatReportDate(event.event_date)}`
+    : event.event_name;
+}
+
+function toFileSlug(value: string) {
+  return value
+    .trim()
+    .toLowerCase()
+    .replace(/[^a-z0-9]+/g, "-")
+    .replace(/^-|-$/g, "")
+    .slice(0, 60) || "event";
+}
+
 function parseMoney(value: string | number) {
   const numericValue =
     typeof value === "number" ? value : Number(value.replace(/[^\d.]/g, ""));
@@ -281,6 +318,34 @@ function eventToBudgetRows(event: ActivityEvent | null): BudgetRow[] {
   }));
 }
 
+function downloadReferenceEventExpenses(event: ActivityEvent) {
+  const today = new Date().toISOString().slice(0, 10);
+  const totalAmount = event.event_expenses.reduce(
+    (sum, expense) => sum + Number(expense.amount || 0),
+    0,
+  );
+
+  return downloadOfficialPdfReport({
+    columns: [
+      { header: "#", value: (_row, index) => index + 1, width: 12 },
+      { header: "Expense", value: (row) => row.expense_type },
+      { header: "Calculation", value: (row) => row.calculation_type.replace("_", " ") },
+      { header: "Unit Cost", value: (row) => formatReportAmount(row.unit_cost), width: 28 },
+      { header: "Quantity", value: (row) => formatReportAmount(row.quantity), width: 24 },
+      { header: "Amount", value: (row) => formatReportAmount(row.amount), width: 28 },
+    ],
+    fileName: `sk-beat-reference-expenses-${event.event_id}-${toFileSlug(event.event_name)}-${today}.pdf`,
+    rows: event.event_expenses,
+    subtitle: formatCompletedEventTitle(event),
+    summary: [
+      { label: "Event Date", value: formatReportDate(event.event_date) },
+      { label: "Allocated Budget", value: formatReportAmount(event.allocated_budget) },
+      { label: "Actual Expenses", value: formatReportAmount(totalAmount) },
+    ],
+    title: "Recent Event Expense Reference",
+  });
+}
+
 function getEventTemplateKey(event: Pick<ActivityEvent, "category" | "event_name">) {
   return `${event.event_name.trim().toLowerCase()}::${event.category.trim().toLowerCase()}`;
 }
@@ -397,6 +462,10 @@ function CatalogEventModal({
   ).sort((first, second) => first.event_name.localeCompare(second.event_name));
   const selectedExistingEvent = events.find((item) => String(item.event_id) === selectedExistingId) ?? null;
   const latestCompletedTemplateEvent = getLatestCompletedIdenticalEvent(events, selectedExistingEvent);
+  const referenceExpenseEvent =
+    eventChoice === "existing" && !isEditingExistingActivity
+      ? latestCompletedTemplateEvent ?? selectedExistingEvent
+      : null;
   const recentIdenticalEvent = latestCompletedTemplateEvent
     ? completedEventPerformance.find((event) => event.event_id === latestCompletedTemplateEvent.event_id) ?? null
     : null;
@@ -423,6 +492,7 @@ function CatalogEventModal({
     setSelectedExistingId(eventId);
     setForm({
       ...eventToForm(sourceEvent),
+      event_id: null,
       event_date: event?.event_date ?? "",
       event_time: event?.event_time ?? "09:00",
       status: "draft",
@@ -618,6 +688,15 @@ function CatalogEventModal({
               <p className="mt-1 text-xs text-slate-500">
                 Budget rows are computed below as the event cost.
               </p>
+              {referenceExpenseEvent ? (
+                <button
+                  className="mt-3 rounded-lg border border-[#1e3a5f]/20 bg-white px-3 py-2 text-xs font-semibold text-[#1e3a5f] hover:bg-blue-50"
+                  onClick={() => void downloadReferenceEventExpenses(referenceExpenseEvent)}
+                  type="button"
+                >
+                  Export Recent Event Expenses
+                </button>
+              ) : null}
             </div>
              {selectedExistingEvent &&(
                 <>

@@ -59,7 +59,7 @@ export type FinancialTransaction = {
   transaction_date: string;
   status: FinancialTransactionStatus;
   description: string | null;
-  reference_number: string | null;
+  notes: string | null;
   payment_method: string | null;
   created_by: string;
   created_at: string;
@@ -84,7 +84,7 @@ export type FinancialTransactionPayload = {
   transaction_date: string;
   status?: FinancialTransactionStatus;
   description: string | null;
-  reference_number: string | null;
+  notes: string | null;
   payment_method: string | null;
 };
 
@@ -106,7 +106,7 @@ export type FinancialTransactionPage = {
 };
 
 const transactionSelect =
-  "transaction_id,budget_year_id,event_id,transaction_type,category,amount,transaction_date,status,description,reference_number,payment_method,created_by,created_at,updated_at,events(event_name,allocated_budget),admins(fullname,email)";
+  "transaction_id,budget_year_id,event_id,transaction_type,category,amount,transaction_date,status,description,notes,payment_method,created_by,created_at,updated_at,events(event_name,allocated_budget),admins(fullname,email)";
 
 function toNumberRecord<T extends Record<string, unknown>>(
   row: T,
@@ -249,7 +249,7 @@ export async function getFinancialTransactions(
       [
         `category.ilike.%${search}%`,
         `description.ilike.%${search}%`,
-        `reference_number.ilike.%${search}%`,
+        `notes.ilike.%${search}%`,
         `payment_method.ilike.%${search}%`,
       ].join(","),
     );
@@ -277,7 +277,7 @@ export async function getFinancialTransactions(
 export async function getFinancialTransactionsForCharts(budgetYearId: number) {
   const { data, error } = await supabase
     .from("financial_transactions")
-    .select("transaction_id,budget_year_id,event_id,transaction_type,category,amount,transaction_date,status,description,reference_number,payment_method,created_by,created_at,updated_at,events(event_name,allocated_budget),admins(fullname,email)")
+    .select("transaction_id,budget_year_id,event_id,transaction_type,category,amount,transaction_date,status,description,notes,payment_method,created_by,created_at,updated_at,events(event_name,allocated_budget),admins(fullname,email)")
     .eq("budget_year_id", budgetYearId)
     .order("transaction_date", { ascending: true });
 
@@ -338,6 +338,7 @@ export function downloadFinancialTransactionsPdf(
       { header: "Event", value: (row) => row.events?.event_name ?? "General expense" },
       { header: "Category", value: (row) => row.category },
       { header: "Description", value: (row) => row.description ?? "-" },
+      { header: "Notes", value: (row) => row.notes ?? "-" },
       { header: "Status", value: (row) => labelize(row.status) },
       { align: "right", header: "Amount", value: (row) => formatReportAmount(row.amount), width: 30 },
     ],
@@ -365,7 +366,7 @@ export function downloadEventExpensePdf(
       { header: "#", value: (_row, index) => index + 1 },
       { header: "Date", value: (row) => formatReportDate(row.transaction_date) },
       { header: "Description", value: (row) => row.description ?? row.category },
-      { header: "Reference", value: (row) => row.reference_number ?? "-" },
+      { header: "Notes", value: (row) => row.notes ?? "-" },
       { header: "Status", value: (row) => labelize(row.status) },
       { align: "right", header: "Amount", value: (row) => formatReportAmount(row.amount), width: 30 },
     ],
@@ -393,7 +394,7 @@ export async function saveFinancialTransaction(
       p_description: payload.description,
       p_event_id: payload.event_id,
       p_payment_method: payload.payment_method,
-      p_reference_number: payload.reference_number,
+      p_notes: payload.notes,
       p_status: "completed",
       p_transaction_date: payload.transaction_date,
       p_transaction_id: payload.transaction_id ?? null,

@@ -140,6 +140,11 @@ function ExpenseHistoryTable({
                     <p className="font-semibold text-slate-800">
                       {transaction.description || transaction.category}
                     </p>
+                    {transaction.notes ? (
+                      <p className="mt-0.5 text-xs text-slate-500">
+                        Notes: {transaction.notes}
+                      </p>
+                    ) : null}
                     <p className="mt-0.5 text-xs text-slate-400">
                       {transaction.reference_number || labelize(transaction.transaction_type)}
                     </p>

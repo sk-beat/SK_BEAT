@@ -213,10 +213,9 @@ export default function FinancialModals({
       amount: numericAmount,
       budget_year_id: budgetYearId,
       category: category.trim(),
-      description: notes.trim()
-        ? `${description.trim()} - ${notes.trim()}`
-        : description.trim(),
+      description: description.trim(),
       event_id: Number(eventId),
+      notes: notes.trim() || null,
       payment_method: null,
       reference_number: referenceNumber.trim() || null,
       status: "completed",
@@ -598,6 +597,9 @@ export default function FinancialModals({
                       </h4>
                       <p className="mt-1 text-xs font-medium text-slate-400">
                         {expense.transaction_date} - {labelize(expense.status)}
+                      </p>
+                      <p className="mt-1 text-xs text-slate-500">
+                        Notes: {expense.notes || "N/A"}
                       </p>
                     </div>
                     <strong className="text-sm text-slate-800">

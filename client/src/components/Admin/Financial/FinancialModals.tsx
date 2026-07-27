@@ -1,6 +1,5 @@
 import { useEffect, useMemo, useState } from "react";
 import AdminModal from "../shared/AdminModal";
-import ModernFileInput from "../shared/ModernFileInput";
 import {
   type AnnualBudget,
   downloadEventExpensePdf,
@@ -94,7 +93,6 @@ export default function FinancialModals({
   const [exportEventId, setExportEventId] = useState<number | "">("");
   const [formError, setFormError] = useState("");
   const [notes, setNotes] = useState("");
-  const [receiptPath, setReceiptPath] = useState("");
   const [referenceNumber, setReferenceNumber] = useState("");
 
   const eventRecords = useMemo(
@@ -129,7 +127,6 @@ export default function FinancialModals({
       setEventId(selectedEvent?.event_id ?? "");
       setFormError("");
       setNotes("");
-      setReceiptPath("");
       setReferenceNumber("");
     }, 0);
 
@@ -221,7 +218,6 @@ export default function FinancialModals({
         : description.trim(),
       event_id: Number(eventId),
       payment_method: null,
-      receipt_path: receiptPath.trim() || null,
       reference_number: referenceNumber.trim() || null,
       status: "completed",
       transaction_date: date,
@@ -396,18 +392,6 @@ export default function FinancialModals({
             />
           </label>
 
-          <label className="block">
-            <span className="mb-1.5 block text-sm font-medium text-slate-700">
-              Receipt Path
-            </span>
-            <input
-              className={inputClass}
-              disabled={!canAddExpense}
-              onChange={(event) => setReceiptPath(event.target.value)}
-              value={receiptPath}
-            />
-          </label>
-
           <label className="block md:col-span-2">
             <span className="mb-1.5 block text-sm font-medium text-slate-700">
               Notes
@@ -571,14 +555,6 @@ export default function FinancialModals({
                 onChange={(event) => setNotes(event.target.value)}
                 placeholder="Where this was spent, OR details"
                 value={notes}
-              />
-              <span className="pt-2 text-sm font-medium text-slate-700">
-                Upload receipt / photo (optional)
-              </span>
-              <ModernFileInput
-                accept="image/*,.pdf"
-                disabled={!canAddExpenseForSelectedEvent}
-                label="Upload receipt or photo"
               />
             </div>
             <button

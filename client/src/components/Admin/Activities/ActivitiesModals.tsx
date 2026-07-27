@@ -10,7 +10,6 @@ import type {
   ActivityEventStatus,
   CompletedEventPerformance,
   ActivityExpense,
-  ActivityFinancialExportBudget,
   ActivityFinancialExportExpense,
   EventCategory,
   SaveActivityEventPayload,
@@ -324,32 +323,13 @@ function eventToBudgetRows(event: ActivityEvent | null): BudgetRow[] {
 }
 
 type ReferenceExpenseExportRow =
-  | {
-      amount: number;
-      category: string;
-      date: string | null;
-      description: string;
-      eventName: string;
-      reference: string;
-      section: "Recorded Expenses";
-      status: string;
-    }
-  | {
-      amount: number;
-      date: string | null;
-      description: string;
-      eventName: string;
-      section: "Recorded Expenses Total";
-      status: string;
-    }
-  | {
-      amount: number;
-      date: string | null;
-      description: string;
-      eventName: string;
-      section: "Event Budgets";
-      status: string;
-    };
+  {
+    amount: number;
+    date: string | null;
+    description: string;
+    reference: string;
+    status: string;
+  };
 
 function labelize(value: string) {
   return value
@@ -369,38 +349,10 @@ function getErrorMessage(error: unknown) {
 function financialExpenseToExportRow(expense: ActivityFinancialExportExpense): ReferenceExpenseExportRow {
   return {
     amount: expense.amount,
-    category: expense.category,
     date: expense.transaction_date,
     description: expense.description ?? expense.category,
-    eventName: expense.events?.event_name ?? "Selected event",
     reference: expense.reference_number ?? "-",
-    section: "Recorded Expenses",
-    status: "Paid",
-  };
-}
-
-function budgetToExportRow(budget: ActivityFinancialExportBudget): ReferenceExpenseExportRow {
-  return {
-    amount: budget.allocated_budget,
-    date: budget.event_date,
-    description: "Total event budget",
-    eventName: budget.event_name,
-    section: "Event Budgets",
-    status: labelize(budget.status),
-  };
-}
-
-function recordedExpensesTotalToExportRow(
-  event: ActivityEvent,
-  total: number,
-): ReferenceExpenseExportRow {
-  return {
-    amount: total,
-    date: null,
-    description: "Total recorded paid expenses",
-    eventName: event.event_name,
-    section: "Recorded Expenses Total",
-    status: "Paid",
+    status: labelize(expense.status),
   };
 }
 
@@ -412,44 +364,29 @@ async function downloadReferenceEventExpenses(event: ActivityEvent) {
     throw error;
   }
 
-  const expenseRows = data.expenses.map(financialExpenseToExportRow);
+  const rows = data.expenses.map(financialExpenseToExportRow);
   const expenseTotal = data.expenses.reduce((sum, expense) => sum + expense.amount, 0);
   const budgetTotal = data.budgets.reduce((sum, budget) => sum + budget.allocated_budget, 0);
-  const rows: ReferenceExpenseExportRow[] = [
-    ...expenseRows,
-    recordedExpensesTotalToExportRow(event, expenseTotal),
-    ...data.budgets.map(budgetToExportRow),
-  ];
+  const remainingBudget = budgetTotal - expenseTotal;
 
   return downloadOfficialPdfReport({
     columns: [
       { header: "#", value: (_row, index) => index + 1, width: 12 },
-      { header: "Section", value: (row) => row.section, width: 30 },
-      { header: "Event", value: (row) => row.eventName, width: 34 },
       { header: "Date", value: (row) => formatReportDate(row.date), width: 26 },
-      {
-        header: "Category",
-        value: (row) => row.section === "Recorded Expenses" ? row.category : "-",
-        width: 24,
-      },
       { header: "Description", value: (row) => row.description },
-      {
-        header: "Reference",
-        value: (row) => row.section === "Recorded Expenses" ? row.reference : "-",
-        width: 24,
-      },
-      { header: "Status", value: (row) => row.status, width: 24 },
+      { header: "Reference", value: (row) => row.reference, width: 30 },
+      { header: "Status", value: (row) => row.status, width: 22 },
       { header: "Amount", value: (row) => formatReportAmount(row.amount), width: 28 },
     ],
     fileName: `sk-beat-reference-expenses-${event.event_id}-${toFileSlug(event.event_name)}-${today}.pdf`,
     rows,
     subtitle: formatCompletedEventTitle(event),
     summary: [
-      { label: "Recorded Expense Rows", value: data.expenses.length },
+      { label: "Allocated Budget", value: formatReportAmount(budgetTotal) },
       { label: "Recorded Expense Total", value: formatReportAmount(expenseTotal) },
-      { label: "Event Budget Total", value: formatReportAmount(budgetTotal) },
+      { label: "Remaining Budget", value: formatReportAmount(remainingBudget) },
     ],
-    title: "Recent Event Expense Reference",
+    title: "Event Expense Report",
   });
 }
 

@@ -1,2 +1,0 @@
-create index if not exists kabataan_suggestions_feedback_updated_by_idx
-on public.kabataan_suggestions(feedback_updated_by);

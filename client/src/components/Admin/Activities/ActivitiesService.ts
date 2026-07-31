@@ -59,6 +59,7 @@ export type ActivityFinancialExportExpense = {
   description: string | null;
   notes: string | null;
   reference_number: string | null;
+  receipt_path: string | null;
   events?: {
     event_name: string;
     allocated_budget: number;
@@ -251,7 +252,7 @@ export async function getActivityFinancialExportData(
   const expenseQuery = supabase
     .from("financial_transactions")
     .select(
-      "transaction_id,event_id,transaction_type,category,amount,transaction_date,status,description,notes,reference_number,events(event_name,allocated_budget)",
+      "transaction_id,event_id,transaction_type,category,amount,transaction_date,status,description,notes,reference_number,receipt_path,events(event_name,allocated_budget)",
     )
     .eq("event_id", event.event_id)
     .eq("transaction_type", "expense")

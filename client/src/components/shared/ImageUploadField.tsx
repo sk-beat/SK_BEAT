@@ -8,7 +8,7 @@ import {
 
 type ImageUploadFieldProps = {
   disabled?: boolean;
-  folder: "announcements" | "events";
+  folder: "announcements" | "events" | "receipts";
   label: string;
   onChange: (url: string | null) => void;
   value: string | null;

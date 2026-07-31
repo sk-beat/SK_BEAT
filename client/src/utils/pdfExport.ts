@@ -12,6 +12,7 @@ export type PdfReportOptions<T> = {
   columns: Array<PdfReportColumn<T>>;
   fileName: string;
   generatedAt?: Date;
+  rowImageUrl?: (row: T, index: number) => string | null | undefined;
   rows: T[];
   summary?: Array<{ label: string; value: string | number | null | undefined }>;
   subtitle?: string;
@@ -71,6 +72,18 @@ function getColumnWidths<T>(columns: Array<PdfReportColumn<T>>, tableWidth: numb
 
 function addTemplatePage(pdf: jsPDF, templateDataUrl: string) {
   pdf.addImage(templateDataUrl, "PNG", 0, 0, pageWidth, pageHeight, undefined, "FAST");
+}
+
+function getDataUrlImageFormat(dataUrl: string) {
+  if (dataUrl.startsWith("data:image/jpeg") || dataUrl.startsWith("data:image/jpg")) {
+    return "JPEG";
+  }
+
+  if (dataUrl.startsWith("data:image/webp")) {
+    return "WEBP";
+  }
+
+  return "PNG";
 }
 
 function drawHeader(
@@ -189,16 +202,72 @@ function drawTableRow<T>(
   });
 }
 
+function drawReceiptImage(
+  pdf: jsPDF,
+  imageDataUrl: string,
+  y: number,
+) {
+  const blockHeight = 42;
+  const imageSize = 34;
+  const tableWidth = pageWidth - marginX * 2;
+
+  pdf.setDrawColor(0, 0, 0);
+  pdf.rect(marginX, y, tableWidth, blockHeight, "S");
+  pdf.setTextColor(0, 0, 0);
+  pdf.setFont("helvetica", "bold");
+  pdf.setFontSize(7);
+  pdf.text("RECEIPT", marginX + 4, y + 6);
+
+  try {
+    pdf.addImage(
+      imageDataUrl,
+      getDataUrlImageFormat(imageDataUrl),
+      pageWidth / 2 - imageSize / 2,
+      y + 5,
+      imageSize,
+      imageSize,
+      undefined,
+      "FAST",
+    );
+  } catch {
+    pdf.setFont("helvetica", "normal");
+    pdf.setFontSize(7);
+    pdf.text("Unable to render receipt image.", pageWidth / 2, y + 22, {
+      align: "center",
+    });
+  }
+
+  return blockHeight;
+}
+
 export async function downloadOfficialPdfReport<T>({
   columns,
   fileName,
   generatedAt = new Date(),
+  rowImageUrl,
   rows,
   summary = [],
   subtitle,
   title,
 }: PdfReportOptions<T>) {
   const templateDataUrl = await loadPngDataUrl(skPdfTemplate);
+  const rowImages = new Map<number, string>();
+
+  if (rowImageUrl) {
+    await Promise.all(
+      rows.map(async (row, index) => {
+        const url = rowImageUrl(row, index);
+        if (!url) return;
+
+        try {
+          rowImages.set(index, await loadPngDataUrl(url));
+        } catch {
+          rowImages.delete(index);
+        }
+      }),
+    );
+  }
+
   const pdf = new jsPDF({
     format: "a4",
     orientation: "portrait",
@@ -206,12 +275,15 @@ export async function downloadOfficialPdfReport<T>({
   });
   const tableWidth = pageWidth - marginX * 2;
   const columnWidths = getColumnWidths(columns, tableWidth);
-  const firstPageRows = 21;
-  const otherPageRows = 25;
-  let rowIndex = 0;
   let pageNumber = 1;
 
-  function addPage(pageRows: T[], startIndex: number) {
+  function drawFooter() {
+    pdf.setTextColor(0, 0, 0);
+    pdf.setFontSize(7);
+    pdf.text(`Page ${pageNumber}`, pageWidth / 2, pageHeight - 10, { align: "center" });
+  }
+
+  function startPage() {
     if (pageNumber > 1) {
       pdf.addPage();
     }
@@ -226,33 +298,38 @@ export async function downloadOfficialPdfReport<T>({
 
     y = drawTableHeader(pdf, columns, columnWidths, y);
 
-    if (pageRows.length === 0) {
-      pdf.setDrawColor(0, 0, 0);
-      pdf.rect(marginX, y, tableWidth, rowHeight * 2, "S");
-      pdf.setTextColor(0, 0, 0);
-      pdf.setFontSize(8);
-      pdf.text("No records available.", pageWidth / 2, y + 11, { align: "center" });
-    } else {
-      pageRows.forEach((row, index) => {
-        drawTableRow(pdf, columns, columnWidths, row, startIndex + index, y);
-        y += rowHeight;
-      });
-    }
-
-    pdf.setTextColor(0, 0, 0);
-    pdf.setFontSize(7);
-    pdf.text(`Page ${pageNumber}`, pageWidth / 2, pageHeight - 10, { align: "center" });
-    pageNumber += 1;
+    return y;
   }
+
+  let y = startPage();
 
   if (rows.length === 0) {
-    addPage([], 0);
-  }
+    pdf.setDrawColor(0, 0, 0);
+    pdf.rect(marginX, y, tableWidth, rowHeight * 2, "S");
+    pdf.setTextColor(0, 0, 0);
+    pdf.setFontSize(8);
+    pdf.text("No records available.", pageWidth / 2, y + 11, { align: "center" });
+    drawFooter();
+  } else {
+    rows.forEach((row, index) => {
+      const imageDataUrl = rowImages.get(index);
+      const neededHeight = rowHeight + (imageDataUrl ? 42 : 0);
 
-  while (rowIndex < rows.length) {
-    const rowsPerPage = pageNumber === 1 ? firstPageRows : otherPageRows;
-    addPage(rows.slice(rowIndex, rowIndex + rowsPerPage), rowIndex);
-    rowIndex += rowsPerPage;
+      if (y + neededHeight > pageHeight - 18) {
+        drawFooter();
+        pageNumber += 1;
+        y = startPage();
+      }
+
+      drawTableRow(pdf, columns, columnWidths, row, index, y);
+      y += rowHeight;
+
+      if (imageDataUrl) {
+        y += drawReceiptImage(pdf, imageDataUrl, y);
+      }
+    });
+
+    drawFooter();
   }
 
   pdf.save(fileName);

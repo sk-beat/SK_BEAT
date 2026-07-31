@@ -62,6 +62,7 @@ export type FinancialTransaction = {
   notes: string | null;
   reference_number: string | null;
   payment_method: string | null;
+  receipt_path: string | null;
   created_by: string;
   created_at: string;
   updated_at: string;
@@ -88,6 +89,7 @@ export type FinancialTransactionPayload = {
   notes: string | null;
   reference_number: string | null;
   payment_method: string | null;
+  receipt_path: string | null;
 };
 
 export type FinancialTransactionFilters = {
@@ -108,7 +110,7 @@ export type FinancialTransactionPage = {
 };
 
 const transactionSelect =
-  "transaction_id,budget_year_id,event_id,transaction_type,category,amount,transaction_date,status,description,notes,reference_number,payment_method,created_by,created_at,updated_at,events(event_name,allocated_budget),admins(fullname,email)";
+  "transaction_id,budget_year_id,event_id,transaction_type,category,amount,transaction_date,status,description,notes,reference_number,payment_method,receipt_path,created_by,created_at,updated_at,events(event_name,allocated_budget),admins(fullname,email)";
 
 function toNumberRecord<T extends Record<string, unknown>>(
   row: T,
@@ -280,7 +282,7 @@ export async function getFinancialTransactions(
 export async function getFinancialTransactionsForCharts(budgetYearId: number) {
   const { data, error } = await supabase
     .from("financial_transactions")
-    .select("transaction_id,budget_year_id,event_id,transaction_type,category,amount,transaction_date,status,description,notes,reference_number,payment_method,created_by,created_at,updated_at,events(event_name,allocated_budget),admins(fullname,email)")
+    .select("transaction_id,budget_year_id,event_id,transaction_type,category,amount,transaction_date,status,description,notes,reference_number,payment_method,receipt_path,created_by,created_at,updated_at,events(event_name,allocated_budget),admins(fullname,email)")
     .eq("budget_year_id", budgetYearId)
     .order("transaction_date", { ascending: true });
 
@@ -345,6 +347,7 @@ export function downloadFinancialTransactionsPdf(
       { label: "Report Type", value: "Financial Transactions" },
     ],
     title: "Financial Transaction Report",
+    rowImageUrl: (row) => row.receipt_path,
   });
 }
 
@@ -372,6 +375,7 @@ export function downloadEventExpensePdf(
       { label: "Remaining Budget", value: formatReportAmount(event.remaining_event_budget) },
     ],
     title: "Event Expense Report",
+    rowImageUrl: (row) => row.receipt_path,
   });
 }
 
@@ -389,6 +393,7 @@ export async function saveFinancialTransaction(
       p_notes: payload.notes,
       p_payment_method: payload.payment_method,
       p_reference_number: payload.reference_number,
+      p_receipt_path: payload.receipt_path,
       p_status: "completed",
       p_transaction_date: payload.transaction_date,
       p_transaction_id: payload.transaction_id ?? null,

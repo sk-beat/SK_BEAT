@@ -35,7 +35,7 @@ export function buildAdminProfileImagePath(adminId: string, file: File) {
   return `admins/${adminId}/${crypto.randomUUID()}-${filename}`;
 }
 
-export function buildContentImagePath(folder: "announcements" | "events", file: File) {
+export function buildContentImagePath(folder: "announcements" | "events" | "receipts", file: File) {
   const filename = sanitizeFilename(file.name) || "image";
   return `${folder}/${crypto.randomUUID()}-${filename}`;
 }

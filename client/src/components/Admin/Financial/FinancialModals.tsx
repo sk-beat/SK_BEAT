@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useState } from "react";
+import ImageUploadField from "../../shared/ImageUploadField";
 import AdminModal from "../shared/AdminModal";
 import {
   type AnnualBudget,
@@ -93,6 +94,7 @@ export default function FinancialModals({
   const [exportEventId, setExportEventId] = useState<number | "">("");
   const [formError, setFormError] = useState("");
   const [notes, setNotes] = useState("");
+  const [receiptPath, setReceiptPath] = useState<string | null>(null);
   const [referenceNumber, setReferenceNumber] = useState("");
 
   const eventRecords = useMemo(
@@ -127,6 +129,7 @@ export default function FinancialModals({
       setEventId(selectedEvent?.event_id ?? "");
       setFormError("");
       setNotes("");
+      setReceiptPath(null);
       setReferenceNumber("");
     }, 0);
 
@@ -218,6 +221,7 @@ export default function FinancialModals({
       notes: notes.trim() || null,
       payment_method: null,
       reference_number: referenceNumber.trim() || null,
+      receipt_path: receiptPath,
       status: "completed",
       transaction_date: date,
       transaction_id: null,
@@ -402,6 +406,16 @@ export default function FinancialModals({
               value={notes}
             />
           </label>
+
+          <div className="md:col-span-2">
+            <ImageUploadField
+              disabled={!canAddExpense}
+              folder="receipts"
+              label="Receipt Image"
+              onChange={setReceiptPath}
+              value={receiptPath}
+            />
+          </div>
         </div>
       </AdminModal>
 
@@ -555,6 +569,16 @@ export default function FinancialModals({
                 placeholder="Where this was spent, OR details"
                 value={notes}
               />
+              <span className="pt-2 text-sm font-medium text-slate-700">
+                Receipt Image
+              </span>
+              <ImageUploadField
+                disabled={!canAddExpenseForSelectedEvent}
+                folder="receipts"
+                label="Receipt Image"
+                onChange={setReceiptPath}
+                value={receiptPath}
+              />
             </div>
             <button
               className="mt-4 rounded-lg bg-[#1e3a5f] px-5 py-2.5 text-sm font-medium text-white hover:bg-[#2a4a6f] disabled:cursor-not-allowed disabled:opacity-60"
@@ -601,6 +625,13 @@ export default function FinancialModals({
                       <p className="mt-1 text-xs text-slate-500">
                         Notes: {expense.notes || "N/A"}
                       </p>
+                      {expense.receipt_path ? (
+                        <img
+                          alt="Receipt"
+                          className="mt-3 h-24 w-24 rounded-lg border border-slate-200 object-cover"
+                          src={expense.receipt_path}
+                        />
+                      ) : null}
                     </div>
                     <strong className="text-sm text-slate-800">
                       {formatPeso(expense.amount)}

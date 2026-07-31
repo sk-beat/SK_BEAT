@@ -328,6 +328,7 @@ type ReferenceExpenseExportRow =
     date: string | null;
     description: string;
     notes: string;
+    transactionId: number;
   };
 
 function getErrorMessage(error: unknown) {
@@ -344,6 +345,7 @@ function financialExpenseToExportRow(expense: ActivityFinancialExportExpense): R
     date: expense.transaction_date,
     description: expense.description ?? expense.category,
     notes: expense.notes ?? "N/A",
+    transactionId: expense.transaction_id,
   };
 }
 
@@ -377,6 +379,9 @@ async function downloadReferenceEventExpenses(event: ActivityEvent) {
       { label: "Remaining Budget", value: formatReportAmount(remainingBudget) },
     ],
     title: "Event Expense Report",
+    rowImageUrl: (row) =>
+      data.expenses.find((expense) => expense.transaction_id === row.transactionId)
+        ?.receipt_path ?? null,
   });
 }
 

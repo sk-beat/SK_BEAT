@@ -98,7 +98,6 @@ type ActivitiesSectionActions = {
   onEditCatalogEvent: (activity: ActivityEvent) => void;
   onCreateFromRecommendation: (recommendation: ActivityRecommendation) => void;
   onManageCategories: () => void;
-  onOpenPastFeedbackQr: (event: ActivityEvent) => void;
   onOpenPerformance: (eventId: number) => void;
   onOpenRegistrations: (event: ActivityEvent) => void;
   onSelectDate: (date: string) => void;
@@ -653,7 +652,6 @@ function ActivitiesListPanel({
   onDeleteCatalogEvent,
   onEditCatalogEvent,
   onManageCategories,
-  onOpenPastFeedbackQr,
   onOpenRegistrations,
   onCreateFromRecommendation,
   recommendations,
@@ -665,7 +663,6 @@ function ActivitiesListPanel({
   | "onAddCatalogEvent"
   | "onDeleteCatalogEvent"
   | "onEditCatalogEvent"
-  | "onOpenPastFeedbackQr"
   | "onOpenRegistrations"
   | "onCreateFromRecommendation"
   | "onManageCategories"
@@ -673,11 +670,20 @@ function ActivitiesListPanel({
 >) {
   const [currentPage, setCurrentPage] = useState(1);
   const [statusFilter, setStatusFilter] = useState<"all" | "draft" | "scheduled" | "completed">("all");
+  const [selectedPastEventId, setSelectedPastEventId] = useState<number | null>(null);
   const topRecommendations = [
     ...recommendations.filter((item) => !item.is_already_planned),
     ...recommendations.filter((item) => item.is_already_planned),
   ].slice(0, 3);
   const pastEvents = events.filter((event) => event.status === "completed");
+  const selectedPastEvent =
+    pastEvents.find((event) => event.event_id === selectedPastEventId) ?? null;
+  const feedbackUrl = selectedPastEvent
+    ? `${window.location.origin}/event-feedback/${selectedPastEvent.event_id}`
+    : "";
+  const qrImageUrl = feedbackUrl
+    ? `https://api.qrserver.com/v1/create-qr-code/?size=220x220&data=${encodeURIComponent(feedbackUrl)}`
+    : "";
   const filteredEvents = events.filter((event) => statusFilter === "all" || event.status === statusFilter);
   const totalPages = Math.max(1, Math.ceil(filteredEvents.length / pageSize));
   const safeCurrentPage = Math.min(currentPage, totalPages);
@@ -873,36 +879,80 @@ function ActivitiesListPanel({
         </div>
       ) : null}
 
-      <div className="mt-6 rounded-xl border border-slate-200 bg-slate-50 p-4">
+      <div
+        className="mt-6 rounded-xl border border-slate-200 bg-slate-50 p-4"
+        onClick={() => setSelectedPastEventId(null)}
+      >
         <h3 className="text-sm font-semibold text-slate-800">Past Events</h3>
         <p className="mt-1 text-xs text-slate-500">
           Mga natapos nang event - para sa post-survey feedback at QR.
         </p>
-        <div className="mt-4 grid gap-4 md:grid-cols-[280px_minmax(0,1fr)]">
-          <div className="flex flex-col gap-2">
+        <div className="mt-4">
+          <div
+            className="flex gap-3 overflow-x-auto pb-2"
+            onClick={(event) => event.stopPropagation()}
+          >
             {pastEvents.map((event) => (
               <button
-                className="rounded-lg border border-slate-200 bg-white p-3 text-left hover:border-[#1e3a5f]"
+                className={[
+                  "min-h-28 shrink-0 basis-1/4 rounded-lg border bg-white p-3 text-left transition hover:border-[#1e3a5f] max-lg:basis-1/2 max-sm:basis-[85%]",
+                  selectedPastEventId === event.event_id
+                    ? "border-[#1e3a5f] ring-2 ring-[#1e3a5f]/15"
+                    : "border-slate-200",
+                ].join(" ")}
                 key={event.event_id}
-                onClick={() => onOpenPastFeedbackQr(event)}
+                onClick={() => setSelectedPastEventId(event.event_id)}
                 type="button"
               >
                 <span className="block text-sm font-semibold text-slate-800">
                   {event.event_name}
                 </span>
-                <span className="text-xs text-slate-500">
+                <span className="mt-1 block text-xs text-slate-500">
                   {event.event_date || "No date"} - {formatPeso(event.allocated_budget)}
+                </span>
+                <span className="mt-2 inline-flex">
+                  <StatusBadge status={event.status} />
                 </span>
               </button>
             ))}
             {pastEvents.length === 0 ? (
-              <span className="rounded-lg border border-dashed border-slate-300 bg-white p-3 text-sm text-slate-500">
+              <span className="w-full rounded-lg border border-dashed border-slate-300 bg-white p-3 text-sm text-slate-500">
                 No completed events yet.
               </span>
             ) : null}
           </div>
-          <div className="flex min-h-32 items-center justify-center rounded-lg border border-dashed border-slate-300 bg-white p-4 text-center text-sm text-slate-500">
-            Select a past event to view info and generate QR.
+
+          <div
+            className="mt-4 min-h-40 rounded-lg border border-dashed border-slate-300 bg-white p-4"
+            onClick={(event) => event.stopPropagation()}
+          >
+            {selectedPastEvent ? (
+              <div className="grid gap-4 md:grid-cols-[minmax(0,1fr)_180px] md:items-center">
+                <div>
+                  <p className="text-sm font-semibold text-slate-800">
+                    {selectedPastEvent.event_name}
+                  </p>
+                  <p className="mt-1 text-xs text-slate-500">
+                    {selectedPastEvent.event_date || "No date"} - {selectedPastEvent.category}
+                  </p>
+                  <p className="mt-3 break-all rounded-lg border border-slate-200 bg-slate-50 px-3 py-2 text-xs text-slate-600">
+                    {feedbackUrl}
+                  </p>
+                  <p className="mt-3 text-sm text-slate-500">
+                    Scan to open this completed event's feedback form.
+                  </p>
+                </div>
+                <img
+                  alt={`Feedback QR for ${selectedPastEvent.event_name}`}
+                  className="mx-auto h-40 w-40 rounded-xl border-4 border-[#1e3a5f] bg-white p-2"
+                  src={qrImageUrl}
+                />
+              </div>
+            ) : (
+              <div className="flex min-h-32 items-center justify-center text-center text-sm text-slate-500">
+                Select a past event to view info and generate QR.
+              </div>
+            )}
           </div>
         </div>
       </div>
@@ -921,7 +971,6 @@ export default function ActivitiesSections({
   onEditCatalogEvent,
   onCreateFromRecommendation,
   onManageCategories,
-  onOpenPastFeedbackQr,
   onOpenPerformance,
   onOpenRegistrations,
   onSelectDate,
@@ -964,7 +1013,6 @@ export default function ActivitiesSections({
         onEditCatalogEvent={onEditCatalogEvent}
         onCreateFromRecommendation={onCreateFromRecommendation}
         onManageCategories={onManageCategories}
-        onOpenPastFeedbackQr={onOpenPastFeedbackQr}
         onOpenRegistrations={onOpenRegistrations}
         recommendations={recommendations}
       />

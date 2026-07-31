@@ -337,10 +337,6 @@ export default function Activities() {
             setModalMode("catalog");
           }}
           onDeleteCatalogEvent={handleDeleteEvent}
-          onOpenPastFeedbackQr={(event) => {
-            setSelectedPastEvent(event);
-            setModalMode("feedback-qr");
-          }}
           onOpenPerformance={(eventId) => {
             setSelectedPerformanceEventId(eventId);
             setModalMode("performance");

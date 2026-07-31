@@ -139,7 +139,7 @@ export default function Events() {
       />
       {confirmationEvent ? (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-950/55 px-4 py-6">
-          <div className="w-full max-w-md rounded-2xl bg-white p-6 shadow-2xl">
+          <div className="flex w-full max-w-md flex-col items-center rounded-2xl bg-white p-6 text-center shadow-2xl">
             <div className="flex h-12 w-12 items-center justify-center rounded-full bg-[#1e3a5f]/10 text-[#1e3a5f]">
               <span className="text-xl font-bold">?</span>
             </div>
@@ -153,7 +153,7 @@ export default function Events() {
               </strong>
               .
             </p>
-            <div className="mt-4 rounded-xl border border-slate-200 bg-slate-50 px-4 py-3 text-sm text-slate-600">
+            <div className="mt-4 w-full rounded-xl border border-slate-200 bg-slate-50 px-4 py-3 text-left text-sm text-slate-600">
               <p>
                 <span className="font-semibold text-slate-800">Date:</span>{" "}
                 {formatEventDate(confirmationEvent.event_date)}
@@ -163,7 +163,7 @@ export default function Events() {
                 {confirmationEvent.location || "To be announced"}
               </p>
             </div>
-            <div className="mt-6 flex justify-end gap-3">
+            <div className="mt-6 flex w-full justify-center gap-3">
               <button
                 className="rounded-lg border border-slate-200 px-4 py-2 text-sm font-semibold text-slate-700 hover:bg-slate-50"
                 disabled={registeringEventId === confirmationEvent.event_id}

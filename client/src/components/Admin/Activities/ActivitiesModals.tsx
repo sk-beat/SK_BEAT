@@ -285,6 +285,15 @@ function toDateTimeLocalValue(value: string | null | undefined) {
   return new Date(date.getTime() - offsetMs).toISOString().slice(0, 16);
 }
 
+function dateTimeLocalToIso(value: string) {
+  if (!value) {
+    return null;
+  }
+
+  const date = new Date(value);
+  return Number.isNaN(date.getTime()) ? null : date.toISOString();
+}
+
 function getCurrentDateTimeLocalValue() {
   return toDateTimeLocalValue(new Date().toISOString());
 }
@@ -636,8 +645,8 @@ function CatalogEventModal({
       event_id: isEditingExistingActivity ? form.event_id : null,
       event_name: form.event_name.trim(),
       event_time: form.event_time || null,
-      registration_end_at: form.registration_end_at || null,
-      registration_start_at: form.registration_start_at || null,
+      registration_end_at: dateTimeLocalToIso(form.registration_end_at),
+      registration_start_at: dateTimeLocalToIso(form.registration_start_at),
       expected_attendees: Number(form.expected_attendees) || 0,
       cover_image: form.cover_image || null,
       expenses,

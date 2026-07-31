@@ -889,7 +889,7 @@ function ActivitiesListPanel({
         </p>
         <div className="mt-4 grid min-w-0 gap-4 md:grid-cols-[360px_minmax(0,1fr)]">
           <div
-            className="flex max-h-[29rem] min-w-0 flex-col gap-2 overflow-y-auto pr-1"
+            className="flex max-h-60 min-w-0 flex-col gap-2 overflow-y-auto pr-1"
             onClick={(event) => event.stopPropagation()}
           >
             {pastEvents.map((event) => (

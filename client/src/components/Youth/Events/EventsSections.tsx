@@ -5,6 +5,7 @@ import {
   MapPin,
   RefreshCw,
   Users,
+  XCircle,
 } from "lucide-react";
 import seminarImage from "../../../assets/seminar.jpg";
 import type { YouthEvent } from "./EventsService";
@@ -170,32 +171,40 @@ function EventCardItem({
           </p>
         </div>
 
-        <button
-          className={[
-            "mt-5 inline-flex w-full items-center justify-center gap-2 rounded-lg px-4 py-3 text-sm font-medium transition-colors disabled:cursor-not-allowed disabled:opacity-70",
-            isRegistered
-              ? "border border-emerald-200 bg-emerald-50 text-emerald-700"
-              : "bg-[#1e3a5f] text-white hover:bg-[#173256]",
-          ].join(" ")}
-          disabled={isRegistering || isFull || (!isRegistered && !registrationWindow.isOpen)}
-          onClick={() => (isRegistered ? onCancel(event.event_id) : onRegister(event.event_id))}
-          type="button"
-        >
-          {isRegistered ? (
-            <>
+        {isRegistered ? (
+          <div className="mt-5 grid gap-2 sm:grid-cols-2">
+            <div className="inline-flex items-center justify-center gap-2 rounded-lg border border-emerald-200 bg-emerald-50 px-4 py-3 text-sm font-semibold text-emerald-700">
               <CheckCircle2 className="h-4 w-4" />
-              {isRegistering ? "Cancelling..." : "Cancel Registration"}
-            </>
-          ) : isRegistering ? (
-            "Registering..."
-          ) : isFull ? (
-            "Full"
-          ) : !registrationWindow.isOpen ? (
-            registrationWindow.label
-          ) : (
-            "Register"
-          )}
-        </button>
+              Registered
+            </div>
+            <button
+              className="inline-flex items-center justify-center gap-2 rounded-lg bg-red-600 px-4 py-3 text-sm font-semibold text-white transition-colors hover:bg-red-700 disabled:cursor-not-allowed disabled:opacity-70"
+              disabled={isRegistering}
+              onClick={() => onCancel(event.event_id)}
+              type="button"
+            >
+              <XCircle className="h-4 w-4" />
+              {isRegistering ? "Unregistering..." : "Unregister"}
+            </button>
+          </div>
+        ) : (
+          <button
+            className="mt-5 inline-flex w-full items-center justify-center gap-2 rounded-lg bg-[#1e3a5f] px-4 py-3 text-sm font-medium text-white transition-colors hover:bg-[#173256] disabled:cursor-not-allowed disabled:opacity-70"
+            disabled={isRegistering || isFull || !registrationWindow.isOpen}
+            onClick={() => onRegister(event.event_id)}
+            type="button"
+          >
+            {isRegistering ? (
+              "Registering..."
+            ) : isFull ? (
+              "Full"
+            ) : !registrationWindow.isOpen ? (
+              registrationWindow.label
+            ) : (
+              "Register"
+            )}
+          </button>
+        )}
       </div>
     </article>
   );

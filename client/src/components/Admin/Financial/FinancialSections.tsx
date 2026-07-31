@@ -101,7 +101,7 @@ function ExpenseHistoryTable({
         </div>
       </div>
 
-      <div className="overflow-hidden overflow-x-auto rounded-xl border border-slate-200">
+      <div className="max-h-[365px] overflow-auto rounded-xl border border-slate-200">
         <table className="w-full min-w-[900px] border-collapse text-sm">
           <thead>
             <tr className="bg-slate-50">
@@ -109,7 +109,7 @@ function ExpenseHistoryTable({
                 (heading) => (
                   <th
                     className={[
-                      "px-5 py-4 text-[0.6875rem] font-semibold uppercase tracking-[0.08em] text-slate-400",
+                      "sticky top-0 z-10 bg-slate-50 px-5 py-4 text-[0.6875rem] font-semibold uppercase tracking-[0.08em] text-slate-400",
                       heading === "Amount" ? "text-right" : "text-left",
                     ].join(" ")}
                     key={heading}

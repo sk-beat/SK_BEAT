@@ -13,6 +13,7 @@ import { downloadOfficialPdfReport } from "../../../utils/pdfExport";
 
 type AccountAction = "lock" | "unlock" | null;
 type ToastState = { message: string; tone: "success" | "error" } | null;
+const youthRecordsPageSize = 5;
 type PendingWelcomeEmail = {
   email: string;
   name: string;
@@ -90,6 +91,7 @@ export default function YouthRecord() {
   const [search, setSearch] = useState("");
 const [scholarFilter, setScholarFilter] = useState("");
 const [educationFilter, setEducationFilter] = useState("");
+const [currentPage, setCurrentPage] = useState(1);
 
 const filteredRecords = records.filter((record) => {
   const searchValue = search.toLowerCase();
@@ -112,6 +114,12 @@ const filteredRecords = records.filter((record) => {
 
   return matchesSearch && matchesScholar && matchesEducation;
 });
+const totalPages = Math.max(1, Math.ceil(filteredRecords.length / youthRecordsPageSize));
+const safeCurrentPage = Math.min(currentPage, totalPages);
+const paginatedRecords = filteredRecords.slice(
+  (safeCurrentPage - 1) * youthRecordsPageSize,
+  safeCurrentPage * youthRecordsPageSize,
+);
 
 async function exportYouthRecords() {
   if (filteredRecords.length === 0) {
@@ -395,11 +403,20 @@ const isUnlockBlocked = accountAction === "unlock" && isOverAgeLimit;
   totalRecords={records.length}
   visibleRecords={filteredRecords.length}
   search={search}
-  setSearch={setSearch}
+  setSearch={(value) => {
+    setCurrentPage(1);
+    setSearch(value);
+  }}
   scholarFilter={scholarFilter}
-  setScholarFilter={setScholarFilter}
+  setScholarFilter={(value) => {
+    setCurrentPage(1);
+    setScholarFilter(value);
+  }}
   educationFilter={educationFilter}
-  setEducationFilter={setEducationFilter}
+  setEducationFilter={(value) => {
+    setCurrentPage(1);
+    setEducationFilter(value);
+  }}
 />
   
 
@@ -409,8 +426,38 @@ const isUnlockBlocked = accountAction === "unlock" && isOverAgeLimit;
   onLock={(record) => openAccountAction("lock", record)}
   onUnlock={(record) => openAccountAction("unlock", record)}
   onView={(record) => openModal("view", record)}
-  records={filteredRecords}
+  records={paginatedRecords}
 />
+        {filteredRecords.length > youthRecordsPageSize ? (
+          <div className="mt-4 flex flex-wrap items-center justify-between gap-3 rounded-[14px] border border-slate-200 bg-white px-4 py-3 text-sm text-slate-600 shadow-sm">
+            <span>
+              Showing {(safeCurrentPage - 1) * youthRecordsPageSize + 1}-
+              {Math.min(safeCurrentPage * youthRecordsPageSize, filteredRecords.length)} of{" "}
+              {filteredRecords.length}
+            </span>
+            <div className="flex items-center gap-2">
+              <button
+                className="rounded-lg border border-slate-200 px-3 py-2 font-medium text-slate-700 hover:bg-slate-50 disabled:cursor-not-allowed disabled:opacity-50"
+                disabled={safeCurrentPage <= 1}
+                onClick={() => setCurrentPage((page) => Math.max(1, page - 1))}
+                type="button"
+              >
+                Previous
+              </button>
+              <span className="px-2 text-xs font-semibold uppercase tracking-[0.08em] text-slate-400">
+                Page {safeCurrentPage} of {totalPages}
+              </span>
+              <button
+                className="rounded-lg border border-slate-200 px-3 py-2 font-medium text-slate-700 hover:bg-slate-50 disabled:cursor-not-allowed disabled:opacity-50"
+                disabled={safeCurrentPage >= totalPages}
+                onClick={() => setCurrentPage((page) => Math.min(totalPages, page + 1))}
+                type="button"
+              >
+                Next
+              </button>
+            </div>
+          </div>
+        ) : null}
         </div>
       </main>
       <YouthRecordModals

@@ -887,7 +887,7 @@ function ActivitiesListPanel({
         <p className="mt-1 text-xs text-slate-500">
           Mga natapos nang event - para sa post-survey feedback at QR.
         </p>
-        <div className="mt-4 grid min-w-0 gap-4 md:grid-cols-[280px_minmax(0,1fr)]">
+        <div className="mt-4 grid min-w-0 gap-4 md:grid-cols-[360px_minmax(0,1fr)]">
           <div
             className="flex max-h-[29rem] min-w-0 flex-col gap-2 overflow-y-auto pr-1"
             onClick={(event) => event.stopPropagation()}
@@ -927,7 +927,7 @@ function ActivitiesListPanel({
             onClick={(event) => event.stopPropagation()}
           >
             {selectedPastEvent ? (
-              <div className="grid min-w-0 gap-4 md:grid-cols-[minmax(0,1fr)_180px] md:items-center">
+              <div className="grid min-w-0 gap-4 md:grid-cols-[minmax(0,1fr)_260px] md:items-center">
                 <div className="min-w-0">
                   <p className="text-sm font-semibold text-slate-800">
                     {selectedPastEvent.event_name}
@@ -944,7 +944,7 @@ function ActivitiesListPanel({
                 </div>
                 <img
                   alt={`Feedback QR for ${selectedPastEvent.event_name}`}
-                  className="mx-auto h-40 w-40 rounded-xl border-4 border-[#1e3a5f] bg-white p-2"
+                  className="mx-auto h-60 w-60 rounded-xl border-4 border-[#1e3a5f] bg-white p-3"
                   src={qrImageUrl}
                 />
               </div>

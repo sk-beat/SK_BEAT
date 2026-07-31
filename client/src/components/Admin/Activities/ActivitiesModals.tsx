@@ -559,6 +559,9 @@ function CatalogEventModal({
     form.event_date,
     form.event_time,
   );
+  const originalRegistrationStartAt = toDateTimeLocalValue(
+    selectedActivity?.registration_start_at,
+  );
   const hasInvalidRegistrationDuration =
     form.registration_start_at !== "" &&
     form.registration_end_at !== "" &&
@@ -566,7 +569,9 @@ function CatalogEventModal({
       new Date(form.registration_end_at).getTime();
   const hasPastRegistrationStart =
     form.registration_start_at !== "" &&
-    form.registration_start_at < currentDateTimeLocal;
+    form.registration_start_at < currentDateTimeLocal &&
+    (!isEditingExistingActivity ||
+      form.registration_start_at !== originalRegistrationStartAt);
   const hasRegistrationEndAfterEvent =
     form.registration_end_at !== "" &&
     eventCompletionDateTimeLocal !== "" &&
@@ -1158,7 +1163,7 @@ function CatalogEventModal({
         <Field
           label="Default Time"
           onChange={(value) => updateForm("event_time", value)}
-          type="time"
+          placeholder="09:00 or 09:00-11:00"
           value={form.event_time}
         />
         <Field

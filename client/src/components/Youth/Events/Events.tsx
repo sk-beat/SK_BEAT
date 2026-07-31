@@ -37,6 +37,15 @@ export default function Events() {
       return;
     }
 
+    const event = events.find((item) => item.event_id === eventId);
+    const confirmed = window.confirm(
+      `Register for ${event?.event_name ?? "this event"}?`,
+    );
+
+    if (!confirmed) {
+      return;
+    }
+
     setRegisteringEventId(eventId);
     setErrorMessage(null);
 

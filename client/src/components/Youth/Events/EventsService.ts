@@ -14,6 +14,8 @@ export type YouthEvent = {
   status: YouthEventStatus;
   event_date: string | null;
   event_time: string | null;
+  registration_start_at: string | null;
+  registration_end_at: string | null;
   location: string | null;
   expected_attendees: number | null;
   cover_image: string | null;

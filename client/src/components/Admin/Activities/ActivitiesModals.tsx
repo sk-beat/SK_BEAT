@@ -62,6 +62,8 @@ type EventFormState = {
   status: ActivityEventStatus;
   event_date: string;
   event_time: string;
+  registration_start_at: string;
+  registration_end_at: string;
   location: string;
   expected_attendees: string;
   cover_image: string;
@@ -269,6 +271,20 @@ function getEventTimeRange(time: string | null) {
   };
 }
 
+function toDateTimeLocalValue(value: string | null | undefined) {
+  if (!value) {
+    return "";
+  }
+
+  const date = new Date(value);
+  if (Number.isNaN(date.getTime())) {
+    return value.slice(0, 16);
+  }
+
+  const offsetMs = date.getTimezoneOffset() * 60 * 1000;
+  return new Date(date.getTime() - offsetMs).toISOString().slice(0, 16);
+}
+
 function rangesOverlap(
   firstStart: string,
   firstEnd: string,
@@ -300,9 +316,11 @@ function eventToForm(event: ActivityEvent | null): EventFormState {
     event_id: event?.event_id || null,
     event_name: event?.event_name ?? "",
     event_time: event?.event_time ?? "09:00",
-    expected_attendees: String(event?.expected_attendees ?? ""),
     cover_image: event?.cover_image ?? "",
+    expected_attendees: String(event?.expected_attendees ?? ""),
     location: event?.location ?? "",
+    registration_end_at: toDateTimeLocalValue(event?.registration_end_at),
+    registration_start_at: toDateTimeLocalValue(event?.registration_start_at),
     status: event?.status ?? "draft",
   };
 }
@@ -514,6 +532,11 @@ function CatalogEventModal({
     ? completedEventPerformance.find((event) => event.event_id === latestCompletedTemplateEvent.event_id) ?? null
     : null;
   const recentExpenseTotal = recentIdenticalEvent?.completed_spending ?? 0;
+  const hasInvalidRegistrationDuration =
+    form.registration_start_at !== "" &&
+    form.registration_end_at !== "" &&
+    new Date(form.registration_start_at).getTime() >
+      new Date(form.registration_end_at).getTime();
 
   const allocatedBudget = useMemo(
     () =>
@@ -539,13 +562,15 @@ function CatalogEventModal({
       event_id: null,
       event_date: event?.event_date ?? "",
       event_time: event?.event_time ?? "09:00",
+      registration_end_at: toDateTimeLocalValue(sourceEvent?.registration_end_at),
+      registration_start_at: toDateTimeLocalValue(sourceEvent?.registration_start_at),
       status: "draft",
     });
     setBudgetRows(eventToBudgetRows(sourceEvent));
   }
 
   async function handleSave() {
-    if (!form.event_name.trim() || !form.category.trim()) {
+    if (!form.event_name.trim() || !form.category.trim() || hasInvalidRegistrationDuration) {
       return;
     }
 
@@ -568,6 +593,8 @@ function CatalogEventModal({
       event_id: isEditingExistingActivity ? form.event_id : null,
       event_name: form.event_name.trim(),
       event_time: form.event_time || null,
+      registration_end_at: form.registration_end_at || null,
+      registration_start_at: form.registration_start_at || null,
       expected_attendees: Number(form.expected_attendees) || 0,
       cover_image: form.cover_image || null,
       expenses,
@@ -602,7 +629,12 @@ function CatalogEventModal({
           </button>
           <button
             className="rounded-lg bg-[#1e3a5f] px-4 py-2 text-sm font-medium text-white hover:bg-[#2a4a6f] disabled:cursor-not-allowed disabled:opacity-60"
-            disabled={isSaving || form.event_name.trim() === "" || form.category.trim() === ""}
+            disabled={
+              isSaving ||
+              form.event_name.trim() === "" ||
+              form.category.trim() === "" ||
+              hasInvalidRegistrationDuration
+            }
             onClick={handleSave}
             type="button"
           >
@@ -1036,6 +1068,36 @@ function CatalogEventModal({
           </div>
         </div>
 
+        <div className="md:col-span-2 rounded-xl border border-slate-200 bg-slate-50 p-4">
+          <div className="mb-3">
+            <h3 className="text-sm font-semibold text-slate-800">
+              Event Registration Duration
+            </h3>
+            <p className="mt-1 text-xs text-slate-500">
+              Youth can register only during this window. Leave blank if registration is always open before the event date.
+            </p>
+          </div>
+          <div className="grid gap-3 md:grid-cols-2">
+            <Field
+              label="Registration Starts"
+              onChange={(value) => updateForm("registration_start_at", value)}
+              type="datetime-local"
+              value={form.registration_start_at}
+            />
+            <Field
+              label="Registration Ends"
+              onChange={(value) => updateForm("registration_end_at", value)}
+              type="datetime-local"
+              value={form.registration_end_at}
+            />
+          </div>
+          {hasInvalidRegistrationDuration ? (
+            <p className="mt-2 text-xs font-semibold text-red-600">
+              Registration end must be after the registration start.
+            </p>
+          ) : null}
+        </div>
+
         <Field
           label="Default Date"
           onChange={(value) => updateForm("event_date", value)}
@@ -1156,6 +1218,8 @@ function ScheduleEventModal({
       event_id: null,
       event_name: selectedEvent.event_name,
       event_time: `${startTime}-${endTime}`,
+      registration_end_at: selectedEvent.registration_end_at,
+      registration_start_at: selectedEvent.registration_start_at,
       expected_attendees: selectedEvent.expected_attendees ?? 0,
       cover_image: selectedEvent.cover_image,
       expenses: selectedEvent.event_expenses,

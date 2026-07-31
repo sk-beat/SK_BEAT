@@ -97,6 +97,8 @@ export default function Activities() {
       event_time: null,
       expected_attendees: null,
       location: null,
+      registration_end_at: null,
+      registration_start_at: null,
       status: "draft",
     };
   }, [budgetYearId, eventCategories]);

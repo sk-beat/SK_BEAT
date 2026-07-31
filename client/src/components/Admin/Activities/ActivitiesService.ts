@@ -38,6 +38,8 @@ export type ActivityEvent = {
   status: ActivityEventStatus;
   event_date: string | null;
   event_time: string | null;
+  registration_start_at: string | null;
+  registration_end_at: string | null;
   location: string | null;
   expected_attendees: number | null;
   cover_image: string | null;
@@ -101,6 +103,8 @@ export type SaveActivityEventPayload = {
   status: ActivityEventStatus;
   event_date: string | null;
   event_time: string | null;
+  registration_start_at: string | null;
+  registration_end_at: string | null;
   location: string | null;
   expected_attendees: number;
   cover_image: string | null;
@@ -129,7 +133,7 @@ export async function getActivityEvents() {
   const { data, error } = await supabase
     .from("events")
     .select(
-      "event_id,budget_year_id,event_name,category,allocated_budget,budget_items,status,event_date,event_time,location,expected_attendees,cover_image,description,created_by,created_at,event_expenses(expense_id,event_id,expense_type,calculation_type,unit_cost,quantity,amount,description),event_registrations(registration_id)",
+      "event_id,budget_year_id,event_name,category,allocated_budget,budget_items,status,event_date,event_time,registration_start_at,registration_end_at,location,expected_attendees,cover_image,description,created_by,created_at,event_expenses(expense_id,event_id,expense_type,calculation_type,unit_cost,quantity,amount,description),event_registrations(registration_id)",
     )
     .order("created_at", { ascending: false });
 
@@ -304,6 +308,8 @@ export async function saveActivityEvent(payload: SaveActivityEventPayload) {
     p_event_name: payload.event_name,
     p_event_time: payload.event_time,
     p_expected_attendees: payload.expected_attendees,
+    p_registration_end_at: payload.registration_end_at,
+    p_registration_start_at: payload.registration_start_at,
     p_expenses: payload.expenses.map((expense) => ({
       calculation_type: expense.calculation_type,
       description: expense.description ?? null,

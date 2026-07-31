@@ -31,6 +31,64 @@ function formatEventDate(value: string | null) {
   }).format(new Date(value));
 }
 
+function formatDateTime(value: string | null) {
+  if (!value) {
+    return "";
+  }
+
+  const date = new Date(value);
+  if (Number.isNaN(date.getTime())) {
+    return value;
+  }
+
+  return new Intl.DateTimeFormat("en-PH", {
+    day: "numeric",
+    hour: "numeric",
+    minute: "2-digit",
+    month: "short",
+    year: "numeric",
+  }).format(date);
+}
+
+function getRegistrationDurationLabel(event: YouthEvent) {
+  const start = formatDateTime(event.registration_start_at);
+  const end = formatDateTime(event.registration_end_at);
+
+  if (start && end) {
+    return `${start} - ${end}`;
+  }
+
+  if (start) {
+    return `Opens ${start}`;
+  }
+
+  if (end) {
+    return `Until ${end}`;
+  }
+
+  return "Open until the event date";
+}
+
+function getRegistrationWindowState(event: YouthEvent) {
+  const now = Date.now();
+  const startTime = event.registration_start_at
+    ? new Date(event.registration_start_at).getTime()
+    : null;
+  const endTime = event.registration_end_at
+    ? new Date(event.registration_end_at).getTime()
+    : null;
+
+  if (startTime !== null && Number.isFinite(startTime) && now < startTime) {
+    return { isOpen: false, label: "Registration Not Open" };
+  }
+
+  if (endTime !== null && Number.isFinite(endTime) && now > endTime) {
+    return { isOpen: false, label: "Registration Closed" };
+  }
+
+  return { isOpen: true, label: "Register" };
+}
+
 function statusClass(status: YouthEvent["status"]) {
   if (status === "ongoing") {
     return "bg-emerald-50 text-emerald-700 ring-emerald-200";
@@ -52,6 +110,7 @@ function EventCardItem({
 }) {
   const isRegistered = event.is_registered;
   const isFull = event.remaining_slots !== null && event.remaining_slots <= 0 && !isRegistered;
+  const registrationWindow = getRegistrationWindowState(event);
 
   return (
     <article className="overflow-hidden rounded-[14px] border border-slate-200 bg-white shadow-sm">
@@ -102,6 +161,10 @@ function EventCardItem({
             <Users className="h-4 w-4" />
             {event.registration_count} registered / {event.expected_attendees ?? 0} expected
           </p>
+          <p className="flex items-center gap-2">
+            <Clock className="h-4 w-4" />
+            Registration: {getRegistrationDurationLabel(event)}
+          </p>
           <p className="text-xs font-medium text-slate-400">
             {event.remaining_slots === null ? "No capacity limit set" : `${event.remaining_slots} slot(s) remaining`}
           </p>
@@ -114,7 +177,7 @@ function EventCardItem({
               ? "border border-emerald-200 bg-emerald-50 text-emerald-700"
               : "bg-[#1e3a5f] text-white hover:bg-[#173256]",
           ].join(" ")}
-          disabled={isRegistering || isFull}
+          disabled={isRegistering || isFull || (!isRegistered && !registrationWindow.isOpen)}
           onClick={() => (isRegistered ? onCancel(event.event_id) : onRegister(event.event_id))}
           type="button"
         >
@@ -127,6 +190,8 @@ function EventCardItem({
             "Registering..."
           ) : isFull ? (
             "Full"
+          ) : !registrationWindow.isOpen ? (
+            registrationWindow.label
           ) : (
             "Register"
           )}

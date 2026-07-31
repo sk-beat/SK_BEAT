@@ -9,9 +9,29 @@ import {
   type YouthEvent,
 } from "./EventsService";
 
+function formatEventDate(value: string | null) {
+  if (!value) {
+    return "To be announced";
+  }
+
+  const date = new Date(value);
+  if (Number.isNaN(date.getTime())) {
+    return value;
+  }
+
+  return new Intl.DateTimeFormat("en-PH", {
+    day: "numeric",
+    month: "long",
+    year: "numeric",
+  }).format(date);
+}
+
 export default function Events() {
   const { user } = useAuth();
   const [events, setEvents] = useState<YouthEvent[]>([]);
+  const [confirmationEvent, setConfirmationEvent] = useState<YouthEvent | null>(
+    null,
+  );
   const [registeringEventId, setRegisteringEventId] = useState<number | null>(
     null,
   );
@@ -38,14 +58,15 @@ export default function Events() {
     }
 
     const event = events.find((item) => item.event_id === eventId);
-    const confirmed = window.confirm(
-      `Register for ${event?.event_name ?? "this event"}?`,
-    );
-
-    if (!confirmed) {
-      return;
+    if (event) {
+      setConfirmationEvent(event);
     }
+  }
 
+  async function confirmRegistration() {
+    if (!user?.id || registeringEventId || !confirmationEvent) return;
+
+    const eventId = confirmationEvent.event_id;
     setRegisteringEventId(eventId);
     setErrorMessage(null);
 
@@ -54,10 +75,12 @@ export default function Events() {
     setRegisteringEventId(null);
 
     if (error) {
+      setConfirmationEvent(null);
       setErrorMessage(error.message);
       return;
     }
 
+    setConfirmationEvent(null);
     await loadEvents();
   }
 
@@ -114,6 +137,55 @@ export default function Events() {
         onRegister={handleRegister}
         registeringEventId={registeringEventId}
       />
+      {confirmationEvent ? (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-950/55 px-4 py-6">
+          <div className="w-full max-w-md rounded-2xl bg-white p-6 shadow-2xl">
+            <div className="flex h-12 w-12 items-center justify-center rounded-full bg-[#1e3a5f]/10 text-[#1e3a5f]">
+              <span className="text-xl font-bold">?</span>
+            </div>
+            <h2 className="mt-4 text-lg font-semibold text-slate-900">
+              Confirm Registration
+            </h2>
+            <p className="mt-2 text-sm leading-relaxed text-slate-500">
+              You are about to register for{" "}
+              <strong className="font-semibold text-slate-900">
+                {confirmationEvent.event_name}
+              </strong>
+              .
+            </p>
+            <div className="mt-4 rounded-xl border border-slate-200 bg-slate-50 px-4 py-3 text-sm text-slate-600">
+              <p>
+                <span className="font-semibold text-slate-800">Date:</span>{" "}
+                {formatEventDate(confirmationEvent.event_date)}
+              </p>
+              <p className="mt-1">
+                <span className="font-semibold text-slate-800">Location:</span>{" "}
+                {confirmationEvent.location || "To be announced"}
+              </p>
+            </div>
+            <div className="mt-6 flex justify-end gap-3">
+              <button
+                className="rounded-lg border border-slate-200 px-4 py-2 text-sm font-semibold text-slate-700 hover:bg-slate-50"
+                disabled={registeringEventId === confirmationEvent.event_id}
+                onClick={() => setConfirmationEvent(null)}
+                type="button"
+              >
+                Cancel
+              </button>
+              <button
+                className="rounded-lg bg-[#1e3a5f] px-4 py-2 text-sm font-semibold text-white hover:bg-[#173256] disabled:cursor-not-allowed disabled:opacity-70"
+                disabled={registeringEventId === confirmationEvent.event_id}
+                onClick={() => void confirmRegistration()}
+                type="button"
+              >
+                {registeringEventId === confirmationEvent.event_id
+                  ? "Registering..."
+                  : "Register"}
+              </button>
+            </div>
+          </div>
+        </div>
+      ) : null}
     </div>
   );
 }

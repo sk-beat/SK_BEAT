@@ -285,6 +285,22 @@ function toDateTimeLocalValue(value: string | null | undefined) {
   return new Date(date.getTime() - offsetMs).toISOString().slice(0, 16);
 }
 
+function getCurrentDateTimeLocalValue() {
+  return toDateTimeLocalValue(new Date().toISOString());
+}
+
+function getEventCompletionDateTimeLocalValue(
+  eventDate: string,
+  eventTime: string,
+) {
+  if (!eventDate) {
+    return "";
+  }
+
+  const { endTime, startTime } = getEventTimeRange(eventTime);
+  return `${eventDate}T${endTime || startTime || "23:59"}`;
+}
+
 function rangesOverlap(
   firstStart: string,
   firstEnd: string,
@@ -446,12 +462,16 @@ function getLatestCompletedIdenticalEvent(
 
 function Field({
   label,
+  max,
+  min,
   onChange,
   placeholder,
   type = "text",
   value,
 }: {
   label: string;
+  max?: string;
+  min?: string;
   onChange: (value: string) => void;
   placeholder?: string;
   type?: string;
@@ -464,6 +484,8 @@ function Field({
       </span>
       <input
         className={inputClass}
+        max={max}
+        min={min}
         onChange={(event) => onChange(event.target.value)}
         placeholder={placeholder}
         type={type}
@@ -532,11 +554,27 @@ function CatalogEventModal({
     ? completedEventPerformance.find((event) => event.event_id === latestCompletedTemplateEvent.event_id) ?? null
     : null;
   const recentExpenseTotal = recentIdenticalEvent?.completed_spending ?? 0;
+  const currentDateTimeLocal = getCurrentDateTimeLocalValue();
+  const eventCompletionDateTimeLocal = getEventCompletionDateTimeLocalValue(
+    form.event_date,
+    form.event_time,
+  );
   const hasInvalidRegistrationDuration =
     form.registration_start_at !== "" &&
     form.registration_end_at !== "" &&
     new Date(form.registration_start_at).getTime() >
       new Date(form.registration_end_at).getTime();
+  const hasPastRegistrationStart =
+    form.registration_start_at !== "" &&
+    form.registration_start_at < currentDateTimeLocal;
+  const hasRegistrationEndAfterEvent =
+    form.registration_end_at !== "" &&
+    eventCompletionDateTimeLocal !== "" &&
+    form.registration_end_at > eventCompletionDateTimeLocal;
+  const hasInvalidRegistrationWindow =
+    hasInvalidRegistrationDuration ||
+    hasPastRegistrationStart ||
+    hasRegistrationEndAfterEvent;
 
   const allocatedBudget = useMemo(
     () =>
@@ -570,7 +608,7 @@ function CatalogEventModal({
   }
 
   async function handleSave() {
-    if (!form.event_name.trim() || !form.category.trim() || hasInvalidRegistrationDuration) {
+    if (!form.event_name.trim() || !form.category.trim() || hasInvalidRegistrationWindow) {
       return;
     }
 
@@ -633,7 +671,7 @@ function CatalogEventModal({
               isSaving ||
               form.event_name.trim() === "" ||
               form.category.trim() === "" ||
-              hasInvalidRegistrationDuration
+              hasInvalidRegistrationWindow
             }
             onClick={handleSave}
             type="button"
@@ -1080,20 +1118,33 @@ function CatalogEventModal({
           <div className="grid gap-3 md:grid-cols-2">
             <Field
               label="Registration Starts"
+              min={currentDateTimeLocal}
               onChange={(value) => updateForm("registration_start_at", value)}
               type="datetime-local"
               value={form.registration_start_at}
             />
             <Field
               label="Registration Ends"
+              max={eventCompletionDateTimeLocal || undefined}
+              min={form.registration_start_at || currentDateTimeLocal}
               onChange={(value) => updateForm("registration_end_at", value)}
               type="datetime-local"
               value={form.registration_end_at}
             />
           </div>
+          {hasPastRegistrationStart ? (
+            <p className="mt-2 text-xs font-semibold text-red-600">
+              Registration start must be the current time or a future time.
+            </p>
+          ) : null}
           {hasInvalidRegistrationDuration ? (
             <p className="mt-2 text-xs font-semibold text-red-600">
               Registration end must be after the registration start.
+            </p>
+          ) : null}
+          {hasRegistrationEndAfterEvent ? (
+            <p className="mt-2 text-xs font-semibold text-red-600">
+              Registration end must be before the event completion time.
             </p>
           ) : null}
         </div>

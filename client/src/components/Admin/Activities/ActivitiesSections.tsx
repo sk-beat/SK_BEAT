@@ -887,15 +887,15 @@ function ActivitiesListPanel({
         <p className="mt-1 text-xs text-slate-500">
           Mga natapos nang event - para sa post-survey feedback at QR.
         </p>
-        <div className="mt-4">
+        <div className="mt-4 grid min-w-0 gap-4 md:grid-cols-[280px_minmax(0,1fr)]">
           <div
-            className="flex gap-3 overflow-x-auto pb-2"
+            className="flex max-h-[29rem] min-w-0 flex-col gap-2 overflow-y-auto pr-1"
             onClick={(event) => event.stopPropagation()}
           >
             {pastEvents.map((event) => (
               <button
                 className={[
-                  "min-h-28 shrink-0 basis-1/4 rounded-lg border bg-white p-3 text-left transition hover:border-[#1e3a5f] max-lg:basis-1/2 max-sm:basis-[85%]",
+                  "w-full rounded-lg border bg-white p-3 text-left transition hover:border-[#1e3a5f]",
                   selectedPastEventId === event.event_id
                     ? "border-[#1e3a5f] ring-2 ring-[#1e3a5f]/15"
                     : "border-slate-200",
@@ -916,19 +916,19 @@ function ActivitiesListPanel({
               </button>
             ))}
             {pastEvents.length === 0 ? (
-              <span className="w-full rounded-lg border border-dashed border-slate-300 bg-white p-3 text-sm text-slate-500">
+              <span className="rounded-lg border border-dashed border-slate-300 bg-white p-3 text-sm text-slate-500">
                 No completed events yet.
               </span>
             ) : null}
           </div>
 
           <div
-            className="mt-4 min-h-40 rounded-lg border border-dashed border-slate-300 bg-white p-4"
+            className="min-h-40 min-w-0 rounded-lg border border-dashed border-slate-300 bg-white p-4"
             onClick={(event) => event.stopPropagation()}
           >
             {selectedPastEvent ? (
-              <div className="grid gap-4 md:grid-cols-[minmax(0,1fr)_180px] md:items-center">
-                <div>
+              <div className="grid min-w-0 gap-4 md:grid-cols-[minmax(0,1fr)_180px] md:items-center">
+                <div className="min-w-0">
                   <p className="text-sm font-semibold text-slate-800">
                     {selectedPastEvent.event_name}
                   </p>

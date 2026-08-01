@@ -682,7 +682,7 @@ function ActivitiesListPanel({
     ? `${window.location.origin}/event-feedback/${selectedPastEvent.event_id}`
     : "";
   const qrImageUrl = feedbackUrl
-    ? `https://api.qrserver.com/v1/create-qr-code/?size=220x220&data=${encodeURIComponent(feedbackUrl)}`
+    ? `https://api.qrserver.com/v1/create-qr-code/?size=440x440&data=${encodeURIComponent(feedbackUrl)}`
     : "";
   const filteredEvents = events.filter((event) => statusFilter === "all" || event.status === statusFilter);
   const totalPages = Math.max(1, Math.ceil(filteredEvents.length / pageSize));
@@ -887,15 +887,15 @@ function ActivitiesListPanel({
         <p className="mt-1 text-xs text-slate-500">
           Mga natapos nang event - para sa post-survey feedback at QR.
         </p>
-        <div className="mt-4 grid min-w-0 gap-4 md:grid-cols-[360px_minmax(0,1fr)]">
+        <div className="mt-4 grid min-w-0 gap-4 xl:grid-cols-[minmax(520px,720px)_minmax(360px,1fr)]">
           <div
-            className="flex max-h-60 min-w-0 flex-col gap-2 overflow-y-auto pr-1"
+            className="flex max-h-[440px] min-w-0 flex-col gap-3 overflow-y-auto pr-1"
             onClick={(event) => event.stopPropagation()}
           >
             {pastEvents.map((event) => (
               <button
                 className={[
-                  "w-full rounded-lg border bg-white p-3 text-left transition hover:border-[#1e3a5f]",
+                  "min-h-[96px] w-full rounded-lg border bg-white p-4 text-left transition hover:border-[#1e3a5f]",
                   selectedPastEventId === event.event_id
                     ? "border-[#1e3a5f] ring-2 ring-[#1e3a5f]/15"
                     : "border-slate-200",
@@ -923,11 +923,11 @@ function ActivitiesListPanel({
           </div>
 
           <div
-            className="min-h-40 min-w-0 rounded-lg border border-dashed border-slate-300 bg-white p-4"
+            className="min-h-[440px] min-w-0 rounded-lg border border-dashed border-slate-300 bg-white p-5"
             onClick={(event) => event.stopPropagation()}
           >
             {selectedPastEvent ? (
-              <div className="grid min-w-0 gap-4 md:grid-cols-[minmax(0,1fr)_260px] md:items-center">
+              <div className="flex h-full min-w-0 flex-col items-center justify-center gap-4 text-center">
                 <div className="min-w-0">
                   <p className="text-sm font-semibold text-slate-800">
                     {selectedPastEvent.event_name}
@@ -935,18 +935,20 @@ function ActivitiesListPanel({
                   <p className="mt-1 text-xs text-slate-500">
                     {selectedPastEvent.event_date || "No date"} - {selectedPastEvent.category}
                   </p>
-                  <p className="mt-3 break-all rounded-lg border border-slate-200 bg-slate-50 px-3 py-2 text-xs text-slate-600">
-                    {feedbackUrl}
-                  </p>
-                  <p className="mt-3 text-sm text-slate-500">
-                    Scan to open this completed event's feedback form.
-                  </p>
                 </div>
                 <img
                   alt={`Feedback QR for ${selectedPastEvent.event_name}`}
-                  className="mx-auto h-60 w-60 rounded-xl border-4 border-[#1e3a5f] bg-white p-3"
+                  className="h-[28rem] max-h-[70vh] w-[28rem] max-w-full rounded-xl border-4 border-[#1e3a5f] bg-white p-4"
                   src={qrImageUrl}
                 />
+                <div className="w-full min-w-0">
+                  <p className="break-all rounded-lg border border-slate-200 bg-slate-50 px-3 py-2 text-xs text-slate-600">
+                    {feedbackUrl}
+                  </p>
+                  <p className="mt-2 text-sm text-slate-500">
+                    Scan to open this completed event's feedback form.
+                  </p>
+                </div>
               </div>
             ) : (
               <div className="flex min-h-32 items-center justify-center text-center text-sm text-slate-500">

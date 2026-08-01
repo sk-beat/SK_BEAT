@@ -889,7 +889,7 @@ function ActivitiesListPanel({
         </p>
         <div className="mt-4 grid min-w-0 gap-4 xl:grid-cols-[minmax(520px,720px)_minmax(360px,1fr)]">
           <div
-            className="flex max-h-[440px] min-w-0 flex-col gap-3 overflow-y-auto pr-1"
+            className="flex max-h-[660px] min-w-0 flex-col gap-3 overflow-y-auto pr-1"
             onClick={(event) => event.stopPropagation()}
           >
             {pastEvents.map((event) => (
@@ -923,7 +923,7 @@ function ActivitiesListPanel({
           </div>
 
           <div
-            className="min-h-[440px] min-w-0 rounded-lg border border-dashed border-slate-300 bg-white p-5"
+            className="min-h-[660px] min-w-0 rounded-lg border border-dashed border-slate-300 bg-white p-5"
             onClick={(event) => event.stopPropagation()}
           >
             {selectedPastEvent ? (
